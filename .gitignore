@@ -1,20 +1,20 @@
-        .vector_cache
-        ARDM/
-        Checkpoint/
-        DataProcess/
-        Persuasion Self Play.ipynb
-        PersuasionTest.ipynb
-        TorchFly/
-        Train.ipynb
-        __pycache__/
-        albert/
-        apex/
-        classifier/
-        fairseq/
-        persuasion_small_3.th
-        screenlog.0
-        templates/
-        textgail/
-        unlikelihood_training/
-        xlnet_extension_tf/
+.vector_cache
+ARDM/
+Checkpoint/
+DataProcess/
+Persuasion Self Play.ipynb
+PersuasionTest.ipynb
+TorchFly/
+Train.ipynb
+__pycache__/
+albert/
+apex/
+classifier/
+fairseq/
+persuasion_small_3.th
+screenlog.0
+templates/
+textgail/
+unlikelihood_training/
+xlnet_extension_tf/
 
