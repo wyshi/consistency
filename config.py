@@ -20,3 +20,6 @@ HAVE_TO_PROPOSE = 3
 PASS = "pass"
 REPETITION = "repetition"
 CONTRADICTION = "contradiction"
+NOT_PASS = "not_pass" # (when there are multiple utterances in one sentence, e.g. ABC, 
+                      # A maybe repetition, B maybe contradiction, C maybe repetition, 
+                      # then return "NOT_PASS" instead of indivisual conflict status)

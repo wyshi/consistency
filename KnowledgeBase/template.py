@@ -40,7 +40,7 @@ class SystemTemplate(object):
         for act in acts:
             sents.append(self.sample(self.SYS_TEMPLATE_ACT_DIC[act]))
         
-        return " ".join(sents)
+        return sents
 
     def sample(self, candidates):
         return np.random.choice(candidates, 1)[0]

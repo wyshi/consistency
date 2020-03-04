@@ -23,8 +23,10 @@ warnings.filterwarnings('ignore')
 from gpt_model import GPT2SimpleLM
 from pytorch_pretrained_bert import GPT2Tokenizer
 import config as cfg
+from utils import is_repetition_with_context
 
 from KnowledgeBase.KB import HumanRule
+from nltk.tokenize import sent_tokenize
 
 # In[3]:
 tokenizer_dir = "/home/wyshi/persuasion/consistency/ARDM/persuasion/special3_gpt2_tokenizer.pkl"
@@ -178,7 +180,7 @@ class PersuasiveBot:
                 self.past = None
                 return "ARDM MEMORY RESTARTS!"
             
-            self.usr_profile.update(input_text, self.last_sys_label)
+            self.usr_profile.update(input_text, self.last_sys_labels)
             self.context = input_text
             self.turn_i += 1
             user = self.tokenizer.encode("B:" + input_text)
@@ -222,7 +224,7 @@ class PersuasiveBot:
 
         self.usr_profile.refresh()
         self.sys_profile.refresh()
-        self.last_sys_label = None
+        self.last_sys_labels = None
 
         # initialize params
         self.context = '<Start>'
@@ -231,9 +233,20 @@ class PersuasiveBot:
         
         print("reloaded")
 
-    def print_candidates(self, candidates):
+    def print_candidates(self, candidates, edited_candidates):
         print("=== candidates, len={} ===".format(len(candidates)))
-        print(candidates)
+        for c, edited_c in zip(candidates, edited_candidates):
+            c = " ".join(c)
+            edited_c = " ".join(edited_c)
+            if c != edited_c:
+                print("--------- different from edited candidates ----------")
+                print(c)
+                print(edited_c)
+                print("-----------------------------------------------------")
+            else:
+                print("-----------------------------------------------------")
+                print(edited_c)
+                print("-----------------------------------------------------")
         print("==================")
 
     def select_candidates(self, sent_candidates, sent_candidate_conflict_scores, sent_act_candidates, past_candidates):
@@ -253,67 +266,82 @@ class PersuasiveBot:
                                     replace=False, p=normlized_score)[0]
 
         rule_result = self.human_rule.enforce(sent_candidates, sent_act_candidates, past_candidates)
+        if cfg.debug:
+            print("rule_result:\n")
+            print(rule_result)
+            print("rule_result:")
         if rule_result is None:
             selected_i = select_index()
-            sent, sent_act, past = sent_candidates[selected_i], sent_act_candidates[selected_i], past_candidates[selected_i]
+            sents, sent_acts, past = sent_candidates[selected_i], sent_act_candidates[selected_i], past_candidates[selected_i]
         elif type(rule_result) is int:
             selected_i = rule_result
-            sent, sent_act, past = sent_candidates[selected_i], sent_act_candidates[selected_i], past_candidates[selected_i]
+            sents, sent_acts, past = sent_candidates[selected_i], sent_act_candidates[selected_i], past_candidates[selected_i]
         else:
+            enforced_sents, enforced_acts = rule_result
             selected_i = select_index()
-            sent, sent_act, past = sent_candidates[selected_i], sent_act_candidates[selected_i], past_candidates[selected_i]
-            sent = " ".join([sent, rule_result])
+            sents, sent_acts, past = sent_candidates[selected_i], sent_act_candidates[selected_i], past_candidates[selected_i]
+            
+            sents = sents + enforced_sents
+            sent_acts = sent_acts + enforced_acts
 
-        return sent, sent_act, past
+        return sents, sent_acts, past
 
     def sys_respond(self, past_is_None):
         # start A's utterance
-        sent_candidates, sent_candidate_conflict_scores, sent_act_candidates, past_candidates = [], [], [], []
+        sent_candidates, edited_sent_candidates, sent_candidate_conflict_scores, sent_act_candidates, past_candidates = [], [], [], [], []
         have_enough_candidates = False
         num_rounds = 0
         while not have_enough_candidates and num_rounds < int(cfg.MAX_NUM_CANDIDATES/cfg.NUM_CANDIDATES):
             num_rounds += 1
             for _ in range(cfg.NUM_CANDIDATES):
                 sent, past = self.sample_one_sent(past=self.past)
-
+                sents = sent_tokenize(sent)
+                
                 # use regex to re-label
-                sent_act = self.sys_profile.regex_label(sent, self.context, self.turn_i)
+                sent_acts = self.sys_profile.regex_label(sents, self.context, self.turn_i)
 
                 # check conflict condition
-                conflict_status_with_sys, conflict_amount_with_sys = self.sys_profile.check_conflict(sent, sent_act)
+                conflict_status_with_sys, conflict_amount_with_sys, edited_sents, edited_sent_acts = self.sys_profile.check_conflict(sents, sent_acts)
                 if past_is_None:
                     conflict_condition = (conflict_status_with_sys in [cfg.PASS])                    
                 else:
-                    conflict_status_with_usr, conflict_amount_with_usr = self.usr_profile.check_conflict(sent, sent_act)                    
+                    conflict_status_with_usr, conflict_amount_with_usr, edited_sents, edited_sent_acts = self.usr_profile.check_conflict(edited_sents, edited_sent_acts)                    
                     conflict_condition = (conflict_status_with_sys in [cfg.PASS]) and (conflict_status_with_usr in [cfg.PASS])
                 
                 if conflict_condition:   
-                    sent_candidates.append(sent)
+                    sent_candidates.append(sents)
+                    edited_sent_candidates.append(edited_sents)
                     if past_is_None:
                         sent_candidate_conflict_scores.append(conflict_amount_with_sys)
                     else:
                         sent_candidate_conflict_scores.append(max(conflict_amount_with_usr, conflict_amount_with_sys))
-                    sent_act_candidates.append(sent_act)
+                    sent_act_candidates.append(edited_sent_acts)
                     past_candidates.append(past)
-            have_enough_candidates = (len(sent_act_candidates) > 0)
+            have_enough_candidates = (len(past_candidates) > 0)
         if not have_enough_candidates:
             # as long as it's not a contradiction, randomly pick one 
                 if cfg.debug:
                     print("no enough candidates! randomly generate the next one!")
                 sent, past = self.sample_one_sent(past=self.past)
-                sent_act = self.sys_profile.regex_label(sent, self.context, self.turn_i)
-                sent_candidates.append(sent)
+                sents = sent_tokenize(sent)
+
+                sent_acts = self.sys_profile.regex_label(sents, self.context, self.turn_i)
+                sent_candidates.append(sents)
+                edited_sent_candidates.append(sents)
                 sent_candidate_conflict_scores.append(0)
-                sent_act_candidates.append(sent_act)
+                sent_act_candidates.append(sent_acts)
                 past_candidates.append(past)
        
         # check consistency and pick one candidate
         self.cnt += 1
-        self.print_candidates(sent_candidates)
-        sent, sent_act, past = self.select_candidates(sent_candidates, sent_candidate_conflict_scores, sent_act_candidates, past_candidates)
-        self.last_sys_label = self.sys_profile.update(sys_text=sent, sys_label=sent_act)
+        self.print_candidates(sent_candidates, edited_sent_candidates)
+        sents, sent_acts, past = self.select_candidates(edited_sent_candidates, sent_candidate_conflict_scores, sent_act_candidates, past_candidates)
+        # check conflict within the sents
+        sents, sent_acts = self.check_conflict_within_selected_sents(sents, sent_acts)
+        self.last_sys_labels = self.sys_profile.update(sys_texts=sents, sys_labels=sent_acts)
 
-        # 
+        # join sentences! finally!
+        sent = " ".join(sents)
         if sent == "ARDM MEMORY RESTARTS!":
             self.past = None
             return "ARDM MEMORY RESTARTS!"
@@ -325,6 +353,25 @@ class PersuasiveBot:
         _, self.past = self.model_A(prev_input, past=self.past)
         
         return sent
+
+    def check_conflict_within_selected_sents(self, sents, sent_acts):
+        statuses = [True]*len(sents)
+        for i in range(len(sents)):
+            for j in range(i+1, len(sents)):
+                if statuses[i] is True and statuses[j] is True:
+                    is_repetition, repetition_ratio = is_repetition_with_context(sents[i], 
+                                                                            [sents[j]], 
+                                                                            threshold=cfg.repetition_threshold) 
+                    if is_repetition:
+                        if cfg.debug:
+                            print("@@@ in check_conflict_within_selected_sents, repetition within the sentence candidate: {}\n{}".format(sents[i], sents[j]))
+                        statuses[j] = False
+                else:
+                    pass
+        edited_sents = [sents[i] for i, status in enumerate(statuses) if status]
+        edited_sent_acts = [sent_acts[i] for i, status in enumerate(statuses) if status]
+        
+        return edited_sents, edited_sent_acts
 
 
 if __name__ == "__main__":
