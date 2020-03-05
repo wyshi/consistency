@@ -6,6 +6,32 @@ from AgentProfile.core import SystemAct
 import itertools
 # sys.path.append()
 
+# domain attributes status
+class Domain(object):
+    def __init__(self, domain="persuasion"):
+        if domain == "persuasion":
+            HOW_ARE_YOU = 'how-are-you'
+            HEARD_OF_THE_ORG = 'heard-of-the-org'
+            HAVE_KIDS = 'have-kids'
+            DONATED_BEFORE = 'donated-before'
+            WANT_TO_DONATE = 'want-to-donate'
+            DONATION_AMOUNT = 'donation-amount'
+
+            attributes = [HOW_ARE_YOU, 
+                        HEARD_OF_THE_ORG, 
+                        HAVE_KIDS, 
+                        DONATED_BEFORE,
+                        WANT_TO_DONATE, 
+                        DONATION_AMOUNT]
+
+            INIT = "init"
+            YES = "yes"
+            NO = "no"
+            NOT_SURE = "not_sure"
+
+            attribute_status = [INIT, YES, NO, NOT_SURE]
+
+
 class HumanRule(object):
     def __init__(self, chatbot):
         self.chatbot = chatbot
@@ -18,6 +44,7 @@ class HumanRule(object):
                int: one candidate selected
                str: no candidate selected, should append the returned sentence to the end
         """
+        print("\n\n\n--------- rule enforce --------------")
         if self.chatbot.turn_i >= cfg.HAVE_TO_PROPOSE:
             # have to propose donation at this turn if it hasn't proposed yet
             enforced_acts = [SystemAct.propose_donation_inquiry, SystemAct.PROVIDE_DONATION_PROCEDURE]
@@ -28,12 +55,15 @@ class HumanRule(object):
                 if is_repetition_with_context(enforced_templates[0], 
                                               itertools.chain(*self.chatbot.sys_profile.values()), 
                                               threshold=cfg.repetition_threshold):
+                    print("case 1")
                     return None
                 else:
                     for i, acts in enumerate(sent_act_candidates):
                         for act in acts:
                             if act == SystemAct.propose_donation_inquiry:
+                                print("case 2")
                                 return i
+                    print("case 3")
                     return enforced_templates, enforced_acts # didn't find appropriate candidates, so we append this sentence 
 
                 # edited_enforced_templates = []
@@ -50,8 +80,10 @@ class HumanRule(object):
                 
 
             else:
+                print("case 4")
                 return None
         
+        print("case 5")
         return None
                 
  

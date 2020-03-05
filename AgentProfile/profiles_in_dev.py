@@ -6,9 +6,34 @@ import config as cfg
 from utils import is_repetition_with_context
 import itertools
 from AgentProfile.core import SystemAct
-from KnowledgeBase import KB
+from KnowledgeBase import KB, Domain
 
 from nltk.tokenize import sent_tokenize
+
+
+class GlobalProfile(object):
+    def __init__(self, domain=cfg.domain):
+        self.domain = Domain(domain)
+        
+        self.profile = {'system': {att: [self.domain.INIT] for att in self.domain.attributes},
+                        'user': {att: [self.domain.INIT] for att in self.domain.attributes}
+                        }
+        self.history = []
+        self.history_label = []
+    
+    def extract_info(sent, who):
+        last_sent = self.history[-1]
+        if "how are you" in sent:
+
+
+        el
+
+    def refresh():
+        self.profile = {'system': {att: [self.domain.INIT] for att in self.domain.attributes},
+                        'user': {att: [self.domain.INIT] for att in self.domain.attributes}
+                        }
+        self.history = []
+        self.history_label = []
 
 class IndividualProfile(object):
     def __init__(self, domain=cfg.domain):        
@@ -34,6 +59,18 @@ class IndividualProfile(object):
 
     def items(self):
         return self.profile.items()
+
+    def extract_info(sent, who, last_sys_label=None, last_usr_label=None, last):
+        last_sent = self.history[-1]
+        if "how are you" in 
+
+
+to_update_usr, to_update_sys = extract_info(cur_sent, history, history_act):
+self.usr_profile.update(to_update)
+
+for k, v in to_update:
+    if v == YES and self.sys_profile.profile[k] == NO
+ self.profile
 
 
 class UsrProfile(IndividualProfile):
