@@ -37,9 +37,8 @@ class IndividualProfile(object):
 
 
 class UsrProfile(IndividualProfile):
-    def __init__(self, global_profile):
+    def __init__(self):
         super().__init__()
-        self.global_profile = global_profile
 
     def update(self, usr_text, last_sys_labels):
         # update using the user inputs
@@ -135,15 +134,10 @@ class UsrProfile(IndividualProfile):
         else:
             return True
     
-    def refresh(self):
-        super().refresh()
-        self.global_profile.refresh()
-
 class SysProfile(IndividualProfile):
-    def __init__(self, global_profile):
+    def __init__(self):
         super().__init__()
         self.pred_model = strategy_model(model_to_load="./classifier/best_model_state_er.pkl")
-        self.global_profile = global_profile
 
     def update(self, sys_texts, sys_labels):
         # update using the system inputs
@@ -299,7 +293,4 @@ class SysProfile(IndividualProfile):
 
         return labels
 
-    def refresh(self):
-        super().refresh()
-        self.global_profile.refresh()
 
