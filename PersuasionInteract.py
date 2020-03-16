@@ -3,7 +3,7 @@ import os
 
 import re
 import dialog_config
-from AgentProfile.profiles import UsrProfile, SysProfile
+from AgentProfile.profiles_in_dev import GlobalProfile
 
 import torch
 import torch.nn as nn
@@ -18,6 +18,9 @@ import tqdm
 import time
 
 import warnings
+import signal
+import sys
+from sys import exit
 warnings.filterwarnings('ignore')
 
 from gpt_model import GPT2SimpleLM
@@ -26,7 +29,16 @@ import config as cfg
 from utils import is_repetition_with_context
 
 from KnowledgeBase.KB import HumanRule
+from KnowledgeBase import KB
+from KnowledgeBase.KB import Domain
 from nltk.tokenize import sent_tokenize
+import logging
+
+# def handler(signal_received, frame):
+#     # Handle any cleanup here
+#     print('SIGINT or CTRL-C detected. Exiting gracefully')
+#     bot.save()
+#     exit(0)
 
 # In[3]:
 tokenizer_dir = "/home/wyshi/persuasion/consistency/ARDM/persuasion/special3_gpt2_tokenizer.pkl"
@@ -159,12 +171,18 @@ class PersuasiveBot:
         
         # Memory
         self.past = None
-        self.usr_profile = UsrProfile()
-        self.sys_profile = SysProfile()
+        self.domain = Domain(cfg.domain)
+        self.global_profile = GlobalProfile(domain=self.domain)
+        # self.usr_profile = UsrProfile()
+        # self.sys_profile = SysProfile()
         self.human_rule = HumanRule(self)
 
+        # self.logger = logger
         print("inited")
-
+        self.logs = {'candidates':[],
+                     'failed_candidates':[],
+                     'global_profiles': [],
+                     'responses': []}
 
         
     def chat(self, input_text, sid):
@@ -172,15 +190,17 @@ class PersuasiveBot:
         
         past_is_None = (self.past is None)
         if self.past is None:
-            sys_sent = self.sys_respond(past_is_None=past_is_None)
-            return sys_sent
+            sys_sent = self.sys_respond_and_update(past_is_None=past_is_None)
+            turn_responses = ["sys: "+sys_sent]
         else:
             # user-side
             if input_text == "quit":
                 self.past = None
                 return "ARDM MEMORY RESTARTS!"
             
-            self.usr_profile.update(input_text, self.last_sys_labels)
+            input_texts = sent_tokenize(input_text)
+            input_texts_labels = [None]*len(input_texts)
+            self.global_profile.update(sents=input_texts, sent_labels=input_texts_labels, who=self.domain.USR) #self.usr_profile.update(input_text, self.last_sys_labels)
             self.context = input_text
             self.turn_i += 1
             user = self.tokenizer.encode("B:" + input_text)
@@ -190,8 +210,13 @@ class PersuasiveBot:
             _, self.past = self.model_B(prev_input, past=self.past)
 
             # system-side
-            sys_sent = self.sys_respond(past_is_None=past_is_None)
-            return sys_sent  
+            sys_sent = self.sys_respond_and_update(past_is_None=past_is_None)
+            turn_responses = ["usr: "+input_text,
+                              "sys: "+sys_sent]
+        
+        self.logs['global_profiles'].append(self.global_profile.get_profiles())
+        self.logs['responses'].append(turn_responses)
+        return sys_sent
 
     def sample_one_sent(self, past):
         prev_input = self.tokenizer.encode("A:")
@@ -222,8 +247,9 @@ class PersuasiveBot:
     def reload(self):
         self.past = None
 
-        self.usr_profile.refresh()
-        self.sys_profile.refresh()
+        # self.usr_profile.refresh()
+        # self.sys_profile.refresh()
+        self.global_profile.refresh()
         self.last_sys_labels = None
 
         # initialize params
@@ -231,39 +257,56 @@ class PersuasiveBot:
         self.turn_i = 0
         self.cnt = 0
         
+        self.logs = {'candidates':[],
+                     'failed_candidates':[],
+                     'global_profiles': [],
+                     'responses': []}
+
         print("reloaded")
 
-    def print_candidates(self, candidates, edited_candidates):
+    def print_candidates(self, candidates, edited_candidates, scores):
+        log_this_turn = []
         print("=== candidates, len={} ===".format(len(candidates)))
-        for c, edited_c in zip(candidates, edited_candidates):
+        log_this_turn.append("=== candidates, len={} ===".format(len(candidates)))
+        
+        for c, edited_c, s in zip(candidates, edited_candidates, scores):
             c = " ".join(c)
             edited_c = " ".join(edited_c)
             if c != edited_c:
-                print("--------- different from edited candidates ----------")
+                print("--------- different from edited candidates: score: {} ----------".format(s))
                 print(c)
                 print(edited_c)
-                print("-----------------------------------------------------")
+                log_this_turn.append("--------- different from edited candidates: score: {} ----------".format(s))
+                log_this_turn.append(c)
+                log_this_turn.append(edited_c)
             else:
-                print("-----------------------------------------------------")
+                print("----------------- score : {}---------------------------".format(s))
                 print(edited_c)
-                print("-----------------------------------------------------")
+                log_this_turn.append("----------------- score : {}---------------------------".format(s))
+                log_this_turn.append(edited_c)
         print("==================")
+        log_this_turn.append("==================")
+        self.logs['candidates'].append(log_this_turn)
 
     def select_candidates(self, sent_candidates, sent_candidate_conflict_scores, sent_act_candidates, past_candidates):
         
         def select_index():
             if cfg.candidate_select_strategy == cfg.RANDOM_SELECT:
-                return random.sample(range(len(sent_candidate_conflict_scores)), k=1)[0]
+                return random.sample(range(len(sent_candidate_conflict_scores)), k=1)[0], [1/len(sent_candidate_conflict_scores)]*len(sent_candidate_conflict_scores)
             else:
                 one_minus_score = 1 - np.array(sent_candidate_conflict_scores)
-                normlized_score = one_minus_score/(one_minus_score.sum())
-                if cfg.debug:
-                    print("~~~~~~~~in select_candidates~~~~~~~~~")
-                    print("normalized_score: {}".format(normlized_score))
-                    print("original_score: {}".format(sent_candidate_conflict_scores))
-                    print("~"*20)
-                return np.random.choice(range(len(sent_candidate_conflict_scores)), size=1, 
-                                    replace=False, p=normlized_score)[0]
+                normalized_score = one_minus_score/(one_minus_score.sum())
+
+                if cfg.candidate_select_strategy == cfg.REPETITION_RATIO:
+                    # if cfg.debug:
+                    #     print("~~~~~~~~in select_candidates~~~~~~~~~")
+                    #     print("normalized_score: {}".format(normlized_score))
+                    #     print("original_score: {}".format(sent_candidate_conflict_scores))
+                    #     print("~"*20)
+                    return np.random.choice(range(len(sent_candidate_conflict_scores)), size=1, 
+                                        replace=False, p=normalized_score)[0], normalized_score
+                elif cfg.candidate_select_strategy == cfg.FIRST_OF_CANDIDATES:
+                    return 0, normalized_score
 
         rule_result = self.human_rule.enforce(sent_candidates, sent_act_candidates, past_candidates)
         if cfg.debug:
@@ -271,26 +314,28 @@ class PersuasiveBot:
             print(rule_result)
             print("rule_result:")
         if rule_result is None:
-            selected_i = select_index()
+            selected_i, scores = select_index()
             sents, sent_acts, past = sent_candidates[selected_i], sent_act_candidates[selected_i], past_candidates[selected_i]
         elif type(rule_result) is int:
             selected_i = rule_result
+            scores = 0
             sents, sent_acts, past = sent_candidates[selected_i], sent_act_candidates[selected_i], past_candidates[selected_i]
         else:
             enforced_sents, enforced_acts = rule_result
-            selected_i = select_index()
+            selected_i, scores = select_index()
             sents, sent_acts, past = sent_candidates[selected_i], sent_act_candidates[selected_i], past_candidates[selected_i]
             
             sents = sents + enforced_sents
             sent_acts = sent_acts + enforced_acts
 
-        return sents, sent_acts, past
+        return sents, sent_acts, past, scores
 
-    def sys_respond(self, past_is_None):
+    def sys_respond_and_update(self, past_is_None):
         # start A's utterance
         sent_candidates, edited_sent_candidates, sent_candidate_conflict_scores, sent_act_candidates, past_candidates = [], [], [], [], []
         have_enough_candidates = False
         num_rounds = 0
+        failed_candidates = []
         while not have_enough_candidates and num_rounds < int(cfg.MAX_NUM_CANDIDATES/cfg.NUM_CANDIDATES):
             num_rounds += 1
             for _ in range(cfg.NUM_CANDIDATES):
@@ -298,25 +343,27 @@ class PersuasiveBot:
                 sents = sent_tokenize(sent)
                 
                 # use regex to re-label
-                sent_acts = self.sys_profile.regex_label(sents, self.context, self.turn_i)
+                sent_acts = self.global_profile.regex_label(sents, self.context, self.turn_i)
 
                 # check conflict condition
-                conflict_status_with_sys, conflict_amount_with_sys, edited_sents, edited_sent_acts = self.sys_profile.check_conflict(sents, sent_acts)
-                if past_is_None:
-                    conflict_condition = (conflict_status_with_sys in [cfg.PASS])                    
-                else:
-                    conflict_status_with_usr, conflict_amount_with_usr, edited_sents, edited_sent_acts = self.usr_profile.check_conflict(edited_sents, edited_sent_acts)                    
-                    conflict_condition = (conflict_status_with_sys in [cfg.PASS]) and (conflict_status_with_usr in [cfg.PASS])
-                
+                # conflict_status_with_sys, conflict_amount_with_sys, edited_sents, edited_sent_acts = self.sys_profile.check_conflict(sents, sent_acts)
+                # if past_is_None:
+                #     conflict_condition = (conflict_status_with_sys in [cfg.PASS])                    
+                # else:
+                #     conflict_status_with_usr, conflict_amount_with_usr, edited_sents, edited_sent_acts = self.usr_profile.check_conflict(edited_sents, edited_sent_acts)                    
+                #     conflict_condition = (conflict_status_with_sys in [cfg.PASS]) and (conflict_status_with_usr in [cfg.PASS])
+
+                conflict_condition, conflict_amount, edited_sents, edited_sent_acts = self.global_profile.check_conflict(sents, sent_acts)  
+
                 if conflict_condition:   
                     sent_candidates.append(sents)
                     edited_sent_candidates.append(edited_sents)
-                    if past_is_None:
-                        sent_candidate_conflict_scores.append(conflict_amount_with_sys)
-                    else:
-                        sent_candidate_conflict_scores.append(max(conflict_amount_with_usr, conflict_amount_with_sys))
+                    sent_candidate_conflict_scores.append(conflict_amount)
                     sent_act_candidates.append(edited_sent_acts)
                     past_candidates.append(past)
+                else:
+                    failed_candidates.append(sents)
+
             have_enough_candidates = (len(past_candidates) > 0)
         if not have_enough_candidates:
             # as long as it's not a contradiction, randomly pick one 
@@ -325,20 +372,22 @@ class PersuasiveBot:
                 sent, past = self.sample_one_sent(past=self.past)
                 sents = sent_tokenize(sent)
 
-                sent_acts = self.sys_profile.regex_label(sents, self.context, self.turn_i)
+                sent_acts = self.global_profile.regex_label(sents, self.context, self.turn_i)
                 sent_candidates.append(sents)
                 edited_sent_candidates.append(sents)
                 sent_candidate_conflict_scores.append(0)
                 sent_act_candidates.append(sent_acts)
                 past_candidates.append(past)
-       
+        
+        self.logs['failed_candidates'].append(failed_candidates)
         # check consistency and pick one candidate
         self.cnt += 1
-        self.print_candidates(sent_candidates, edited_sent_candidates)
-        sents, sent_acts, past = self.select_candidates(edited_sent_candidates, sent_candidate_conflict_scores, sent_act_candidates, past_candidates)
+        sents, sent_acts, past, scores = self.select_candidates(edited_sent_candidates, sent_candidate_conflict_scores, sent_act_candidates, past_candidates)
+        self.print_candidates(sent_candidates, edited_sent_candidates, scores)
         # check conflict within the sents
         sents, sent_acts = self.check_conflict_within_selected_sents(sents, sent_acts)
-        self.last_sys_labels = self.sys_profile.update(sys_texts=sents, sys_labels=sent_acts)
+        
+        self.global_profile.update(sents=sents, sent_labels=sent_acts, who=self.domain.SYS) #self.last_sys_labels = self.sys_profile.update(sys_texts=sents, sys_labels=sent_acts)
 
         # join sentences! finally!
         sent = " ".join(sents)
@@ -373,25 +422,60 @@ class PersuasiveBot:
         
         return edited_sents, edited_sent_acts
 
+    def save(self):
+        print("\n")
+        logging.debug("\n")
+        for turn_i in range(len(self.logs['responses'])):
+            for k in ['responses', 'candidates', 'failed_candidates', 'global_profiles']:
+                print("{}\n".format(k))
+                print("-"*100)
+                logging.debug("{}\n".format(k))
+                if k in ['responses', 'candidates', 'failed_candidates']:
+                    for a in self.logs[k][turn_i]:
+                        print(a)
+                        logging.debug(a)
+                else:
+                    for world in self.logs[k][turn_i]:                        
+                        for profile in self.logs[k][turn_i][world]:
+                            print("*******{}: {}*******".format(world, profile))
+                            logging.debug("*******{}: {}*******".format(world, profile))
+                            for key, value in self.logs[k][turn_i][world][profile].items():
+                                print("{}: {}".format(key, value))
+                                logging.debug("{}: {}".format(key, value))
+                            print("")
+                            logging.debug("")
+            print("\n")
+            logging.debug("\n")
+        
+
+
 
 if __name__ == "__main__":
+    logging.basicConfig(filename=cfg.log_file,level=logging.DEBUG)
+    
+
     bot = PersuasiveBot()
     bot.reload()
     user_text = ""
-    
-    while True:
-        if bot.past is not None:
-            user_text  = input("B: ")
-        else:
-            print("INIT MEMORY!")
-            bot.reload()
-        
-        response = bot.chat(user_text, 0)
-        bot.sys_profile.print()
-        bot.usr_profile.print()
-        
-        if response == "ARDM MEMORY RESTARTS!":
-            print("ARDM MEMORY RESTARTS!")
-        else:
-            print("A: ", response)
+    signal.signal(signal.SIGINT, signal.default_int_handler)
 
+    while True:
+        try:
+            if bot.past is not None:
+                user_text  = input("user: ")
+            else:
+                print("INIT MEMORY!")
+                bot.reload()
+            
+            response = bot.chat(user_text, 0)
+            bot.global_profile.print()
+            
+            if response == "ARDM MEMORY RESTARTS!":
+                print("ARDM MEMORY RESTARTS!")
+            else:
+                print("system: ", response)
+            print("$$$$$$$$$$$$$$$$$$$$$\n\n\n\n\n\n")
+
+        except KeyboardInterrupt:
+            bot.save()
+            sys.exit()

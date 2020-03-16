@@ -7,9 +7,15 @@ import string
 import config as cfg
 # Get default English stopwords and extend with punctuation
 stopwords = ['save_the_children']
-# stopwords = nltk.corpus.stopwords.words('english')
-# stopwords.extend(string.punctuation)
+stopwords = nltk.corpus.stopwords.words('english')
+stopwords.extend(string.punctuation)
 stopwords.append('')
+import re
+import numpy as np
+from sklearn.metrics.pairwise import cosine_similarity
+import logging
+
+logging.basicConfig(filename=cfg.log_file,level=logging.DEBUG)
 
 # Create tokenizer and stemmer
 from nltk import word_tokenize
@@ -19,11 +25,17 @@ def is_ci_token_stopword_set_match(a, b, threshold=0.5):
     # text = [tok.text for tok in spacy_en.tokenizer(text) if tok.text != ' ']
     a = a.lower().replace("save the children", "save_the_children")
     b = b.lower().replace("save the children", "save_the_children")
-    tokens_a = [token.lower().strip(string.punctuation) for token in word_tokenize(a) \
+    tokens_a_tmp = [token.lower().strip(string.punctuation) for token in word_tokenize(a) \
                     if token.lower().strip(string.punctuation) not in stopwords]
-    tokens_b = [token.lower().strip(string.punctuation) for token in word_tokenize(b) \
+    tokens_b_tmp = [token.lower().strip(string.punctuation) for token in word_tokenize(b) \
                     if token.lower().strip(string.punctuation) not in stopwords]
-
+    
+    if len(tokens_a_tmp) == 0 and len(tokens_b_tmp) == 0:
+        tokens_a = [token.lower().strip(string.punctuation) for token in word_tokenize(a)]
+        tokens_b = [token.lower().strip(string.punctuation) for token in word_tokenize(b)]
+    else:
+        tokens_a = tokens_a_tmp
+        tokens_b = tokens_b_tmp
     # Calculate Jaccard similarity
     try:
         ratio = len(set(tokens_a).intersection(tokens_b)) / float(len(set(tokens_a).union(tokens_b)))
@@ -46,8 +58,54 @@ def is_repetition_with_context(sent, context_list, threshold=0.5):
         max_ratio = max(ratio, max_ratio)
         if is_match:
             if cfg.debug:
-                print("--- repetition occurs between these sents ---")
-                print("|{}|\n|{}|".format(c_sent, sent))
-                print("---------")
+                logging.debug("--- repetition occurs between these sents: ratio {} ---".format(ratio))
+                logging.debug("|context: {}|\n|candidate: {}|".format(c_sent, sent))
+                logging.debug("---------------------------------------------\n")
             return True, max_ratio
     return False, max_ratio
+
+def toNumReg(sent):
+    sent = sent.lower()
+    regInt=r'^0$|^[1-9]\d*$'
+    regFloat=r'[-+]?\d*\.\d+|\d+'
+    # regWord = r'(one)|(two)|(three)|(four)|(five)|(six)|(seven)|(eight)|(nine)|(zero)'
+
+
+   
+    regIntOrFloat=regInt+'|'+regFloat#float / int
+
+    patternIntOrFloat=re.compile(regIntOrFloat)
+    if len(re.findall(patternIntOrFloat,sent)) ==0:
+        if "a dollar" in sent:
+            return float(1)
+        elif "one " in sent:
+            return float(1)
+        elif "two " in sent:
+            return float(2)
+        elif "three " in sent:
+            return float(3)
+        elif "four " in sent:
+            return float(4)
+        elif "five " in sent:
+            return float(5)
+        elif "six " in sent:
+            return float(6)
+        elif "seven " in sent:
+            return float(7)
+        elif "eight " in sent:
+            return float(8)
+        elif "nine " in sent:
+            return float(9)
+        elif "zero " in sent:
+            return float(0)
+        else:
+            return None
+    else:
+        number = float(re.findall(patternIntOrFloat,sent)[0])
+        if "cents" in sent or "cent" in sent:
+            number = 0.01 * number
+
+        return number
+        # return float(re.findall(patternIntOrFloat,sent)[0])
+        
+    return None

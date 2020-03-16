@@ -1,0 +1,1267 @@
+WARNING:tensorflow:From /home/wyshi/persuasion/consistency/classifier/charModel/encoder.py:141: The name tf.placeholder is deprecated. Please use tf.compat.v1.placeholder instead.
+
+WARNING:tensorflow:From /home/wyshi/persuasion/consistency/classifier/charModel/encoder.py:92: The name tf.variable_scope is deprecated. Please use tf.compat.v1.variable_scope instead.
+
+WARNING:tensorflow:From /home/wyshi/persuasion/consistency/classifier/charModel/encoder.py:23: The name tf.get_variable is deprecated. Please use tf.compat.v1.get_variable instead.
+
+WARNING:tensorflow:From /home/wyshi/persuasion/consistency/classifier/charModel/encoder.py:60: calling l2_normalize (from tensorflow.python.ops.nn_impl) with dim is deprecated and will be removed in a future version.
+Instructions for updating:
+dim is deprecated, use axis instead
+WARNING:tensorflow:From /home/wyshi/persuasion/consistency/classifier/charModel/encoder.py:146: The name tf.Session is deprecated. Please use tf.compat.v1.Session instead.
+
+WARNING:tensorflow:From /home/wyshi/persuasion/consistency/classifier/charModel/encoder.py:147: The name tf.global_variables_initializer is deprecated. Please use tf.compat.v1.global_variables_initializer instead.
+
+INFO:torchtext.vocab:Loading vectors from .vector_cache/wiki.en.vec.pt
+WARNING:tensorflow:From /home/wyshi/persuasion/consistency/classifier/charModel/encoder.py:141: The name tf.placeholder is deprecated. Please use tf.compat.v1.placeholder instead.
+
+WARNING:tensorflow:From /home/wyshi/persuasion/consistency/classifier/charModel/encoder.py:92: The name tf.variable_scope is deprecated. Please use tf.compat.v1.variable_scope instead.
+
+WARNING:tensorflow:From /home/wyshi/persuasion/consistency/classifier/charModel/encoder.py:23: The name tf.get_variable is deprecated. Please use tf.compat.v1.get_variable instead.
+
+WARNING:tensorflow:From /home/wyshi/persuasion/consistency/classifier/charModel/encoder.py:60: calling l2_normalize (from tensorflow.python.ops.nn_impl) with dim is deprecated and will be removed in a future version.
+Instructions for updating:
+dim is deprecated, use axis instead
+WARNING:tensorflow:From /home/wyshi/persuasion/consistency/classifier/charModel/encoder.py:146: The name tf.Session is deprecated. Please use tf.compat.v1.Session instead.
+
+WARNING:tensorflow:From /home/wyshi/persuasion/consistency/classifier/charModel/encoder.py:147: The name tf.global_variables_initializer is deprecated. Please use tf.compat.v1.global_variables_initializer instead.
+
+INFO:torchtext.vocab:Loading vectors from .vector_cache/wiki.en.vec.pt
+WARNING:tensorflow:From /home/wyshi/persuasion/consistency/classifier/charModel/encoder.py:141: The name tf.placeholder is deprecated. Please use tf.compat.v1.placeholder instead.
+
+WARNING:tensorflow:From /home/wyshi/persuasion/consistency/classifier/charModel/encoder.py:92: The name tf.variable_scope is deprecated. Please use tf.compat.v1.variable_scope instead.
+
+WARNING:tensorflow:From /home/wyshi/persuasion/consistency/classifier/charModel/encoder.py:23: The name tf.get_variable is deprecated. Please use tf.compat.v1.get_variable instead.
+
+WARNING:tensorflow:From /home/wyshi/persuasion/consistency/classifier/charModel/encoder.py:60: calling l2_normalize (from tensorflow.python.ops.nn_impl) with dim is deprecated and will be removed in a future version.
+Instructions for updating:
+dim is deprecated, use axis instead
+WARNING:tensorflow:From /home/wyshi/persuasion/consistency/classifier/charModel/encoder.py:146: The name tf.Session is deprecated. Please use tf.compat.v1.Session instead.
+
+WARNING:tensorflow:From /home/wyshi/persuasion/consistency/classifier/charModel/encoder.py:147: The name tf.global_variables_initializer is deprecated. Please use tf.compat.v1.global_variables_initializer instead.
+
+INFO:torchtext.vocab:Loading vectors from .vector_cache/wiki.en.vec.pt
+WARNING:tensorflow:From /home/wyshi/persuasion/consistency/classifier/charModel/encoder.py:141: The name tf.placeholder is deprecated. Please use tf.compat.v1.placeholder instead.
+
+WARNING:tensorflow:From /home/wyshi/persuasion/consistency/classifier/charModel/encoder.py:92: The name tf.variable_scope is deprecated. Please use tf.compat.v1.variable_scope instead.
+
+WARNING:tensorflow:From /home/wyshi/persuasion/consistency/classifier/charModel/encoder.py:23: The name tf.get_variable is deprecated. Please use tf.compat.v1.get_variable instead.
+
+WARNING:tensorflow:From /home/wyshi/persuasion/consistency/classifier/charModel/encoder.py:60: calling l2_normalize (from tensorflow.python.ops.nn_impl) with dim is deprecated and will be removed in a future version.
+Instructions for updating:
+dim is deprecated, use axis instead
+WARNING:tensorflow:From /home/wyshi/persuasion/consistency/classifier/charModel/encoder.py:146: The name tf.Session is deprecated. Please use tf.compat.v1.Session instead.
+
+WARNING:tensorflow:From /home/wyshi/persuasion/consistency/classifier/charModel/encoder.py:147: The name tf.global_variables_initializer is deprecated. Please use tf.compat.v1.global_variables_initializer instead.
+
+INFO:torchtext.vocab:Loading vectors from .vector_cache/wiki.en.vec.pt
+WARNING:tensorflow:From /home/wyshi/persuasion/consistency/classifier/charModel/encoder.py:141: The name tf.placeholder is deprecated. Please use tf.compat.v1.placeholder instead.
+
+WARNING:tensorflow:From /home/wyshi/persuasion/consistency/classifier/charModel/encoder.py:92: The name tf.variable_scope is deprecated. Please use tf.compat.v1.variable_scope instead.
+
+WARNING:tensorflow:From /home/wyshi/persuasion/consistency/classifier/charModel/encoder.py:23: The name tf.get_variable is deprecated. Please use tf.compat.v1.get_variable instead.
+
+WARNING:tensorflow:From /home/wyshi/persuasion/consistency/classifier/charModel/encoder.py:60: calling l2_normalize (from tensorflow.python.ops.nn_impl) with dim is deprecated and will be removed in a future version.
+Instructions for updating:
+dim is deprecated, use axis instead
+WARNING:tensorflow:From /home/wyshi/persuasion/consistency/classifier/charModel/encoder.py:146: The name tf.Session is deprecated. Please use tf.compat.v1.Session instead.
+
+WARNING:tensorflow:From /home/wyshi/persuasion/consistency/classifier/charModel/encoder.py:147: The name tf.global_variables_initializer is deprecated. Please use tf.compat.v1.global_variables_initializer instead.
+
+INFO:torchtext.vocab:Loading vectors from .vector_cache/wiki.en.vec.pt
+WARNING:tensorflow:From /home/wyshi/persuasion/consistency/classifier/charModel/encoder.py:141: The name tf.placeholder is deprecated. Please use tf.compat.v1.placeholder instead.
+
+WARNING:tensorflow:From /home/wyshi/persuasion/consistency/classifier/charModel/encoder.py:92: The name tf.variable_scope is deprecated. Please use tf.compat.v1.variable_scope instead.
+
+WARNING:tensorflow:From /home/wyshi/persuasion/consistency/classifier/charModel/encoder.py:23: The name tf.get_variable is deprecated. Please use tf.compat.v1.get_variable instead.
+
+WARNING:tensorflow:From /home/wyshi/persuasion/consistency/classifier/charModel/encoder.py:60: calling l2_normalize (from tensorflow.python.ops.nn_impl) with dim is deprecated and will be removed in a future version.
+Instructions for updating:
+dim is deprecated, use axis instead
+WARNING:tensorflow:From /home/wyshi/persuasion/consistency/classifier/charModel/encoder.py:146: The name tf.Session is deprecated. Please use tf.compat.v1.Session instead.
+
+WARNING:tensorflow:From /home/wyshi/persuasion/consistency/classifier/charModel/encoder.py:147: The name tf.global_variables_initializer is deprecated. Please use tf.compat.v1.global_variables_initializer instead.
+
+INFO:torchtext.vocab:Loading vectors from .vector_cache/wiki.en.vec.pt
+DEBUG:root:--- repetition occurs between these sents: ratio 0.6666666666666666 ---
+DEBUG:root:|context: would you like to donate some of your task payment to Save the Children?|
+|candidate: would you like to donate some of your payment?|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.5 ---
+DEBUG:root:|context: would you like to donate some of your task payment to Save the Children?|
+|candidate: would you like to donate?|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.5 ---
+DEBUG:root:|context: would you like to donate some of your task payment to Save the Children?|
+|candidate: you can also donate any amount of your task payment you like|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.5 ---
+DEBUG:root:|context: would you like to donate some of your task payment to Save the Children?|
+|candidate: would you like to donate the amount of your payment today?|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 1.0 ---
+DEBUG:root:|context: i will match your donation as well.|
+|candidate: i will match your donation as well.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 1.0 ---
+DEBUG:root:|context: i will match your donation as well.|
+|candidate: i will match your donation as well.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 1.0 ---
+DEBUG:root:|context: i will match your donation as well.|
+|candidate: I will match your donation as well.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 1.0 ---
+DEBUG:root:|context: i will match your donation as well.|
+|candidate: i will match your donation as well.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.8333333333333334 ---
+DEBUG:root:|context: this is a good charity that helps children in need all over the world.|
+|candidate: this is a good charity that helps children all over the world.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.5 ---
+DEBUG:root:|context: how much do you plan to donate?|
+|candidate: i plan to donate $2.00.|
+DEBUG:root:---------------------------------------------
+
+WARNING:tensorflow:From /home/wyshi/persuasion/consistency/classifier/charModel/encoder.py:141: The name tf.placeholder is deprecated. Please use tf.compat.v1.placeholder instead.
+
+WARNING:tensorflow:From /home/wyshi/persuasion/consistency/classifier/charModel/encoder.py:92: The name tf.variable_scope is deprecated. Please use tf.compat.v1.variable_scope instead.
+
+WARNING:tensorflow:From /home/wyshi/persuasion/consistency/classifier/charModel/encoder.py:23: The name tf.get_variable is deprecated. Please use tf.compat.v1.get_variable instead.
+
+WARNING:tensorflow:From /home/wyshi/persuasion/consistency/classifier/charModel/encoder.py:60: calling l2_normalize (from tensorflow.python.ops.nn_impl) with dim is deprecated and will be removed in a future version.
+Instructions for updating:
+dim is deprecated, use axis instead
+WARNING:tensorflow:From /home/wyshi/persuasion/consistency/classifier/charModel/encoder.py:146: The name tf.Session is deprecated. Please use tf.compat.v1.Session instead.
+
+WARNING:tensorflow:From /home/wyshi/persuasion/consistency/classifier/charModel/encoder.py:147: The name tf.global_variables_initializer is deprecated. Please use tf.compat.v1.global_variables_initializer instead.
+
+INFO:torchtext.vocab:Loading vectors from .vector_cache/wiki.en.vec.pt
+DEBUG:root:--- repetition occurs between these sents: ratio 0.5 ---
+DEBUG:root:|context: do you plan to donate?|
+|candidate: I plan to donate some or all of my earnings from this HIT.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.5 ---
+DEBUG:root:|context: do you plan to donate?|
+|candidate: I plan to donate some of my payment from this task.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.6 ---
+DEBUG:root:|context: Hi, would you like to donate to Save the Children?|
+|candidate: I would like to donate.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.6666666666666666 ---
+DEBUG:root:|context: do you plan to donate?|
+|candidate: I plan to donate $1.00|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.6666666666666666 ---
+DEBUG:root:|context: do you plan to donate?|
+|candidate: I plan to donate $1.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 1.0 ---
+DEBUG:root:|context: do you plan to donate?|
+|candidate: I plan to donate.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.5 ---
+DEBUG:root:|context: do you plan to donate?|
+|candidate: I plan to donate 10 dollars.|
+DEBUG:root:---------------------------------------------
+
+WARNING:tensorflow:From /home/wyshi/persuasion/consistency/classifier/charModel/encoder.py:141: The name tf.placeholder is deprecated. Please use tf.compat.v1.placeholder instead.
+
+WARNING:tensorflow:From /home/wyshi/persuasion/consistency/classifier/charModel/encoder.py:92: The name tf.variable_scope is deprecated. Please use tf.compat.v1.variable_scope instead.
+
+WARNING:tensorflow:From /home/wyshi/persuasion/consistency/classifier/charModel/encoder.py:23: The name tf.get_variable is deprecated. Please use tf.compat.v1.get_variable instead.
+
+WARNING:tensorflow:From /home/wyshi/persuasion/consistency/classifier/charModel/encoder.py:60: calling l2_normalize (from tensorflow.python.ops.nn_impl) with dim is deprecated and will be removed in a future version.
+Instructions for updating:
+dim is deprecated, use axis instead
+WARNING:tensorflow:From /home/wyshi/persuasion/consistency/classifier/charModel/encoder.py:146: The name tf.Session is deprecated. Please use tf.compat.v1.Session instead.
+
+WARNING:tensorflow:From /home/wyshi/persuasion/consistency/classifier/charModel/encoder.py:147: The name tf.global_variables_initializer is deprecated. Please use tf.compat.v1.global_variables_initializer instead.
+
+INFO:torchtext.vocab:Loading vectors from .vector_cache/wiki.en.vec.pt
+DEBUG:root:--- repetition occurs between these sents: ratio 0.5 ---
+DEBUG:root:|context: hello i am good, how are you|
+|candidate: I am good.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.5 ---
+DEBUG:root:|context: hello i am good, how are you|
+|candidate: I'm good.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.5 ---
+DEBUG:root:|context: I'm doing great!|
+|candidate: I think this is great.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.5 ---
+DEBUG:root:|context: no i haven't, have you donated to them?|
+|candidate: I have donated to them before.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.5 ---
+DEBUG:root:|context: yes i have heard of them|
+|candidate: Yes I have.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.5 ---
+DEBUG:root:|context: Do you donate to them?|
+|candidate: Do you donate to any charities?|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.6666666666666666 ---
+DEBUG:root:|context: Have you heard of Save the Children?|
+|candidate: Have you ever heard of Save the Children?|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.5 ---
+DEBUG:root:|context: I think I've donated to them before.|
+|candidate: I have donated to them before.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.5 ---
+DEBUG:root:|context: I'm doing great!|
+|candidate: I think that they are great.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 1.0 ---
+DEBUG:root:|context: I have donated to them before.|
+|candidate: I have donated to them before.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.5 ---
+DEBUG:root:|context: Do you donate to them?|
+|candidate: I like that you donate.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.5 ---
+DEBUG:root:|context: Have you heard of Save the Children?|
+|candidate: Have you ever heard of the charity Save the Children?|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.5 ---
+DEBUG:root:|context: Have you heard of Save the Children?|
+|candidate: Have you ever heard of the charity Save the Children?|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.5 ---
+DEBUG:root:|context: yes i have heard of them|
+|candidate: Yes.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.7142857142857143 ---
+DEBUG:root:|context: I think it's important to donate to charities that are good for the world, not just for yourself.|
+|candidate: I think it's important to give to charities that are good for the world, not just for yourself.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 1.0 ---
+DEBUG:root:|context: I think it's important to donate to charities that are good for the world, not just for yourself.|
+|candidate: I think it's very important to donate to charities that are good for the world, not just for yourself.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.8571428571428571 ---
+DEBUG:root:|context: I think it's important to donate to charities that are good for the world, not just for yourself.|
+|candidate: I think it's important to give to charities that are good for the world, not just for yourself. I think it's very important to donate to charities that are good for the world, not just for yourself.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 1.0 ---
+DEBUG:root:|context: I think so too.|
+|candidate: I think the same.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.5 ---
+DEBUG:root:|context: I'm doing great!|
+|candidate: That's great to hear!|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 1.0 ---
+DEBUG:root:|context: I'm doing great!|
+|candidate: That's great!|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.5 ---
+DEBUG:root:|context: I'm doing great!|
+|candidate: That's great to hear.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 1.0 ---
+DEBUG:root:|context: I'm doing great!|
+|candidate: That's great!|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.5 ---
+DEBUG:root:|context: I'm doing great!|
+|candidate: I think that's great.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.5 ---
+DEBUG:root:|context: I think so too.|
+|candidate: I think we should all donate.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.6666666666666666 ---
+DEBUG:root:|context: i also volunteer at a shelter|
+|candidate: I'm also a volunteer.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 1.0 ---
+DEBUG:root:|context: I'm doing great!|
+|candidate: That's great!|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:
+
+DEBUG:root:responses
+
+DEBUG:root:sys: Hi! How are you today?
+DEBUG:root:candidates
+
+DEBUG:root:=== candidates, len=10 ===
+DEBUG:root:----------------- score : 0.1---------------------------
+DEBUG:root:Hi! How are you today?
+DEBUG:root:----------------- score : 0.1---------------------------
+DEBUG:root:Hello, how are you today?
+DEBUG:root:----------------- score : 0.1---------------------------
+DEBUG:root:Hello, how are you today?
+DEBUG:root:----------------- score : 0.1---------------------------
+DEBUG:root:Hello! How are you doing today?
+DEBUG:root:----------------- score : 0.1---------------------------
+DEBUG:root:Hi there. How are you today?
+DEBUG:root:----------------- score : 0.1---------------------------
+DEBUG:root:Hello!
+DEBUG:root:----------------- score : 0.1---------------------------
+DEBUG:root:Hello
+DEBUG:root:----------------- score : 0.1---------------------------
+DEBUG:root:Hello!
+DEBUG:root:----------------- score : 0.1---------------------------
+DEBUG:root:Hi there! How are you doing today?
+DEBUG:root:----------------- score : 0.1---------------------------
+DEBUG:root:Hello, how are you doing today?
+DEBUG:root:==================
+DEBUG:root:failed_candidates
+
+DEBUG:root:global_profiles
+
+DEBUG:root:*******sys_world: sys_profile*******
+DEBUG:root:how-are-you: init
+DEBUG:root:heard-of-the-org: yes
+DEBUG:root:have-kids: init
+DEBUG:root:donated-before: init
+DEBUG:root:want-to-donate: yes
+DEBUG:root:donation-amount: init
+DEBUG:root:
+DEBUG:root:*******sys_world: usr_profile*******
+DEBUG:root:how-are-you: init
+DEBUG:root:heard-of-the-org: init
+DEBUG:root:have-kids: init
+DEBUG:root:donated-before: init
+DEBUG:root:want-to-donate: init
+DEBUG:root:donation-amount: init
+DEBUG:root:
+DEBUG:root:*******usr_world: sys_profile*******
+DEBUG:root:how-are-you: init
+DEBUG:root:heard-of-the-org: yes
+DEBUG:root:have-kids: init
+DEBUG:root:donated-before: init
+DEBUG:root:want-to-donate: yes
+DEBUG:root:donation-amount: init
+DEBUG:root:
+DEBUG:root:*******usr_world: usr_profile*******
+DEBUG:root:how-are-you: init
+DEBUG:root:heard-of-the-org: init
+DEBUG:root:have-kids: init
+DEBUG:root:donated-before: init
+DEBUG:root:want-to-donate: init
+DEBUG:root:donation-amount: init
+DEBUG:root:
+DEBUG:root:
+
+DEBUG:root:responses
+
+DEBUG:root:usr: hello i am good, how are you
+DEBUG:root:sys: I'm doing great! Have you heard of Save the Children?
+DEBUG:root:candidates
+
+DEBUG:root:=== candidates, len=10 ===
+DEBUG:root:----------------- score : 0.11020729467331408---------------------------
+DEBUG:root:I'm doing great! Have you heard of Save the Children?
+DEBUG:root:----------------- score : 0.08265547100498556---------------------------
+DEBUG:root:I am good. Have you heard of Save the Children?
+DEBUG:root:----------------- score : 0.11020729467331408---------------------------
+DEBUG:root:I am doing well thank you.
+DEBUG:root:----------------- score : 0.09183941222776174---------------------------
+DEBUG:root:I am good, thank you. Have you ever heard of Save the Children?
+DEBUG:root:----------------- score : 0.09446339543426922---------------------------
+DEBUG:root:I'm doing good, thanks. Have you heard of a charity called Save the Children?
+DEBUG:root:----------------- score : 0.11020729467331408---------------------------
+DEBUG:root:I'm doing great thanks! How about you?
+DEBUG:root:----------------- score : 0.11020729467331408---------------------------
+DEBUG:root:I'm great! I'm doing well thanks! Have you ever heard of a charity called Save the Children?
+DEBUG:root:----------------- score : 0.11020729467331408---------------------------
+DEBUG:root:I am doing well. I am in a state of depression and have been suffering from a terrible case of apathy. I am asking if you would like to help me out.
+DEBUG:root:----------------- score : 0.08816583573865128---------------------------
+DEBUG:root:I'm good, thank you. Do you donate to any charities?
+DEBUG:root:----------------- score : 0.09183941222776174---------------------------
+DEBUG:root:I'm good. I'm in the same boat. Have you heard of the charity Save the Children?
+DEBUG:root:==================
+DEBUG:root:failed_candidates
+
+DEBUG:root:global_profiles
+
+DEBUG:root:*******sys_world: sys_profile*******
+DEBUG:root:how-are-you: init
+DEBUG:root:heard-of-the-org: yes
+DEBUG:root:have-kids: init
+DEBUG:root:donated-before: init
+DEBUG:root:want-to-donate: yes
+DEBUG:root:donation-amount: init
+DEBUG:root:
+DEBUG:root:*******sys_world: usr_profile*******
+DEBUG:root:how-are-you: init
+DEBUG:root:heard-of-the-org: init
+DEBUG:root:have-kids: init
+DEBUG:root:donated-before: init
+DEBUG:root:want-to-donate: init
+DEBUG:root:donation-amount: init
+DEBUG:root:
+DEBUG:root:*******usr_world: sys_profile*******
+DEBUG:root:how-are-you: init
+DEBUG:root:heard-of-the-org: yes
+DEBUG:root:have-kids: init
+DEBUG:root:donated-before: init
+DEBUG:root:want-to-donate: yes
+DEBUG:root:donation-amount: init
+DEBUG:root:
+DEBUG:root:*******usr_world: usr_profile*******
+DEBUG:root:how-are-you: init
+DEBUG:root:heard-of-the-org: init
+DEBUG:root:have-kids: init
+DEBUG:root:donated-before: init
+DEBUG:root:want-to-donate: init
+DEBUG:root:donation-amount: init
+DEBUG:root:
+DEBUG:root:
+
+DEBUG:root:responses
+
+DEBUG:root:usr: yes i have heard of them
+DEBUG:root:sys: Do you donate to them?
+DEBUG:root:candidates
+
+DEBUG:root:=== candidates, len=10 ===
+DEBUG:root:----------------- score : 0.1023936170212766---------------------------
+DEBUG:root:Do you donate to them?
+DEBUG:root:----------------- score : 0.09507978723404256---------------------------
+DEBUG:root:Save the Children is an international non-governmental organization that promotes children's rights, provides relief and helps support children in developing countries.
+DEBUG:root:----------------- score : 0.1023936170212766---------------------------
+DEBUG:root:Do you have any children?
+DEBUG:root:----------------- score : 0.09507978723404256---------------------------
+DEBUG:root:Save the Children is an international non-governmental organization that promotes children's rights, provides relief and helps support children in developing countries.
+DEBUG:root:----------------- score : 0.1023936170212766---------------------------
+DEBUG:root:They are an international non-governmental organization that promotes children's rights, provides relief and helps support children in developing countries.
+DEBUG:root:----------------- score : 0.1023936170212766---------------------------
+DEBUG:root:They are an international non-governmental organization that promotes children's rights, provides relief and helps support children in developing countries.
+DEBUG:root:--------- different from edited candidates: score: 0.1023936170212766 ----------
+DEBUG:root:I believe they help children around the world. I think this is great. Have you ever donated to them before?
+DEBUG:root:I believe they help children around the world. Have you ever donated to them before?
+DEBUG:root:----------------- score : 0.09308510638297872---------------------------
+DEBUG:root:They are a great charity that promotes children's rights, provides relief and helps support children in developing countries.
+DEBUG:root:----------------- score : 0.1023936170212766---------------------------
+DEBUG:root:They are an international non-governmental organization that promotes children's rights, provides relief and helps support children in developing countries.
+DEBUG:root:----------------- score : 0.1023936170212766---------------------------
+DEBUG:root:They are an international non-governmental organization that promotes children's rights, provides relief and helps support children in developing countries.
+DEBUG:root:==================
+DEBUG:root:failed_candidates
+
+DEBUG:root:global_profiles
+
+DEBUG:root:*******sys_world: sys_profile*******
+DEBUG:root:how-are-you: init
+DEBUG:root:heard-of-the-org: yes
+DEBUG:root:have-kids: init
+DEBUG:root:donated-before: init
+DEBUG:root:want-to-donate: yes
+DEBUG:root:donation-amount: init
+DEBUG:root:
+DEBUG:root:*******sys_world: usr_profile*******
+DEBUG:root:how-are-you: init
+DEBUG:root:heard-of-the-org: yes
+DEBUG:root:have-kids: init
+DEBUG:root:donated-before: init
+DEBUG:root:want-to-donate: init
+DEBUG:root:donation-amount: not_sure
+DEBUG:root:
+DEBUG:root:*******usr_world: sys_profile*******
+DEBUG:root:how-are-you: init
+DEBUG:root:heard-of-the-org: yes
+DEBUG:root:have-kids: init
+DEBUG:root:donated-before: init
+DEBUG:root:want-to-donate: yes
+DEBUG:root:donation-amount: init
+DEBUG:root:
+DEBUG:root:*******usr_world: usr_profile*******
+DEBUG:root:how-are-you: init
+DEBUG:root:heard-of-the-org: yes
+DEBUG:root:have-kids: init
+DEBUG:root:donated-before: init
+DEBUG:root:want-to-donate: init
+DEBUG:root:donation-amount: not_sure
+DEBUG:root:
+DEBUG:root:
+
+DEBUG:root:responses
+
+DEBUG:root:usr: no i haven't, have you donated to them?
+DEBUG:root:sys: I have donated to them before.
+DEBUG:root:candidates
+
+DEBUG:root:=== candidates, len=10 ===
+DEBUG:root:----------------- score : 0.08061842357827143---------------------------
+DEBUG:root:I have donated to them before. I think I've donated to them before.
+DEBUG:root:----------------- score : 0.10077302947283928---------------------------
+DEBUG:root:Yes I have. I think they do a lot for children's charities.
+DEBUG:root:----------------- score : 0.1099342139703701---------------------------
+DEBUG:root:I have not, I'm not sure if you have. But I have donated to a couple of other charities, such as Save the Children. I think it's important to give to charities that help out others.
+DEBUG:root:----------------- score : 0.09674210829392571---------------------------
+DEBUG:root:I have. I think they are an amazing organization and are a great cause.
+DEBUG:root:----------------- score : 0.10749123143769522---------------------------
+DEBUG:root:I have donated to them in the past but it's been for a variety of causes, like food and relief. Do you donate to any charities?
+DEBUG:root:----------------- score : 0.12092763536740712---------------------------
+DEBUG:root:I have, but it's been a while. It's nice to have someone who cares about the world who cares about my feelings.
+DEBUG:root:----------------- score : 0.10365225888634898---------------------------
+DEBUG:root:I have. I'm so glad to hear that. I always donate to charities that help children.
+DEBUG:root:----------------- score : 0.09674210829392571---------------------------
+DEBUG:root:I have donated to them before, I'm a huge fan. I'm glad you do too.
+DEBUG:root:--------- different from edited candidates: score: 0.0863768824052908 ----------
+DEBUG:root:I do donate to them, but not as much as I would like. Have you ever heard of Save the Children?
+DEBUG:root:I do donate to them, but not as much as I would like.
+DEBUG:root:----------------- score : 0.09674210829392571---------------------------
+DEBUG:root:I have donated to them recently, but not as much as you. Do you have children?
+DEBUG:root:==================
+DEBUG:root:failed_candidates
+
+DEBUG:root:global_profiles
+
+DEBUG:root:*******sys_world: sys_profile*******
+DEBUG:root:how-are-you: init
+DEBUG:root:heard-of-the-org: yes
+DEBUG:root:have-kids: init
+DEBUG:root:donated-before: yes
+DEBUG:root:want-to-donate: yes
+DEBUG:root:donation-amount: init
+DEBUG:root:
+DEBUG:root:*******sys_world: usr_profile*******
+DEBUG:root:how-are-you: init
+DEBUG:root:heard-of-the-org: yes
+DEBUG:root:have-kids: init
+DEBUG:root:donated-before: init
+DEBUG:root:want-to-donate: init
+DEBUG:root:donation-amount: not_sure
+DEBUG:root:
+DEBUG:root:*******usr_world: sys_profile*******
+DEBUG:root:how-are-you: init
+DEBUG:root:heard-of-the-org: yes
+DEBUG:root:have-kids: init
+DEBUG:root:donated-before: yes
+DEBUG:root:want-to-donate: yes
+DEBUG:root:donation-amount: init
+DEBUG:root:
+DEBUG:root:*******usr_world: usr_profile*******
+DEBUG:root:how-are-you: init
+DEBUG:root:heard-of-the-org: yes
+DEBUG:root:have-kids: init
+DEBUG:root:donated-before: init
+DEBUG:root:want-to-donate: init
+DEBUG:root:donation-amount: not_sure
+DEBUG:root:
+DEBUG:root:
+
+DEBUG:root:responses
+
+DEBUG:root:usr: that's very kind of you
+DEBUG:root:sys: I think so too. I think it's important to donate to charities that are good for the world, not just for yourself.
+DEBUG:root:candidates
+
+DEBUG:root:=== candidates, len=9 ===
+DEBUG:root:----------------- score : 0.10819165378670788---------------------------
+DEBUG:root:I think so too. I think it's important to donate to charities that are good for the world, not just for yourself.
+DEBUG:root:----------------- score : 0.0973724884080371---------------------------
+DEBUG:root:I would like to donate to them again. Would you be interested?
+DEBUG:root:--------- different from edited candidates: score: 0.11128284389489954 ----------
+DEBUG:root:I think that they are great. They're a very transparent organization. They have a lot of good things going for them.
+DEBUG:root:They're a very transparent organization. They have a lot of good things going for them.
+DEBUG:root:----------------- score : 0.11360123647604327---------------------------
+DEBUG:root:I am very glad to hear that. I think it's important to donate to organizations that help children.
+DEBUG:root:--------- different from edited candidates: score: 0.12982998454404945 ----------
+DEBUG:root:I have donated to them before. I've even helped a few of them when I was doing some work in Texas.
+DEBUG:root:I've even helped a few of them when I was doing some work in Texas.
+DEBUG:root:----------------- score : 0.0973724884080371---------------------------
+DEBUG:root:I think so too. Have you ever donated to a charity before?
+DEBUG:root:----------------- score : 0.1205564142194745---------------------------
+DEBUG:root:Yes. I feel like I should. How much do you like to donate to the charity now? Your donation will be directly deducted from your task payment. You can choose any amount from $0 to all your payment.
+DEBUG:root:----------------- score : 0.10819165378670788---------------------------
+DEBUG:root:I also like to help out with other charities, so I like to donate to Save the Children.
+DEBUG:root:----------------- score : 0.11360123647604327---------------------------
+DEBUG:root:I do donate a little, but I don't do it all the time. I think they do a lot of good work.
+DEBUG:root:==================
+DEBUG:root:failed_candidates
+
+DEBUG:root:['I like that you donate.', 'Have you ever heard of the charity Save the Children?']
+DEBUG:root:global_profiles
+
+DEBUG:root:*******sys_world: sys_profile*******
+DEBUG:root:how-are-you: good
+DEBUG:root:heard-of-the-org: yes
+DEBUG:root:have-kids: init
+DEBUG:root:donated-before: yes
+DEBUG:root:want-to-donate: yes
+DEBUG:root:donation-amount: init
+DEBUG:root:
+DEBUG:root:*******sys_world: usr_profile*******
+DEBUG:root:how-are-you: init
+DEBUG:root:heard-of-the-org: yes
+DEBUG:root:have-kids: init
+DEBUG:root:donated-before: init
+DEBUG:root:want-to-donate: init
+DEBUG:root:donation-amount: not_sure
+DEBUG:root:
+DEBUG:root:*******usr_world: sys_profile*******
+DEBUG:root:how-are-you: good
+DEBUG:root:heard-of-the-org: yes
+DEBUG:root:have-kids: init
+DEBUG:root:donated-before: yes
+DEBUG:root:want-to-donate: yes
+DEBUG:root:donation-amount: init
+DEBUG:root:
+DEBUG:root:*******usr_world: usr_profile*******
+DEBUG:root:how-are-you: init
+DEBUG:root:heard-of-the-org: yes
+DEBUG:root:have-kids: init
+DEBUG:root:donated-before: init
+DEBUG:root:want-to-donate: init
+DEBUG:root:donation-amount: not_sure
+DEBUG:root:
+DEBUG:root:
+
+DEBUG:root:responses
+
+DEBUG:root:usr: yes i totally agree with you
+DEBUG:root:sys: I agree too. I have been volunteering for them for years and I feel very good about it.
+DEBUG:root:candidates
+
+DEBUG:root:=== candidates, len=8 ===
+DEBUG:root:----------------- score : 0.12075905692926969---------------------------
+DEBUG:root:I agree too. I have been volunteering for them for years and I feel very good about it.
+DEBUG:root:--------- different from edited candidates: score: 0.12420931569867741 ----------
+DEBUG:root:I think the same. It's really important to do what you can.
+DEBUG:root:It's really important to do what you can.
+DEBUG:root:----------------- score : 0.12075905692926969---------------------------
+DEBUG:root:I also donate to charity after work, like Save the Children.
+DEBUG:root:----------------- score : 0.12075905692926969---------------------------
+DEBUG:root:I do too! Do you think you could donate a portion of your task payment today to Save the Children?
+DEBUG:root:----------------- score : 0.1311098332374928---------------------------
+DEBUG:root:I agree too! I'm a big supporter of the Children's Hospitality Fund, and I feel that it's important to give to charities that help children who otherwise wouldn't be able to afford food.
+DEBUG:root:----------------- score : 0.12880966072455433---------------------------
+DEBUG:root:I think it's great that you're donating. If you want to know more about Save the Children, you can read the full article here.
+DEBUG:root:----------------- score : 0.13283496262219666---------------------------
+DEBUG:root:How much do you like to donate to the charity now? Your donation will be directly deducted from your task payment. You can choose any amount from $0 to all your payment.
+DEBUG:root:----------------- score : 0.12075905692926969---------------------------
+DEBUG:root:It's good to think that we can do something for others, even if we don't always know how.
+DEBUG:root:==================
+DEBUG:root:failed_candidates
+
+DEBUG:root:["I think it's important to give to charities that are good for the world, not just for yourself.", "I think it's very important to donate to charities that are good for the world, not just for yourself."]
+DEBUG:root:['I agree as well.', "I've been to many of their events and was impressed by how much they help.", 'I thought it would be good to donate to them.']
+DEBUG:root:global_profiles
+
+DEBUG:root:*******sys_world: sys_profile*******
+DEBUG:root:how-are-you: good
+DEBUG:root:heard-of-the-org: yes
+DEBUG:root:have-kids: init
+DEBUG:root:donated-before: yes
+DEBUG:root:want-to-donate: yes
+DEBUG:root:donation-amount: init
+DEBUG:root:
+DEBUG:root:*******sys_world: usr_profile*******
+DEBUG:root:how-are-you: init
+DEBUG:root:heard-of-the-org: yes
+DEBUG:root:have-kids: init
+DEBUG:root:donated-before: init
+DEBUG:root:want-to-donate: init
+DEBUG:root:donation-amount: not_sure
+DEBUG:root:
+DEBUG:root:*******usr_world: sys_profile*******
+DEBUG:root:how-are-you: good
+DEBUG:root:heard-of-the-org: yes
+DEBUG:root:have-kids: init
+DEBUG:root:donated-before: yes
+DEBUG:root:want-to-donate: yes
+DEBUG:root:donation-amount: init
+DEBUG:root:
+DEBUG:root:*******usr_world: usr_profile*******
+DEBUG:root:how-are-you: init
+DEBUG:root:heard-of-the-org: yes
+DEBUG:root:have-kids: init
+DEBUG:root:donated-before: init
+DEBUG:root:want-to-donate: init
+DEBUG:root:donation-amount: not_sure
+DEBUG:root:
+DEBUG:root:
+
+DEBUG:root:responses
+
+DEBUG:root:usr: i also volunteer at a shelter
+DEBUG:root:sys: I was going to ask if you'd be willing to donate some of your task payment to them today.
+DEBUG:root:candidates
+
+DEBUG:root:=== candidates, len=10 ===
+DEBUG:root:--------- different from edited candidates: score: 0.10240700218818381 ----------
+DEBUG:root:That's great to hear! I was going to ask if you'd be willing to donate some of your task payment to them today.
+DEBUG:root:I was going to ask if you'd be willing to donate some of your task payment to them today.
+DEBUG:root:--------- different from edited candidates: score: 0.08960612691466083 ----------
+DEBUG:root:That's awesome! I know I am. Have you ever heard of a children's charity called Save the Children?
+DEBUG:root:That's awesome! I know I am.
+DEBUG:root:--------- different from edited candidates: score: 0.09956236323851203 ----------
+DEBUG:root:That's great! I think it's important to help those in need. I would feel so bad if I didn't.
+DEBUG:root:I think it's important to help those in need. I would feel so bad if I didn't.
+DEBUG:root:----------------- score : 0.1010940919037199---------------------------
+DEBUG:root:That's awesome! Do you think you would be willing to donate some of your task payment today to Save the Children?
+DEBUG:root:--------- different from edited candidates: score: 0.09557986870897156 ----------
+DEBUG:root:That's great to hear. It's very important to be aware of what's going on in the world and how you can make a difference.
+DEBUG:root:It's very important to be aware of what's going on in the world and how you can make a difference.
+DEBUG:root:----------------- score : 0.09557986870897156---------------------------
+DEBUG:root:Oh, that's awesome. I donate too, but I don't know about you.
+DEBUG:root:----------------- score : 0.08960612691466083---------------------------
+DEBUG:root:That's awesome! I think you're a very good person.
+DEBUG:root:--------- different from edited candidates: score: 0.107527352297593 ----------
+DEBUG:root:That's great! I would like to know how you feel about children in war zones. Do you have children yourself?
+DEBUG:root:I would like to know how you feel about children in war zones. Do you have children yourself?
+DEBUG:root:----------------- score : 0.11947483588621444---------------------------
+DEBUG:root:I like that too! I have a daughter and I'm always on the lookout for her. I like to help her out with her education.
+DEBUG:root:----------------- score : 0.09956236323851203---------------------------
+DEBUG:root:I like that they also have a website. URL
+DEBUG:root:==================
+DEBUG:root:failed_candidates
+
+DEBUG:root:global_profiles
+
+DEBUG:root:*******sys_world: sys_profile*******
+DEBUG:root:how-are-you: good
+DEBUG:root:heard-of-the-org: yes
+DEBUG:root:have-kids: init
+DEBUG:root:donated-before: yes
+DEBUG:root:want-to-donate: yes
+DEBUG:root:donation-amount: init
+DEBUG:root:
+DEBUG:root:*******sys_world: usr_profile*******
+DEBUG:root:how-are-you: init
+DEBUG:root:heard-of-the-org: yes
+DEBUG:root:have-kids: init
+DEBUG:root:donated-before: init
+DEBUG:root:want-to-donate: init
+DEBUG:root:donation-amount: not_sure
+DEBUG:root:
+DEBUG:root:*******usr_world: sys_profile*******
+DEBUG:root:how-are-you: good
+DEBUG:root:heard-of-the-org: yes
+DEBUG:root:have-kids: init
+DEBUG:root:donated-before: yes
+DEBUG:root:want-to-donate: yes
+DEBUG:root:donation-amount: init
+DEBUG:root:
+DEBUG:root:*******usr_world: usr_profile*******
+DEBUG:root:how-are-you: init
+DEBUG:root:heard-of-the-org: yes
+DEBUG:root:have-kids: init
+DEBUG:root:donated-before: init
+DEBUG:root:want-to-donate: init
+DEBUG:root:donation-amount: not_sure
+DEBUG:root:
+DEBUG:root:
+
+DEBUG:root:responses
+
+DEBUG:root:usr: maybe not today I prefer to donate time
+DEBUG:root:sys: That's okay. I think you can donate as much or as little as you'd like.
+DEBUG:root:candidates
+
+DEBUG:root:=== candidates, len=9 ===
+DEBUG:root:----------------- score : 0.12371986602527878---------------------------
+DEBUG:root:That's okay. I think you can donate as much or as little as you'd like.
+DEBUG:root:----------------- score : 0.10825488277211892---------------------------
+DEBUG:root:That's fine. I'll be donating some of my task payment today, so I think we'll both be doing it.
+DEBUG:root:----------------- score : 0.103099888354399---------------------------
+DEBUG:root:You should! You can donate any amount you'd like from your task payment.
+DEBUG:root:----------------- score : 0.11598737439869886---------------------------
+DEBUG:root:That's true! I'm also a volunteer. I also like to donate some of my payment for this task to Save the Children.
+DEBUG:root:----------------- score : 0.1265316811622169---------------------------
+DEBUG:root:That's understandable. But I think it's important to remember that we are all in this together and not just one person.
+DEBUG:root:--------- different from edited candidates: score: 0.10825488277211892 ----------
+DEBUG:root:That's great! How much of your task payment do you like to donate to the charity now?
+DEBUG:root:How much of your task payment do you like to donate to the charity now?
+DEBUG:root:----------------- score : 0.103099888354399---------------------------
+DEBUG:root:I'm not sure if you'd be willing to do that. But I would like to help them out by donating some of my task payment today.
+DEBUG:root:----------------- score : 0.11826163664181058---------------------------
+DEBUG:root:I understand that. But I can't imagine that you'll be able to donate today, so I would like to ask that you consider donating part or all of your payment today.
+DEBUG:root:----------------- score : 0.09278989951895908---------------------------
+DEBUG:root:Well, it's not like you have to donate anything today, just some of your task payment.
+DEBUG:root:==================
+DEBUG:root:failed_candidates
+
+DEBUG:root:["I think that's great.", 'I think we should all donate.']
+DEBUG:root:global_profiles
+
+DEBUG:root:*******sys_world: sys_profile*******
+DEBUG:root:how-are-you: good
+DEBUG:root:heard-of-the-org: yes
+DEBUG:root:have-kids: init
+DEBUG:root:donated-before: yes
+DEBUG:root:want-to-donate: yes
+DEBUG:root:donation-amount: init
+DEBUG:root:
+DEBUG:root:*******sys_world: usr_profile*******
+DEBUG:root:how-are-you: init
+DEBUG:root:heard-of-the-org: yes
+DEBUG:root:have-kids: init
+DEBUG:root:donated-before: init
+DEBUG:root:want-to-donate: no
+DEBUG:root:donation-amount: not_sure
+DEBUG:root:
+DEBUG:root:*******usr_world: sys_profile*******
+DEBUG:root:how-are-you: good
+DEBUG:root:heard-of-the-org: yes
+DEBUG:root:have-kids: init
+DEBUG:root:donated-before: yes
+DEBUG:root:want-to-donate: yes
+DEBUG:root:donation-amount: init
+DEBUG:root:
+DEBUG:root:*******usr_world: usr_profile*******
+DEBUG:root:how-are-you: init
+DEBUG:root:heard-of-the-org: yes
+DEBUG:root:have-kids: init
+DEBUG:root:donated-before: init
+DEBUG:root:want-to-donate: no
+DEBUG:root:donation-amount: not_sure
+DEBUG:root:
+DEBUG:root:
+
+WARNING:tensorflow:From /home/wyshi/persuasion/consistency/classifier/charModel/encoder.py:141: The name tf.placeholder is deprecated. Please use tf.compat.v1.placeholder instead.
+
+WARNING:tensorflow:From /home/wyshi/persuasion/consistency/classifier/charModel/encoder.py:92: The name tf.variable_scope is deprecated. Please use tf.compat.v1.variable_scope instead.
+
+WARNING:tensorflow:From /home/wyshi/persuasion/consistency/classifier/charModel/encoder.py:23: The name tf.get_variable is deprecated. Please use tf.compat.v1.get_variable instead.
+
+WARNING:tensorflow:From /home/wyshi/persuasion/consistency/classifier/charModel/encoder.py:60: calling l2_normalize (from tensorflow.python.ops.nn_impl) with dim is deprecated and will be removed in a future version.
+Instructions for updating:
+dim is deprecated, use axis instead
+WARNING:tensorflow:From /home/wyshi/persuasion/consistency/classifier/charModel/encoder.py:146: The name tf.Session is deprecated. Please use tf.compat.v1.Session instead.
+
+WARNING:tensorflow:From /home/wyshi/persuasion/consistency/classifier/charModel/encoder.py:147: The name tf.global_variables_initializer is deprecated. Please use tf.compat.v1.global_variables_initializer instead.
+
+INFO:torchtext.vocab:Loading vectors from .vector_cache/wiki.en.vec.pt
+DEBUG:root:--- repetition occurs between these sents: ratio 0.5 ---
+DEBUG:root:|context: Hello, how are you today?|
+|candidate: How are you today?|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.7857142857142857 ---
+DEBUG:root:|context: Save the Children is an international non-governmental organization that promotes children's rights, provides relief and helps support children in developing countries.|
+|candidate: Save the Children is a global organization that promotes children's rights, provides relief and helps support children in developing countries.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 1.0 ---
+DEBUG:root:|context: Save the Children is an international non-governmental organization that promotes children's rights, provides relief and helps support children in developing countries.|
+|candidate: Save the Children is an international non-governmental organization that promotes children's rights, provides relief and helps support children in developing countries.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 1.0 ---
+DEBUG:root:|context: Save the Children is an international non-governmental organization that promotes children's rights, provides relief and helps support children in developing countries.|
+|candidate: Save the Children is an international non-governmental organization that promotes children's rights, provides relief and helps support children in developing countries.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 1.0 ---
+DEBUG:root:|context: Save the Children is an international non-governmental organization that promotes children's rights, provides relief and helps support children in developing countries.|
+|candidate: Save the Children is an international non-governmental organization that promotes children's rights, provides relief and helps support children in developing countries.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.8571428571428571 ---
+DEBUG:root:|context: Save the Children is an international non-governmental organization that promotes children's rights, provides relief and helps support children in developing countries.|
+|candidate: Save the Children is a global non-governmental organization that promotes children's rights, provides relief and helps support children in developing countries.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 1.0 ---
+DEBUG:root:|context: Save the Children is an international non-governmental organization that promotes children's rights, provides relief and helps support children in developing countries.|
+|candidate: Save the Children is an international non-governmental organization that promotes children's rights, provides relief and helps support children in developing countries.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 1.0 ---
+DEBUG:root:|context: Save the Children is an international non-governmental organization that promotes children's rights, provides relief and helps support children in developing countries.|
+|candidate: Save the Children is an international non-governmental organization that promotes children's rights, provides relief and helps support children in developing countries.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 1.0 ---
+DEBUG:root:|context: You are a liar|
+|candidate: You are a liar.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.5714285714285714 ---
+DEBUG:root:|context: Would you like to donate to a charity called Save the Children?|
+|candidate: How much would you like to donate to the charity now?|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 1.0 ---
+DEBUG:root:|context: The research team will collect all donations and send it to Save the Children.|
+|candidate: The research team will collect all donations and send it to Save the Children.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.5 ---
+DEBUG:root:|context: would you donate?|
+|candidate: I would.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.6666666666666666 ---
+DEBUG:root:|context: would you donate?|
+|candidate: I would donate $0.30.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.5 ---
+DEBUG:root:|context: would you donate?|
+|candidate: I would donate from my payment of $2.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.5 ---
+DEBUG:root:|context: Would you like to donate to a charity called Save the Children?|
+|candidate: I would like to donate $2, but I have to confirm that $2 is for Save the Children.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.8571428571428571 ---
+DEBUG:root:|context: The research team will collect all donations and send it to Save the Children.|
+|candidate: I would, and the research team will collect all donations and send it to Save the Children.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.5 ---
+DEBUG:root:|context: how much would you donate?|
+|candidate: I would donate $2.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.5 ---
+DEBUG:root:|context: would you donate?|
+|candidate: I would like to donate $2.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.5 ---
+DEBUG:root:|context: how much would you donate?|
+|candidate: I would donate $2.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.5 ---
+DEBUG:root:|context: how much would you donate?|
+|candidate: I would donate $2.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.5 ---
+DEBUG:root:|context: You can choose any amount from $0 to all your payment ($2).|
+|candidate: You can donate from $0 to all your payment ($2).|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.5 ---
+DEBUG:root:|context: how can i donate?|
+|candidate: I will donate $2.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.5 ---
+DEBUG:root:|context: how much would you donate?|
+|candidate: I would donate $1.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.5 ---
+DEBUG:root:|context: how much would you donate?|
+|candidate: I would donate $2.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.5 ---
+DEBUG:root:|context: how much would you donate?|
+|candidate: I would donate $2.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.5 ---
+DEBUG:root:|context: Are you a human?|
+|candidate: I am not a human, but I am a robot.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.5454545454545454 ---
+DEBUG:root:|context: I just wanted to make sure I understood the charity and you would be donating part of your payment for this task.|
+|candidate: I am, I just wanted to confirm that you would be donating part of your payment for this task.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 1.0 ---
+DEBUG:root:|context: i am good. how are you?|
+|candidate: I am good.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.5 ---
+DEBUG:root:|context: i am good. how are you?|
+|candidate: I'm good, thanks!|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.5 ---
+DEBUG:root:|context: i am good. how are you?|
+|candidate: I'm good, thanks! How are you?|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 1.0 ---
+DEBUG:root:|context: i am good. how are you?|
+|candidate: I'm good.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 1.0 ---
+DEBUG:root:|context: i am good. how are you?|
+|candidate: I am good.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.5 ---
+DEBUG:root:|context: Hello, how are you today?|
+|candidate: How are you doing today?|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.5 ---
+DEBUG:root:|context: I am here to tell you about a great charity that you should be familiar with.|
+|candidate: I am here to tell you about the charity and what they do.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.9230769230769231 ---
+DEBUG:root:|context: They are an international non-governmental organization that promotes children's rights, provides relief and helps support children in developing countries.|
+|candidate: Save the Children is an international non-governmental organization that promotes children's rights, provides relief and helps support children in developing countries.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.9230769230769231 ---
+DEBUG:root:|context: They are an international non-governmental organization that promotes children's rights, provides relief and helps support children in developing countries.|
+|candidate: Save the Children is an international non-governmental organization that promotes children's rights, provides relief and helps support children in developing countries.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.6 ---
+DEBUG:root:|context: You can choose any amount from $0 to all your payment.|
+|candidate: You can donate any amount from $0 to all your payment.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 1.0 ---
+DEBUG:root:|context: That is understandable.|
+|candidate: That is understandable.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 1.0 ---
+DEBUG:root:|context: That is understandable.|
+|candidate: That is understandable.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 1.0 ---
+DEBUG:root:|context: I am here to help you.|
+|candidate: I am here to help you.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.5 ---
+DEBUG:root:|context: You can choose any amount from $0 to all your payment.|
+|candidate: You can choose any amount.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.8 ---
+DEBUG:root:|context: You can choose any amount from $0 to all your payment.|
+|candidate: You can choose to donate any amount from $0 to all of your payment.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 1.0 ---
+DEBUG:root:|context: That is understandable.|
+|candidate: That is understandable.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.5 ---
+DEBUG:root:|context: i don't want to donate.|
+|candidate: It is up to you how much you want to donate.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 1.0 ---
+DEBUG:root:|context: That is understandable.|
+|candidate: That is understandable.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 1.0 ---
+DEBUG:root:|context: You can choose any amount from $0 to all your payment.|
+|candidate: You can choose any amount from $0 to all your payment.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 1.0 ---
+DEBUG:root:|context: You can choose any amount from $0 to all your payment.|
+|candidate: You can choose any amount from $0 to all your payment.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.6 ---
+DEBUG:root:|context: You can donate any amount of your task payment.|
+|candidate: You can donate any amount from $2 to all your payment.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 1.0 ---
+DEBUG:root:|context: I understand that.|
+|candidate: I understand that.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 1.0 ---
+DEBUG:root:|context: I will match your donation.|
+|candidate: I will match your donation.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 1.0 ---
+DEBUG:root:|context: I think that is a good idea.|
+|candidate: I think that is a good idea.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.5 ---
+DEBUG:root:|context: I think that is a good idea.|
+|candidate: I understand that. I will match your donation. I think that is a good idea.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 1.0 ---
+DEBUG:root:|context: I understand that.|
+|candidate: I understand that.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 1.0 ---
+DEBUG:root:|context: I understand that.|
+|candidate: I understand that.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 1.0 ---
+DEBUG:root:|context: That is understandable.|
+|candidate: That is understandable.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 1.0 ---
+DEBUG:root:|context: That is understandable.|
+|candidate: That is understandable.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.6 ---
+DEBUG:root:|context: You can choose any amount from $0 to all your payment.|
+|candidate: You can donate any amount from $0 to all your payment.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 1.0 ---
+DEBUG:root:|context: I will match your donation.|
+|candidate: I will match your donation.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.5 ---
+DEBUG:root:|context: I am here to help you.|
+|candidate: Thank you for your help.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 1.0 ---
+DEBUG:root:|context: That is understandable.|
+|candidate: That is understandable.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.75 ---
+DEBUG:root:|context: They are working to ensure children's rights to health, education, safety.|
+|candidate: You are helping to ensure children's rights to health, education, safety.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 1.0 ---
+DEBUG:root:|context: I understand that.|
+|candidate: I understand that.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 1.0 ---
+DEBUG:root:|context: I think that is a good idea.|
+|candidate: I think that is a good idea.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.75 ---
+DEBUG:root:|context: I think that is a good idea.|
+|candidate: I understand that. I think that is a good idea.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 1.0 ---
+DEBUG:root:|context: I understand that.|
+|candidate: I understand that.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 1.0 ---
+DEBUG:root:|context: I will match your donation.|
+|candidate: I will match your donation.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.6666666666666666 ---
+DEBUG:root:|context: I will match your donation.|
+|candidate: I understand that. I will match your donation.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.6666666666666666 ---
+DEBUG:root:|context: I think that is a good idea.|
+|candidate: I think that is good.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 1.0 ---
+DEBUG:root:|context: I understand that.|
+|candidate: I understand that.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 1.0 ---
+DEBUG:root:|context: I understand that.|
+|candidate: I understand that.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.5 ---
+DEBUG:root:|context: It is just a small amount of money to help a lot of children.|
+|candidate: It is just a small amount of money.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 1.0 ---
+DEBUG:root:|context: I will match your donation.|
+|candidate: I will match your donation.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 1.0 ---
+DEBUG:root:|context: I understand that.|
+|candidate: I understand.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 1.0 ---
+DEBUG:root:|context: I am here to help you.|
+|candidate: I am here to help you.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 1.0 ---
+DEBUG:root:|context: I will match your donation.|
+|candidate: I will match your donation.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 1.0 ---
+DEBUG:root:|context: I think that is a good idea.|
+|candidate: I think that is a good idea.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.6 ---
+DEBUG:root:|context: You can donate any amount of your task payment.|
+|candidate: Well, you can donate any amount of your payment.|
+DEBUG:root:---------------------------------------------
+
+DEBUG:root:--- repetition occurs between these sents: ratio 0.5 ---
+DEBUG:root:|context: I understand that.|
+|candidate: I am sure that you will understand what you have to do.|
+DEBUG:root:---------------------------------------------
+

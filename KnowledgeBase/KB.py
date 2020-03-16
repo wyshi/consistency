@@ -10,26 +10,34 @@ import itertools
 class Domain(object):
     def __init__(self, domain="persuasion"):
         if domain == "persuasion":
-            HOW_ARE_YOU = 'how-are-you'
-            HEARD_OF_THE_ORG = 'heard-of-the-org'
-            HAVE_KIDS = 'have-kids'
-            DONATED_BEFORE = 'donated-before'
-            WANT_TO_DONATE = 'want-to-donate'
-            DONATION_AMOUNT = 'donation-amount'
+            self.USR = "user"
+            self.SYS = "system"
 
-            attributes = [HOW_ARE_YOU, 
-                        HEARD_OF_THE_ORG, 
-                        HAVE_KIDS, 
-                        DONATED_BEFORE,
-                        WANT_TO_DONATE, 
-                        DONATION_AMOUNT]
+            self.HOW_ARE_YOU = 'how-are-you'
+            self.HEARD_OF_THE_ORG = 'heard-of-the-org'
+            self.HAVE_KIDS = 'have-kids'
+            self.DONATED_BEFORE = 'donated-before'
+            self.WANT_TO_DONATE = 'want-to-donate'
+            self.DONATION_AMOUNT = 'donation-amount'
 
-            INIT = "init"
-            YES = "yes"
-            NO = "no"
-            NOT_SURE = "not_sure"
+            self.ATT_TO_QUESTION = {self.HOW_ARE_YOU: 'how are you?', 
+                        self.HEARD_OF_THE_ORG: 'have you heard of the organization?', 
+                        self.HAVE_KIDS: 'do you have kids?', 
+                        self.DONATED_BEFORE: 'have you donated before?',
+                        self.WANT_TO_DONATE: 'do you want to donate?', 
+                        self.DONATION_AMOUNT: 'how much do you want to donate?'}
 
-            attribute_status = [INIT, YES, NO, NOT_SURE]
+            self.attributes = list(self.ATT_TO_QUESTION.keys())
+
+            self.questions = list(self.ATT_TO_QUESTION.values())
+
+
+            self.INIT = "init"
+            self.YES = "yes"
+            self.NO = "no"
+            self.NOT_SURE = "not_sure"
+
+            self.attribute_status = [self.INIT, self.YES, self.NO, self.NOT_SURE]
 
 
 class HumanRule(object):
@@ -49,11 +57,11 @@ class HumanRule(object):
             # have to propose donation at this turn if it hasn't proposed yet
             enforced_acts = [SystemAct.propose_donation_inquiry, SystemAct.PROVIDE_DONATION_PROCEDURE]
             enforced_templates = self.sys_template.get_template(enforced_acts)
-            if SystemAct.propose_donation_inquiry not in self.chatbot.sys_profile.keys():
+            if SystemAct.propose_donation_inquiry not in self.chatbot.global_profile.sys_world.sent_profile.keys():
                 # we should enforce rule
                 # we should check the enforced templates are not repetition
                 if is_repetition_with_context(enforced_templates[0], 
-                                              itertools.chain(*self.chatbot.sys_profile.values()), 
+                                              itertools.chain(*self.chatbot.global_profile.sys_world.sent_profile.values()), 
                                               threshold=cfg.repetition_threshold):
                     print("case 1")
                     return None
