@@ -1,5 +1,5 @@
 import os
-# os.environ["CUDA_VISIBLE_DEVICES"] = "2"
+os.environ["CUDA_VISIBLE_DEVICES"] = "3"
 
 import re
 import dialog_config
@@ -264,25 +264,25 @@ class PersuasiveBot:
 
         print("reloaded")
 
-    def print_candidates(self, candidates, edited_candidates, scores):
+    def print_candidates(self, candidates, edited_candidates, sent_act_candidates, scores):
         log_this_turn = []
         print("=== candidates, len={} ===".format(len(candidates)))
         log_this_turn.append("=== candidates, len={} ===".format(len(candidates)))
         
-        for c, edited_c, s in zip(candidates, edited_candidates, scores):
+        for c, edited_c, act, s in zip(candidates, edited_candidates, sent_act_candidates, scores):
             c = " ".join(c)
             edited_c = " ".join(edited_c)
             if c != edited_c:
-                print("--------- different from edited candidates: score: {} ----------".format(s))
+                print("--------- different from edited candidates: act: {}, score: {}----------".format(act, s))
                 print(c)
                 print(edited_c)
-                log_this_turn.append("--------- different from edited candidates: score: {} ----------".format(s))
+                log_this_turn.append("--------- different from edited candidates: act: {}, score: {}----------".format(act, s))
                 log_this_turn.append(c)
                 log_this_turn.append(edited_c)
             else:
-                print("----------------- score : {}---------------------------".format(s))
+                print("----------------- act: {}, score : {}---------------------------".format(act, s))
                 print(edited_c)
-                log_this_turn.append("----------------- score : {}---------------------------".format(s))
+                log_this_turn.append("----------------- act: {}, score : {}---------------------------".format(act, s))
                 log_this_turn.append(edited_c)
         print("==================")
         log_this_turn.append("==================")
@@ -353,7 +353,7 @@ class PersuasiveBot:
                 #     conflict_status_with_usr, conflict_amount_with_usr, edited_sents, edited_sent_acts = self.usr_profile.check_conflict(edited_sents, edited_sent_acts)                    
                 #     conflict_condition = (conflict_status_with_sys in [cfg.PASS]) and (conflict_status_with_usr in [cfg.PASS])
 
-                conflict_condition, conflict_amount, edited_sents, edited_sent_acts = self.global_profile.check_conflict(sents, sent_acts)  
+                conflict_condition, conflict_amount, edited_sents, edited_sent_acts, fail_reason = self.global_profile.check_conflict(sents, sent_acts)  
 
                 if conflict_condition:   
                     sent_candidates.append(sents)
@@ -362,7 +362,7 @@ class PersuasiveBot:
                     sent_act_candidates.append(edited_sent_acts)
                     past_candidates.append(past)
                 else:
-                    failed_candidates.append(sents)
+                    failed_candidates.append([sents, sent_acts, fail_reason])
 
             have_enough_candidates = (len(past_candidates) > 0)
         if not have_enough_candidates:
@@ -380,10 +380,11 @@ class PersuasiveBot:
                 past_candidates.append(past)
         
         self.logs['failed_candidates'].append(failed_candidates)
+
         # check consistency and pick one candidate
         self.cnt += 1
         sents, sent_acts, past, scores = self.select_candidates(edited_sent_candidates, sent_candidate_conflict_scores, sent_act_candidates, past_candidates)
-        self.print_candidates(sent_candidates, edited_sent_candidates, scores)
+        self.print_candidates(sent_candidates, edited_sent_candidates, sent_act_candidates, scores)
         # check conflict within the sents
         sents, sent_acts = self.check_conflict_within_selected_sents(sents, sent_acts)
         
@@ -425,6 +426,7 @@ class PersuasiveBot:
     def save(self):
         print("\n")
         logging.debug("\n")
+        logging.debug("*************************** new dialog ****************************************")
         for turn_i in range(len(self.logs['responses'])):
             for k in ['responses', 'candidates', 'failed_candidates', 'global_profiles']:
                 print("{}\n".format(k))
@@ -447,6 +449,8 @@ class PersuasiveBot:
             print("\n")
             logging.debug("\n")
         
+        logging.debug("*************************** dialog end ****************************************")
+        
 
 
 
@@ -465,6 +469,7 @@ if __name__ == "__main__":
                 user_text  = input("user: ")
             else:
                 print("INIT MEMORY!")
+                bot.save()
                 bot.reload()
             
             response = bot.chat(user_text, 0)

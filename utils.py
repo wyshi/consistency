@@ -19,6 +19,7 @@ logging.basicConfig(filename=cfg.log_file,level=logging.DEBUG)
 
 # Create tokenizer and stemmer
 from nltk import word_tokenize
+from sentence_transformers import SentenceTransformer
 
 def is_ci_token_stopword_set_match(a, b, threshold=0.5):
     """Check if a and b are matches."""
@@ -58,9 +59,13 @@ def is_repetition_with_context(sent, context_list, threshold=0.5):
         max_ratio = max(ratio, max_ratio)
         if is_match:
             if cfg.debug:
-                logging.debug("--- repetition occurs between these sents: ratio {} ---".format(ratio))
+                print("\n\n\n--- repetition occurs between these sents: ratio {} ---".format(ratio))
+                print("|context: {}|\n|candidate: {}|".format(c_sent, sent))
+                print("---------------------------------------------\n\n\n")
+
+                logging.debug("\n\n\n--- repetition occurs between these sents: ratio {} ---".format(ratio))
                 logging.debug("|context: {}|\n|candidate: {}|".format(c_sent, sent))
-                logging.debug("---------------------------------------------\n")
+                logging.debug("---------------------------------------------\n\n\n")
             return True, max_ratio
     return False, max_ratio
 
@@ -109,3 +114,11 @@ def toNumReg(sent):
         # return float(re.findall(patternIntOrFloat,sent)[0])
         
     return None
+
+
+def compare_two_sent_embeddings(sent1, sent2):
+    model = SentenceTransformer('bert-base-nli-mean-tokens')
+    sents = [sent1, sent2]
+    sent_embeddings = model.encode(sents)
+
+    return cosine_similarity(sent_embeddings[0].T.reshape(1,-1), sent_embeddings[1].T.reshape(1, -1))

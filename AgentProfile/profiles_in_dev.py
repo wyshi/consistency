@@ -14,6 +14,10 @@ from copy import deepcopy
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer 
 
 from utils import toNumReg
+from sentence_transformers import SentenceTransformer
+from sklearn.metrics.pairwise import cosine_similarity
+
+
 # HOW_ARE_YOU = 'how-are-you'
 # HEARD_OF_THE_ORG = 'heard-of-the-org'
 # HAVE_KIDS = 'have-kids'
@@ -27,6 +31,8 @@ class GlobalProfile(object):
         self.domain = domain
         self.pred_model = strategy_model(model_to_load="./classifier/best_model_state_er.pkl")
         self.sentiment_analyzer = SentimentIntensityAnalyzer()
+        self.sent_embedding_model = SentenceTransformer('bert-base-nli-mean-tokens')#('roberta-large-nli-stsb-mean-tokens')
+
 
         self.sys_world = SysWorld(domain=self.domain, name="system_world")
         self.usr_world = UsrWorld(domain=self.domain, name="user_world")
@@ -46,6 +52,12 @@ class GlobalProfile(object):
         qa_dict_usr, qa_dict_sys = self.contain_answers(sents, who)
         
         return qa_dict_usr, qa_dict_sys
+
+    def get_sent_similarity_score(self, sent1, sent2):
+        sents = [sent1, sent2]
+        sent_embeddings = self.sent_embedding_model.encode(sents)
+        return cosine_similarity(sent_embeddings[0].reshape(1, -1),
+                                 sent_embeddings[1].reshape(1, -1)))       
 
     def contain_answers(self, sents, who):
         qa_dict = {
@@ -132,7 +144,7 @@ class GlobalProfile(object):
                     answers['sys'] = "good"
                 elif who == self.domain.SYS:
                     answers['usr'] = "good"
-            elif re.search(r"doing ((good)|(well)|(alright)|(ok))", sent):
+            elif re.search(r"((doing )| )((good)|(well)|(alright)|(ok))", sent):
                 if who == self.domain.USR:
                     answers['usr'] = "good"
                 elif who == self.domain.SYS:
@@ -576,6 +588,7 @@ class GlobalProfile(object):
 
     def check_conflict(self, sents, sent_acts):
         # 1. repetition
+        fail_reason = None
         rep_status_with_sys, rep_amount_with_sys, edited_sents, edited_sent_acts = self.sys_world.check_conflict(sents, sent_acts)
         if self.last_sents is None:
             rep_condition = (rep_status_with_sys in [cfg.PASS])    
@@ -592,10 +605,15 @@ class GlobalProfile(object):
             consis_condition = consis_status in [cfg.PASS]
 
             rep_consis_condition = rep_condition and consis_condition
+            fail_reason = consis_status
         else:
             rep_consis_condition = rep_condition
+            if self.last_sents is None:
+                fail_reason = "{} with sys, none with usr".format(rep_status_with_sys)
+            else:
+                fail_reason = "{} with sys, {} with usr".format(rep_status_with_sys, rep_status_with_usr)
             
-        return rep_consis_condition, rep_amount, edited_sents, edited_sent_acts
+        return rep_consis_condition, rep_amount, edited_sents, edited_sent_acts, fail_reason
 
     def check_consistency(self, sents, sent_acts):
         to_update_dic_usr, to_update_dic_sys = self.extract_info(sents, who=self.domain.SYS)
@@ -646,7 +664,7 @@ class GlobalProfile(object):
             elif "ask" in predicted_label: 
                 label = predicted_label + "-inquiry"
 
-            elif re.search(r"((how are)|(how're)) you", utt):
+            elif re.search(self.greeting_re, utt):
                 label = SystemAct.greeting_inquiry
             ##====== above are all inquiries =======
 

@@ -60,10 +60,12 @@ class HumanRule(object):
             if SystemAct.propose_donation_inquiry not in self.chatbot.global_profile.sys_world.sent_profile.keys():
                 # we should enforce rule
                 # we should check the enforced templates are not repetition
-                if is_repetition_with_context(enforced_templates[0], 
+                is_repetition, repetition_score = is_repetition_with_context(enforced_templates[0], 
                                               itertools.chain(*self.chatbot.global_profile.sys_world.sent_profile.values()), 
-                                              threshold=cfg.repetition_threshold):
+                                              threshold=cfg.repetition_threshold)
+                if is_repetition:
                     print("case 1")
+                    print(enforced_templates[0])
                     return None
                 else:
                     for i, acts in enumerate(sent_act_candidates):
