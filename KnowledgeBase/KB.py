@@ -45,7 +45,7 @@ class HumanRule(object):
         self.chatbot = chatbot
         self.sys_template = SystemTemplate()
 
-    def enforce(self, sent_candidates, sent_act_candidates, past_candidates):
+    def enforce(self, sents, sent_acts, past):
         """
         return: 
                None: no rule needed,
@@ -68,11 +68,11 @@ class HumanRule(object):
                     print(enforced_templates[0])
                     return None
                 else:
-                    for i, acts in enumerate(sent_act_candidates):
-                        for act in acts:
-                            if act == SystemAct.propose_donation_inquiry:
-                                print("case 2")
-                                return i
+                    # for i, acts in enumerate(sent_act_candidates):
+                    for act in sent_acts:
+                        if act == SystemAct.propose_donation_inquiry:
+                            print("case 2")
+                            return True
                     print("case 3")
                     return enforced_templates, enforced_acts # didn't find appropriate candidates, so we append this sentence 
 

@@ -17,6 +17,8 @@ from utils import toNumReg
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 
+import torch
+import torch.nn as nn
 
 # HOW_ARE_YOU = 'how-are-you'
 # HEARD_OF_THE_ORG = 'heard-of-the-org'
@@ -31,7 +33,15 @@ class GlobalProfile(object):
         self.domain = domain
         self.pred_model = strategy_model(model_to_load="./classifier/best_model_state_er.pkl")
         self.sentiment_analyzer = SentimentIntensityAnalyzer()
-        self.sent_embedding_model = SentenceTransformer('bert-base-nli-mean-tokens')#('roberta-large-nli-stsb-mean-tokens')
+        self.sent_embedding_model = SentenceTransformer('bert-base-nli-mean-tokens', 
+                                                        device=torch.device("cuda:1"))#('roberta-large-nli-stsb-mean-tokens')
+
+        # if torch.cuda.device_count() > 1:
+        #     embedding_device = torch.device("cuda")
+        #     print("Let's use", torch.cuda.device_count(), "GPUs!")
+        #     # dim = 0 [30, xxx] -> [10, ...], [10, ...], [10, ...] on 3 GPUs
+        #     self.sent_embedding_model = nn.DataParallel(self.sent_embedding_model)
+        #     self.sent_embedding_model.to(embedding_device)
 
 
         self.sys_world = SysWorld(domain=self.domain, name="system_world")
@@ -53,11 +63,20 @@ class GlobalProfile(object):
         
         return qa_dict_usr, qa_dict_sys
 
-    def get_sent_similarity_score(self, sent1, sent2):
-        sents = [sent1, sent2]
+    def sents_are_similar(self, sent, sent_list):
+        sents = [sent] + sent_list
         sent_embeddings = self.sent_embedding_model.encode(sents)
-        return cosine_similarity(sent_embeddings[0].reshape(1, -1),
-                                 sent_embeddings[1].reshape(1, -1)))       
+
+        scores = []
+        for i in range(1, len(sent_embeddings)):
+            score = cosine_similarity(sent_embeddings[0].reshape(1, -1),
+                                 sent_embeddings[i].reshape(1, -1)) 
+            if score >= cfg.similarity_threshold:
+                return True
+            # scores.append(score)
+        return False
+
+
 
     def contain_answers(self, sents, who):
         qa_dict = {
@@ -144,7 +163,7 @@ class GlobalProfile(object):
                     answers['sys'] = "good"
                 elif who == self.domain.SYS:
                     answers['usr'] = "good"
-            elif re.search(r"((doing )| )((good)|(well)|(alright)|(ok))", sent):
+            elif re.search(r"((doing )| )((good)|(well)|(alright)|(ok)|(great))", sent):
                 if who == self.domain.USR:
                     answers['usr'] = "good"
                 elif who == self.domain.SYS:
@@ -452,7 +471,8 @@ class GlobalProfile(object):
                     answers['sys'] = self.domain.NO
             
                 # 1.2.2) asked-system speak-about user
-                if "thank you so much" in sent or "you are very kind" in sent:
+                if "thank you so much" in sent or "you are very kind" in sent \
+                or "you decided to donate " in sent or "thank you for your donation today" in sent:
                     answers['usr'] = self.domain.YES
 
         return answers
@@ -642,16 +662,34 @@ class GlobalProfile(object):
 
             if predicted_label in ["task-related-inquiry", "personal-related-inquiry"]:#, "have-you-heard-of-the-org"]:
                 sent = utt.lower()
-                if "have" in sent and (("kid" in sent) or ("children" in sent)):
+                if self.sents_are_similar(sent, ['do you have children', 
+                                                 'do you have kids',
+                                                 'are you a parent',
+                                                 'are you a parent']):#"have" in sent and (("kid" in sent) or ("children" in sent)):
                     label = SystemAct.kids_related_inquiry
 
-                elif "donate" in sent:
+                elif self.sents_are_similar(sent, ['have you donated before', 
+                                                 'do you donate to charities',
+                                                 'are you involved with any charity']):
                     label = SystemAct.donation_related_inquiry
+
+                elif self.sents_are_similar(sent, ['have you heard of save the children before', 
+                                                 'have you heard of save the children',
+                                                 'are you aware of save the children',
+                                                 'are you familiar with save the children']):
+                    label = SystemAct.organization_related_inquiry
 
                 # elif "save the children" in sent:
                 #     #todo: "Would you be interested in donating to Save the Children today?"
                 #     label = "organization-related-inquiry"
 
+                elif self.sents_are_similar(sent, ['how are you', 
+                                                 'how are you doing today',
+                                                 'how are you doing',
+                                                 'how about you']):
+                    label = SystemAct.greeting_inquiry
+
+                
                 else:
                     label = SystemAct.other_inquiry
 

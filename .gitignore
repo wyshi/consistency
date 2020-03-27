@@ -19,4 +19,5 @@ unlikelihood_training/
 xlnet_extension_tf/
 Automatic-Question-Generator/
 GPT_QA/
-
+*.pkl*
+*.csv

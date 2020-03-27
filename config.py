@@ -3,12 +3,14 @@ class Config:
 
 debug = True
 repetition_threshold = 0.5
+similarity_threshold = 0.707
 
 # select_candidates_strategy
 RANDOM_SELECT = "random_select"
 REPETITION_RATIO = "repetition_ratio"
 FIRST_OF_CANDIDATES = "first_of_candidates"
-candidate_select_strategy = FIRST_OF_CANDIDATES
+HUMAN_SELECTION = "human_selection"
+candidate_select_strategy = FIRST_OF_CANDIDATES#HUMAN_SELECTION
 
 # num of candidates to select from
 NUM_CANDIDATES = 10
@@ -29,3 +31,6 @@ SYSTEM_CORRECTION = "system_correction"
 domain = "persuasion"
 
 log_file = 'example.log'
+
+demonstration_csv = "demonstration.csv"
+demonstration_pkl = "demonstration.pkl"

@@ -223,7 +223,6 @@ class GPT2MultipleChoiceHead(nn.Module):
         return multiple_choice_logits
 
 
-
 class GPT2Model(nn.Module):
     """OpenAI GPT-2 model ("Language Models are Unsupervised Multitask Learners").
     """
@@ -353,6 +352,9 @@ class GPT2SimpleLM(nn.Module):
 
         hidden_states, presents = self.transformer(
             input_ids, position_ids, past, mask)
+        # hidden_states: torch.Size([1, 1, 1024])
+        # (Pdb) lm_logits.shape
+        #       torch.Size([1, 1, 50260])
         lm_logits = self.lm_head(hidden_states)
         # pdb.set_trace()
-        return lm_logits, presents, hidden_states
+        return lm_logits, presents
