@@ -8,6 +8,18 @@ import math
 from apex.normalization.fused_layer_norm import FusedLayerNorm as LayerNorm
 import pdb
 # pylint:disable=no-member
+try:
+    from torch.nn import Identity
+except ImportError:
+    # Older PyTorch compatibility
+    class Identity(nn.Module):
+        r"""A placeholder identity operator that is argument-insensitive.
+        """
+        def __init__(self, *args, **kwargs):
+            super(Identity, self).__init__()
+
+        def forward(self, input):
+            return input
 
 
 def gelu(x):
@@ -198,13 +210,21 @@ class GPT2MultipleChoiceHead(nn.Module):
         self.n_embd = config.n_embd
         # self.multiple_choice_token = multiple_choice_token
         # self.dropout = nn.Dropout2d(config.resid_pdrop)  # To reproduce the noise_shape parameter of TF implementation
-        self.linear = nn.Linear(config.n_embd, config.n_class)
+        self.first_dropout = nn.Dropout(config.summary_last_dropout)
+        self.linear1 = nn.Linear(config.n_embd, 500)
+        self.linear2 = nn.Linear(500, config.n_class)
+        self.activation = nn.Tanh()
+        self.device = config.device
+        # self.last_dropout = Identity()#
         # self.loss = nn.CrossEntropyLoss()
 
-        nn.init.normal_(self.linear.weight, std=0.02)
-        nn.init.normal_(self.linear.bias, 0)
+        nn.init.normal_(self.linear1.weight, std=0.02)
+        nn.init.normal_(self.linear1.bias, 0)
 
-    def forward(self, hidden_states):
+        nn.init.normal_(self.linear2.weight, std=0.02)
+        nn.init.normal_(self.linear2.bias, 0)
+
+    def forward(self, hidden_states, mc_labels=None):
         # Classification logits
         # hidden_state (bsz, num_choices, seq_length, hidden_size)
                         # num_layer * (, , num_heads, seq_length, hidden_size)
@@ -216,11 +236,24 @@ class GPT2MultipleChoiceHead(nn.Module):
         # multiple_choice_h = hidden_states.gather(2, mc_token_ids).squeeze(2)
         # (bsz, num_choices, hidden_size)
         # multiple_choice_h = self.dropout(hidden_states.transpose(1, 2)).transpose(1, 2)
-        multiple_choice_logits = self.linear(hidden_states[:, -1, :])
+        
+        output = hidden_states[:, -1, :]
+        output = self.first_dropout(output)
+        output = self.linear1(output)
+        output = self.activation(output)
+        output = self.linear2(output)
+        output = self.activation(output)
+        # output = self.last_dropout(output)
+
         # self.loss(multiple_choice_logits, target)
+        if mc_labels is not None:
+            loss_fct = nn.CrossEntropyLoss()
+            loss = loss_fct(output.view(-1, output.size(-1)), mc_labels.view(-1))
+            # output = (loss,) + output
+            return loss, output
         
         # (bsz, num_choices)
-        return multiple_choice_logits
+        return output
 
 
 

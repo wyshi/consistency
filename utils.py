@@ -58,14 +58,14 @@ def is_repetition_with_context(sent, context_list, threshold=0.5):
         is_match, ratio = is_ci_token_stopword_set_match(sent, c_sent, threshold=threshold)
         max_ratio = max(ratio, max_ratio)
         if is_match:
-            if cfg.debug:
+            if cfg.verbose:
                 print("\n\n\n--- repetition occurs between these sents: ratio {} ---".format(ratio))
                 print("|context: {}|\n|candidate: {}|".format(c_sent, sent))
                 print("---------------------------------------------\n\n\n")
 
-                logging.debug("\n\n\n--- repetition occurs between these sents: ratio {} ---".format(ratio))
-                logging.debug("|context: {}|\n|candidate: {}|".format(c_sent, sent))
-                logging.debug("---------------------------------------------\n\n\n")
+            logging.debug("\n\n\n--- repetition occurs between these sents: ratio {} ---".format(ratio))
+            logging.debug("|context: {}|\n|candidate: {}|".format(c_sent, sent))
+            logging.debug("---------------------------------------------\n\n\n")
             return True, max_ratio
     return False, max_ratio
 
@@ -122,3 +122,37 @@ def compare_two_sent_embeddings(sent1, sent2):
     sent_embeddings = model.encode(sents)
 
     return cosine_similarity(sent_embeddings[0].T.reshape(1,-1), sent_embeddings[1].T.reshape(1, -1))
+
+import pickle as pkl
+
+def print_cm(cm, labels, hide_zeroes=False, hide_diagonal=False, hide_threshold=None):
+    """pretty print for confusion matrixes"""
+    columnwidth = max([len(x) for x in labels] + [5])  # 5 is value length
+    empty_cell = " " * columnwidth    
+    # Begin CHANGES
+    fst_empty_cell = (columnwidth-3)//2 * " " + "t/p" + (columnwidth-3)//2 * " "
+    
+    if len(fst_empty_cell) < len(empty_cell):
+        fst_empty_cell = " " * (len(empty_cell) - len(fst_empty_cell)) + fst_empty_cell
+    # Print header
+    print("    " + fst_empty_cell, end=" ")
+    # End CHANGES    
+    for label in labels:
+        print("%{0}s".format(columnwidth) % label, end=" ")        
+    print()
+    # Print rows
+    for i, label1 in enumerate(labels):
+        print("    %{0}s".format(columnwidth) % label1, end=" ")
+        for j in range(len(labels)):
+            cell = "%{0}.1f".format(columnwidth) % cm[i, j]
+            if hide_zeroes:
+                cell = cell if float(cm[i, j]) != 0 else empty_cell
+            if hide_diagonal:
+                cell = cell if i != j else empty_cell
+            if hide_threshold:
+                cell = cell if cm[i, j] > hide_threshold else empty_cell
+            print(cell, end=" ")
+        print()
+
+
+

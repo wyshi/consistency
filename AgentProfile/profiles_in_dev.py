@@ -1,13 +1,14 @@
 import re
 import sys
 sys.path.append("../")
-from classifier.pred import strategy_model
+# from classifier.pred import strategy_model
 import config as cfg
 from utils import is_repetition_with_context
 import itertools
 from AgentProfile.core import SystemAct
 from KnowledgeBase import KB
 from KnowledgeBase.KB import Domain
+import pdb
 
 from nltk.tokenize import sent_tokenize
 from copy import deepcopy
@@ -19,6 +20,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 import torch
 import torch.nn as nn
+import pdb
 
 # HOW_ARE_YOU = 'how-are-you'
 # HEARD_OF_THE_ORG = 'heard-of-the-org'
@@ -31,7 +33,7 @@ import torch.nn as nn
 class GlobalProfile(object):
     def __init__(self, domain):
         self.domain = domain
-        self.pred_model = strategy_model(model_to_load="./classifier/best_model_state_er.pkl")
+        # self.act_clf_model = act_clf_model
         self.sentiment_analyzer = SentimentIntensityAnalyzer()
         self.sent_embedding_model = SentenceTransformer('bert-base-nli-mean-tokens', 
                                                         device=torch.device("cuda:1"))#('roberta-large-nli-stsb-mean-tokens')
@@ -412,7 +414,7 @@ class GlobalProfile(object):
                 if "yes" in sent or "i would like to donate some money" in sent or "i can donate a bit" in sent\
                     or "how much do you suggest" in sent:
                     answers['usr'] = self.domain.YES
-                elif "prefer to donate time" in sent or "next time" in sent: 
+                elif "prefer to donate time" in sent or "next time" in sent or "not today" in sent: 
                     answers['usr'] = self.domain.NO
                 else:
                     if score['compound'] >= 0.05:
@@ -433,7 +435,7 @@ class GlobalProfile(object):
                 if "yes" in sent or "i would like to donate some money" in sent or "i can donate a bit" in sent\
                     or "how much do you suggest" in sent:
                     answers['sys'] = self.domain.YES
-                elif "prefer to donate time" in sent or "next time" in sent: 
+                elif "prefer to donate time" in sent or "next time" in sent or "not today" in sent: 
                     answers['sys'] = self.domain.NO
                 else:
                     if score['compound'] >= 0.05:
@@ -452,9 +454,11 @@ class GlobalProfile(object):
             # not asked
             if who == self.domain.USR:
                 if "i would like to donate some money" in sent or "i can donate a bit" in sent\
-                    or "how much do you suggest" in sent:
+                    or "how much do you suggest" in sent or "spare" in sent or "glad to help" in sent\
+                    or "i will donate" in sent:
                     answers['usr'] = self.domain.YES
-                elif "prefer to donate time" in sent or "next time" in sent: 
+                elif "prefer to donate time" in sent or "next time" in sent or "not today" in sent\
+                or "not interested" in sent or "don't want to" in sent: 
                     answers['usr'] = self.domain.NO
 
                 # 2.1.2) asked-user speak-about system
@@ -472,8 +476,12 @@ class GlobalProfile(object):
             
                 # 1.2.2) asked-system speak-about user
                 if "thank you so much" in sent or "you are very kind" in sent \
-                or "you decided to donate " in sent or "thank you for your donation today" in sent:
+                or "you decided to donate" in sent or "you decide to donate" in sent or "thank you for your donation today" in sent or "you are willing to donate" in sent\
+                or "appreciate your donation" in sent or "appreciate your willingness to donate" in sent:
                     answers['usr'] = self.domain.YES
+                
+                elif "ould you like to donate some of your task payment" in sent:
+                    answers['usr'] = self.domain.INIT
 
         return answers
 
@@ -608,6 +616,7 @@ class GlobalProfile(object):
 
     def check_conflict(self, sents, sent_acts):
         # 1. repetition
+        # pdb.set_trace()
         fail_reason = None
         rep_status_with_sys, rep_amount_with_sys, edited_sents, edited_sent_acts = self.sys_world.check_conflict(sents, sent_acts)
         if self.last_sents is None:
@@ -622,6 +631,7 @@ class GlobalProfile(object):
         if rep_condition:
             # if it's not a repetition, then we need to check for consistency
             consis_status = self.check_consistency(edited_sents, edited_sent_acts)
+            # pdb.set_trace()
             consis_condition = consis_status in [cfg.PASS]
 
             rep_consis_condition = rep_condition and consis_condition
@@ -636,6 +646,7 @@ class GlobalProfile(object):
         return rep_consis_condition, rep_amount, edited_sents, edited_sent_acts, fail_reason
 
     def check_consistency(self, sents, sent_acts):
+        
         to_update_dic_usr, to_update_dic_sys = self.extract_info(sents, who=self.domain.SYS)
         consis_status = cfg.PASS
         for att, answer in to_update_dic_usr.items():
@@ -648,20 +659,31 @@ class GlobalProfile(object):
             if self.sys_world.sys_profile[att] != self.domain.INIT \
                and self.sys_world.sys_profile[att] != answer:
                 consis_status = cfg.INCONSISTENCY
-        
+        for sent in sents:
+            if "you decided to donate" in sent:
+                pass
+                # pdb.set_trace()
         return consis_status
 
-    def regex_label(self, sys_texts, context, turn_i):
+    def regex_label(self, model_clf, sys_texts, which_task):
         """
         regex to re-label 
         vs 
         QA    to re-label
         """
-        def regex_label_for_one_utt(utt):
-            predicted_label = self.pred_model.predict(text=utt, his=context, turn=turn_i)
-
+        predicted_labels, past = model_clf.predict(separate_sents=sys_texts, 
+                                                      which_task=which_task)
+        
+        def regex_label_for_one_utt(utt, predicted_label):
+            # try:
+            #     predicted_label = self.pred_model.predict(text=utt, his=context, turn=turn_i)
+            # except:
+            #     import pdb
+            #     pdb.set_trace()
+            
+            sent = utt.lower()
             if predicted_label in ["task-related-inquiry", "personal-related-inquiry"]:#, "have-you-heard-of-the-org"]:
-                sent = utt.lower()
+                
                 if self.sents_are_similar(sent, ['do you have children', 
                                                  'do you have kids',
                                                  'are you a parent',
@@ -693,10 +715,13 @@ class GlobalProfile(object):
                 else:
                     label = SystemAct.other_inquiry
 
-            elif predicted_label in ["have-you-heard-of-the-org"]:
+            elif predicted_label in ["greeting"]:
+                label = SystemAct.greeting_inquiry
+
+            elif predicted_label in ["source-related-inquiry"]:
                 label = SystemAct.organization_related_inquiry
 
-            elif predicted_label in ["propose-donation"]:
+            elif predicted_label in ["proposition-of-donation", "ask-donation-amount"]:
                 label = SystemAct.propose_donation_inquiry 
 
             elif "ask" in predicted_label: 
@@ -706,17 +731,24 @@ class GlobalProfile(object):
                 label = SystemAct.greeting_inquiry
             ##====== above are all inquiries =======
 
-            elif predicted_label in ['provide-org-facts', 'provide-donation-procedure']:
+            elif predicted_label in ['credibility-appeal', 'donation-information']:#['provide-org-facts', 'provide-donation-procedure']:
                 label = predicted_label
 
             else:
+                if self.sents_are_similar(sent, ['would you like to make a donation to Save the Children?', 
+                                                 'I was just wondering if you would be willing to donate a portion of your task payment to Save the Children',
+                                                 'Would you be willing to donate a portion of your payment',
+                                                 'how much do you like to donate to the charity now',
+                                                 'if you would like to consider a small portion of your payment']):
+                    label = SystemAct.propose_donation_inquiry
+
                 label = predicted_label
 
             return label
 
-        labels = [regex_label_for_one_utt(utt) for utt in sys_texts]
-
-        return labels
+        labels = [regex_label_for_one_utt(utt, predicted_label) for utt, predicted_label in zip(sys_texts, predicted_labels)]
+        # print(f"predicted: {labels}")
+        return labels, past
 
 
 class IndividualWorld(object):
@@ -800,7 +832,7 @@ class UsrWorld(IndividualWorld):
                 if self.is_inquiry_answered(sys_text, sys_label):
                     # 1.1 real repetition, 
                     # this is repetition inquiry
-                    if cfg.debug:
+                    if cfg.verbose:
                         print("{} inquiry encountered in user_profile check! {}: {}\n".format(cfg.REPETITION, sys_label, sys_text))
                     return cfg.REPETITION, repetition_ratio
                 else:
@@ -914,6 +946,7 @@ class SysWorld(IndividualWorld):
         self.sys_profile.update(to_update_dic_sys)
 
         for sys_text, sys_label in zip(sys_texts, sys_labels):
+            # pdb.set_trace()
             if sys_label in self.sent_profile:
                 self.sent_profile[sys_label].append(sys_text)
             else:
@@ -951,7 +984,8 @@ class SysWorld(IndividualWorld):
                             return cfg.PASS, repetition_ratio
                         # 2.2 real repetition
                         else:
-                            print("{} encountered! {}: {}".format(cfg.REPETITION, sys_label, sys_text))
+                            if cfg.verbose:
+                                print("{} encountered! {}: {}".format(cfg.REPETITION, sys_label, sys_text))
                             return cfg.REPETITION, repetition_ratio
 
                     else:

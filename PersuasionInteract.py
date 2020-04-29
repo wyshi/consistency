@@ -1,9 +1,10 @@
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3,4,5,6"
 
 import re
 import dialog_config
 from AgentProfile.profiles_in_dev import GlobalProfile
+from model_clf import build_model_classifier
 
 import torch
 import torch.nn as nn
@@ -27,8 +28,10 @@ import os
 import csv
 import pickle as pkl
 
-from gpt_model import GPT2SimpleLM
-from pytorch_pretrained_bert import GPT2Tokenizer
+# from gpt_model import GPT2SimpleLM
+# from pytorch_pretrained_bert import GPT2Tokenizer
+from transformers import GPT2LMHeadModel, GPT2Tokenizer, GPT2Config
+from GPTModel import GPT2LMHeadModel_modified
 import config as cfg
 from utils import is_repetition_with_context
 
@@ -39,47 +42,6 @@ from nltk.tokenize import sent_tokenize
 import logging
 
 from copy import deepcopy
-
-# def handler(signal_received, frame):
-#     # Handle any cleanup here
-#     print('SIGINT or CTRL-C detected. Exiting gracefully')
-#     bot.save()
-#     exit(0)
-
-# In[3]:
-tokenizer_dir = "/home/wyshi/persuasion/consistency/ARDM/persuasion/special3_gpt2_tokenizer.pkl"
-model_dir = "/home/wyshi/persuasion/consistency/ARDM/persuasion/persuasion_medium_3.th"
-class PersuadeDataset(Dataset):
-    def __init__(self, data, tokenizer):
-        self.data = data
-        self.tokenizer = tokenizer
-        self.tokenizer.max_len = 1500
-        self.turn_ending = tokenizer.encode("\n\n\n")
-        self.dialog_ending = [tokenizer.encoder["[EOS]"]]
-        
-    def __len__(self):
-        return len(self.data)
-    
-    def __getitem__(self, index):
-        dial_tokens = [tokenizer.encode(item) + self.turn_ending for item in self.data[index]]
-        role_ids = [0 if item[0] == 32 else 1 for item in dial_tokens]
-        dial_tokens[-1] = dial_tokens[-1][:-2] + self.dialog_ending
-        return role_ids, dial_tokens
-        
-
-class Collate_Function:
-    """This function handles batch collate.
-    """
-    def __init__(self, tokenizer):
-        self.tokenizer = tokenizer
-        self.EOS = self.tokenizer.encoder["[EOS]"]
-
-    def __call__(self, unpacked_data):
-        return unpacked_data
-
-
-# In[4]:
-
 
 def top_filtering(logits, top_k=0, top_p=0.0, filter_value=-float('Inf')):
     """ Filter a distribution of logits using top-k, top-p (nucleus) and/or threshold filtering
@@ -114,70 +76,33 @@ def top_filtering(logits, top_k=0, top_p=0.0, filter_value=-float('Inf')):
     
     return logits
 
-tokenizer = torch.load(tokenizer_dir)
-
-class GPT2SmallConfig:
-    vocab_size = 50257 + len(tokenizer.__special_tokens__)
-    n_special = len(tokenizer.__special_tokens__)
-    n_positions = 1024
-    n_ctx = 1024
-    n_embd = 768
-    n_class = 2
-    n_layer = 12
-    n_head = 12
-    resid_pdrop = 0.1
-    embd_pdrop = 0.1
-    attn_pdrop = 0.1
-    layer_norm_epsilon = 1e-5
-    initializer_range = 0.02
-    gradient_checkpointing = False
-    
-class GPT2MediumConfig:
-    vocab_size = 50257 + len(tokenizer.__special_tokens__)
-    n_special = len(tokenizer.__special_tokens__)
-    n_positions = 1024
-    n_ctx = 1024
-    n_embd = 1024
-    n_class = 2
-    n_layer = 24
-    n_head = 16
-    resid_pdrop = 0.1
-    embd_pdrop = 0.1
-    attn_pdrop = 0.1
-    layer_norm_epsilon = 1e-5
-    initializer_range = 0.02
-    gradient_checkpointing = True
-
+class ModelClassifierConfig:
+    model_dir = cfg.model_clf_dir
+    device1 = torch.device(cfg.model_clf_device1)
+    device2 = torch.device(cfg.model_clf_device2)
 
 class PersuasiveBot:
-    def __init__(self):
-        self.tokenizer = torch.load(tokenizer_dir)
-        # In[10]:
+    def __init__(self, model_A=None, model_B=None, tokenizer=None, device1=None, device2=None):
+        if tokenizer is None:
+            self.tokenizer = GPT2Tokenizer.from_pretrained("gpt2")#torch.load(tokenizer_dir)
+        else:
+            self.tokenizer = tokenizer
+        self.max_sequence_len = cfg.max_sequence_len
+        if device1 is None:
+            self.device1 = torch.device("cuda:0")
+            self.device2 = torch.device("cuda:0")
+        else:
+            self.device1 = device1
+            self.device2 = device2
+        self.load_models(model_A, model_B)
 
-        # model_A = GPT2SimpleLM(GPT2SmallConfig)
-        # model_B = GPT2SimpleLM(GPT2SmallConfig)
-        # model_A_states, model_B_states = torch.load("CheckpointMedium/model_state_epoch_3.th")
-
-        # define the model
-        self.model_A = GPT2SimpleLM(GPT2MediumConfig)
-        self.model_B = GPT2SimpleLM(GPT2MediumConfig)
-        
-        # load the model
-        model_A_states, model_B_states = torch.load(model_dir)
-        self.model_A.load_state_dict(model_A_states)
-        self.model_B.load_state_dict(model_B_states)
-        
-        self.device = torch.device("cuda:2")
-        self.model_A = self.model_A.to(self.device)
-        self.model_B = self.model_B.to(self.device)
-
-        self.model_A.eval()
-        self.model_B.eval()
-
-        self.eos = self.tokenizer.encode("\n\n\n")
+        # tokenizer weird behavior 
+        # sep = tokenizer.encode("\n\n\n")
+        self.eos = [628, 198]
         self.temperature = 0.7
         
         # Memory
+        # self.need_reload = True
         self.past = None
         self.b_hidden_states = None
         self.human_demonstrations = []
@@ -194,53 +119,159 @@ class PersuasiveBot:
                      'failed_candidates':[],
                      'global_profiles': [],
                      'responses': []}
+        self.reload()
 
-        
-    def chat(self, input_text, sid):
-        sid = 0
-        
-        past_is_None = (self.past is None)
-        
+    def load_models(self, model_A, model_B):
+        # define the model
+
+        self.model_clf = build_model_classifier(ModelClassifierConfig.model_dir, 
+                                                ModelClassifierConfig.device1, 
+                                                ModelClassifierConfig.device2)
+
+        if model_A is None and model_B is None:
+            if cfg.model_size == "small":
+                self.model_A = GPT2LMHeadModel_modified.from_pretrained("gpt2", output_hidden_states=True)
+                self.model_B = GPT2LMHeadModel_modified.from_pretrained("gpt2", output_hidden_states=True)
+            elif cfg.model_size == "medium":
+                self.model_A = GPT2LMHeadModel_modified.from_pretrained("gpt2-medium", output_hidden_states=True)
+                self.model_B = GPT2LMHeadModel_modified.from_pretrained("gpt2-medium", output_hidden_states=True)
+
+            # load the model
+            if cfg.model_size == "small":
+                model_A_states, model_B_states = torch.load(cfg.new_small_model_dir)
+            elif cfg.model_size == "medium":
+                if cfg.use_old_model:
+                    model_A_states, model_B_states = torch.load(cfg.old_medium_model_dir)
+                    model_A_states['transformer.wte.weight'] = model_A_states['transformer.wte.weight'][:50257,:]
+                    model_A_states['lm_head.weight'] = model_A_states['lm_head.decoder.weight'][:50257,:]
+                    model_B_states['transformer.wte.weight'] = model_B_states['transformer.wte.weight'][:50257,:]
+                    model_B_states['lm_head.weight'] = model_B_states['lm_head.decoder.weight'][:50257,:]
+                else:
+                    model_A_states, model_B_states = torch.load(cfg.new_medium_model_dir)
+
+            if cfg.use_old_model:
+                strict = False
+            else:
+                strict = True
+            self.model_A.load_state_dict(model_A_states, strict=strict)
+            self.model_B.load_state_dict(model_B_states, strict=strict)
+
+            self.model_A = self.model_A.to(self.device1)
+            self.model_B = self.model_B.to(self.device2)
+            self.model_A.device = self.device1
+            self.model_B.device = self.device2
+
+            self.model_A.eval()
+            self.model_B.eval()
+
+        else:
+            assert model_A is not None and model_B is not None
+            print("loaded predefined models!!!!!!\n\n\n")
+            self.model_A = model_A
+            self.model_B = model_B
+
+    def chat(self, input_text=None, mode=cfg.interactive_mode):
+        # sid = 0        
         # pdb.set_trace()
         if self.past is None:
-            sys_sent = self.sys_respond_and_update(past_is_None=past_is_None)
+            sys_sent, [sents_success, sents_failed], have_enough_candidates = self.sys_respond_and_update(mode=mode)
             turn_responses = ["sys: "+sys_sent]
         else:
             # user-side
-            if input_text == "quit":
-                self.past = None
-                return "ARDM MEMORY RESTARTS!"
-            
-            input_texts = sent_tokenize(input_text)
-            input_texts_labels = [None]*len(input_texts)
-            self.global_profile.update(sents=input_texts, sent_labels=input_texts_labels, who=self.domain.USR) #self.usr_profile.update(input_text, self.last_sys_labels)
-            self.context = input_text
-            self.turn_i += 1
-            user = self.tokenizer.encode("B:" + input_text)
-            prev_input = user + self.eos
-            prev_input = torch.LongTensor(prev_input).unsqueeze(0).to(self.device)
+            if mode != cfg.self_play_mode:
+                assert input_text is not None
+                if input_text == "quit":
+                    # del self.past
+                    self.past = None
+                    # self.reload()
+                    return
+                
+                input_texts = sent_tokenize(input_text)
+                # input_texts_labels = [None]*len(input_texts)
+                input_texts_labels, _ = self.global_profile.regex_label(self.model_clf,
+                                                                        input_texts, 
+                                                                        which_task="B")
+                self.model_clf.set_past(sent=input_text, 
+                                        which_task="B")
+                
+                self.global_profile.update(sents=input_texts, sent_labels=input_texts_labels, who=self.domain.USR) #self.usr_profile.update(input_text, self.last_sys_labels)
+                self.last_sent = input_text
+                self.turn_i += 1
+                user = self.tokenizer.encode("B:" + input_text)
+                prev_input = user + self.eos
+                prev_input = torch.LongTensor(prev_input).unsqueeze(0).to(self.device2)
 
-            _, self.past, self.b_hidden_states = self.model_B(prev_input, past=self.past)
+                if self.past is not None and self.model_B.device != self.past[0].device:
+                    past = [p.to(self.model_B.device) for p in self.past]
+                    self.past = past
 
+                _, self.past, self.b_hidden_states = self.model_B(prev_input, past=self.past)
+
+
+
+            elif mode == cfg.self_play_mode:
+                input_text = self.generate_user_utt_self_play()
+
+                if "bye" in input_text.lower() or "have a great day" in input_text.lower() \
+                    or "have a great night" in input_text.lower() \
+                    or self.turn_i >= 10:
+                    print(f"user: {input_text}\n$$$$$$$$")
+                    self.past = None
+                    return
+                    # return "ARDM MEMORY RESTARTS!"
+
+                print(f"user: {input_text}\n$$$$$$$$")
             # system-side
-            sys_sent = self.sys_respond_and_update(past_is_None=past_is_None)
+            sys_sent, [sents_success, sents_failed], have_enough_candidates = self.sys_respond_and_update(mode=mode)
             turn_responses = ["usr: "+input_text,
                               "sys: "+sys_sent]
         
         self.logs['global_profiles'].append(self.global_profile.get_profiles())
         self.logs['responses'].append(turn_responses)
-        return sys_sent
+        return sys_sent, [sents_success, sents_failed], have_enough_candidates
 
-    def sample_one_sent(self, past):
-        prev_input = self.tokenizer.encode("A:")
-        prev_input = torch.LongTensor(prev_input).unsqueeze(0).to(self.device)
+    def generate_user_utt_self_play(self):
+        input_text, self.past, self.b_hidden_states = self.sample_one_sent(past=self.past, model=self.model_B, prefix="B:")
+        # 
+        # input("pause")
 
+        input_texts = sent_tokenize(input_text)
+        input_texts_labels, _ = self.global_profile.regex_label(self.model_clf,
+                                                                input_texts, 
+                                                                which_task="B")
+        self.model_clf.set_past(sent=input_text, 
+                                which_task="B")
+        self.global_profile.update(sents=input_texts, sent_labels=input_texts_labels, who=self.domain.USR) #self.usr_profile.update(input_text, self.last_sys_labels)
+        self.last_sent = input_text
+        self.turn_i += 1
+
+        # finish tail
+        if self.past is not None and self.model_B.device != self.past[0].device:
+            past = [p.to(self.model_B.device) for p in self.past]
+            self.past = past
+
+        prev_input = torch.LongTensor(self.eos).unsqueeze(0).to(self.device2)
+        _, self.past, self.b_hidden_states = self.model_B(prev_input, past=self.past)
+
+        return input_text
+
+    def sample_one_sent(self, past, model, prefix="A:"):
+        prev_input = self.tokenizer.encode(prefix)
+        if prefix == "A:":
+           prev_input = torch.LongTensor(prev_input).unsqueeze(0).to(self.device1)
+        else:
+           prev_input = torch.LongTensor(prev_input).unsqueeze(0).to(self.device2)
+
+        if past is not None and model.device != past[0].device:
+            past = [p.to(model.device) for p in past]
         """Sampling based method"""
         sent = []
-        pdb.set_trace()
+        # pdb.set_trace()
         with torch.no_grad():
-            for i in range(200):
-                logits, past, hidden_states = self.model_A(prev_input, past=past)
+            import pdb
+            # pdb.set_trace()
+            for i in range(self.max_sequence_len):
+                logits, past, hidden_states = model(prev_input, past=past)
                 logits = logits[:, -1, :] / self.temperature
                 logits = top_filtering(logits, top_k=500, top_p=0.9)
                 # prev_input = logits.argmax(-1).unsqueeze(1)
@@ -252,15 +283,82 @@ class PersuasiveBot:
 
                 if prev_word == 628:
                     break
-                elif prev_word == self.tokenizer.encoder["[EOS]"]:
-                    past = None
-                    return "ARDM MEMORY RESTARTS!", past
-                    break
+                # elif prev_word == self.tokenizer.encoder["[EOS]"]:
+                #     past = None
+                #     return "ARDM MEMORY RESTARTS!", past
+                #     break
                 else:
                     sent.append(prev_word)
         return self.tokenizer.decode(sent), past, hidden_states
 
+    def sample_one_sent_test(self, past, model, sent, prefix="A:"):
+        prev_input = self.tokenizer.encode(prefix+sent)
+        prev_input = torch.LongTensor(prev_input).unsqueeze(0).to(self.device1)
+        
+        """Sampling based method"""
+        sent = []
+        # pdb.set_trace()
+        with torch.no_grad():
+            logits, past, hidden_states = model(prev_input, past=past)
+            # for i in range(200):
+            #     logits, past, hidden_states = model(prev_input, past=past)
+            #     logits = logits[:, -1, :] / self.temperature
+            #     logits = top_filtering(logits, top_k=500, top_p=0.9)
+            #     # prev_input = logits.argmax(-1).unsqueeze(1)
+            #     probs = F.softmax(logits, -1)
+            
+            #     prev_input = torch.multinomial(probs, num_samples=1)
+            #     prev_word = prev_input.item()
+                
+
+            #     if prev_word == 628:
+            #         break
+            #     # elif prev_word == self.tokenizer.encoder["[EOS]"]:
+            #     #     past = None
+            #     #     return "ARDM MEMORY RESTARTS!", past
+            #     #     break
+            #     else:
+            #         sent.append(prev_word)
+        return past, hidden_states
+
+    def sample_one_sent_test_2(self, past, model, sent, prefix="A:"):
+        prev_input = self.tokenizer.encode(prefix)
+        prev_input = torch.LongTensor(prev_input).unsqueeze(0).to(self.device1)
+        
+        encoded_sent = self.tokenizer.encode(sent)
+        """Sampling based method"""
+        sent = []
+        # pdb.set_trace()
+        with torch.no_grad():
+            logits, past, hidden_states = model(prev_input, past=past)
+            for tok in encoded_sent:
+                prev_input = torch.LongTensor(tok).unsqueeze(0).to(self.device1)
+                logits, past, hidden_states = model(prev_input, past=past)
+                # torch.cuda.empty_cache()
+            # for i in range(200):
+            #     logits, past, hidden_states = model(prev_input, past=past)
+            #     logits = logits[:, -1, :] / self.temperature
+            #     logits = top_filtering(logits, top_k=500, top_p=0.9)
+            #     # prev_input = logits.argmax(-1).unsqueeze(1)
+            #     probs = F.softmax(logits, -1)
+            
+            #     prev_input = torch.multinomial(probs, num_samples=1)
+            #     prev_word = prev_input.item()
+                
+
+            #     if prev_word == 628:
+            #         break
+            #     # elif prev_word == self.tokenizer.encoder["[EOS]"]:
+            #     #     past = None
+            #     #     return "ARDM MEMORY RESTARTS!", past
+            #     #     break
+            #     else:
+            #         sent.append(prev_word)
+        return past, hidden_states
+
     def reload(self):
+        # torch.cuda.empty_cache()
+        self.model_clf.reload()
         self.past = None
         self.b_hidden_states = None
         self.human_demonstrations = []
@@ -271,7 +369,7 @@ class PersuasiveBot:
         self.last_sys_labels = None
 
         # initialize params
-        self.context = '<Start>'
+        self.last_sent = '<Start>'
         self.turn_i = 0
         self.cnt = 0
         
@@ -280,37 +378,111 @@ class PersuasiveBot:
                      'global_profiles': [],
                      'responses': []}
 
-        print("reloaded")
+        print("reloaded\n\n")
 
-    def print_candidates(self, candidates, edited_candidates, sent_act_candidates, scores=None):
+    def print_candidates(self, candidates, edited_candidates, sent_act_candidates, scores=None, failed_candidates=None):
         log_this_turn = []
-        print("=== candidates, len={} ===".format(len(candidates)))
+        sents_success, sents_failed = [], []
+        if cfg.print_candidates:
+            print("=== candidates, len={} ===".format(len(candidates)))
         log_this_turn.append("=== candidates, len={} ===".format(len(candidates)))
         
-        for c, edited_c, act, s in zip(candidates, edited_candidates, sent_act_candidates, scores):
-            c = " ".join(c)
-            edited_c = " ".join(edited_c)
-            if c != edited_c:
-                print("--------- different from edited candidates: act: {}, score: {}----------".format(act, s))
-                print(c)
-                print(edited_c)
-                log_this_turn.append("--------- different from edited candidates: act: {}, score: {}----------".format(act, s))
-                log_this_turn.append(c)
-                log_this_turn.append(edited_c)
-            else:
-                print("----------------- act: {}, score : {}---------------------------".format(act, s))
-                print(edited_c)
-                log_this_turn.append("----------------- act: {}, score : {}---------------------------".format(act, s))
-                log_this_turn.append(edited_c)
-        print("==================")
-        log_this_turn.append("==================")
-        self.logs['candidates'].append(log_this_turn)
+        if type(scores[0]) is not bool:
+            for c, edited_c, act, s in zip(candidates, edited_candidates, sent_act_candidates, scores):
+                c = " ".join(c)
+                edited_c = " ".join(edited_c)
+                if c != edited_c:
+                    if cfg.print_candidates:
+                        print("--------- different from edited candidates: act: {}, score: {}----------".format(act, s))
+                        print(c)
+                        print(edited_c)
+                    sents_success.append(edited_c)
+                    log_this_turn.append("--------- different from edited candidates: act: {}, score: {}----------".format(act, s))
+                    log_this_turn.append(c)
+                    log_this_turn.append(edited_c)
+                else:
+                    if cfg.print_candidates:
+                        print("----------------- act: {}, score : {}---------------------------".format(act, s))
+                        print(edited_c)
+                    log_this_turn.append("----------------- act: {}, score : {}---------------------------".format(act, s))
+                    log_this_turn.append(edited_c)
+                    sents_success.append(edited_c)
+            if cfg.print_candidates:
+                print("==================")
+            log_this_turn.append("==================")
+            self.logs['candidates'].append(log_this_turn)
+
+            if failed_candidates:
+                i = 0
+                for sent, act, reason, past, hidden_states in failed_candidates:
+                    sent = " ".join(sent)
+                    sents_failed.append(sent)
+                    if cfg.print_candidates:
+                        print("----------------- failed candidates: reason: {}  ---------------------------".format(reason))
+                        print("{}".format(sent))
+                    i += 1
+        else:
+            scores, failed_scores = scores[:len(edited_candidates)], scores[len(edited_candidates):]
+            for c, edited_c, act, s in zip(candidates, edited_candidates, sent_act_candidates, scores):
+                c = " ".join(c)
+                edited_c = " ".join(edited_c)
+                if c != edited_c:
+                    to_print = "--------- different from edited candidates: act: {}, score: {}----------".format(act, s)
+                    if s is True:
+                        to_print = "SELECTED " + to_print 
+                        sents_success.append(edited_c)
+                    else:
+                        sents_failed.append(edited_c)
+                    if cfg.print_candidates:
+                        print(to_print)
+                        print(c)
+                        print(edited_c)
+                    log_this_turn.append(to_print)
+                    log_this_turn.append(c)
+                    log_this_turn.append(edited_c)
+                    
+                else:
+                    to_print = "----------------- act: {}, score : {} ---------------------".format(act, s)
+                    if s is True:
+                        to_print = "SELECTED " + to_print 
+                        sents_success.append(edited_c)
+                    else:
+                        sents_failed.append(edited_c)
+                    if cfg.print_candidates:
+                        print(to_print)
+                        print(edited_c)
+                    log_this_turn.append(to_print)
+                    log_this_turn.append(edited_c)
+                    
+            if cfg.print_candidates:    
+                print("==================")
+            log_this_turn.append("==================")
+            self.logs['candidates'].append(log_this_turn)
+
+            if failed_candidates:
+                try:
+                    i = 0
+                    for sent, act, reason, past, hidden_states in failed_candidates:
+                        sent = " ".join(sent)
+                        to_print = "----------------- failed candidates: reason: {}  -------------------".format(reason)
+                        if failed_scores[i] is True:
+                            to_print = "SELECTED " + to_print
+                        if cfg.print_candidates:
+                            print(to_print)
+                            print("{}".format(sent))
+                        i += 1
+                        sents_failed.append(sent)
+                except:
+                    import pdb
+                    pdb.set_trace()
+
+        return sents_success, sents_failed
 
     def print_all_generated_candidates(self, candidates, edited_candidates, sent_act_candidates,
                                              failed_candidates):
-        # log_this_turn = []
+        log_this_turn = []
         print("=== candidates, len={} ===".format(len(candidates)))
-        # log_this_turn.append("=== candidates, len={} ===".format(len(candidates)))
+        log_this_turn.append("=== candidates, len={} ===".format(len(candidates)))
         
         i = 0
         for c, edited_c, act in zip(candidates, edited_candidates, sent_act_candidates):
@@ -319,15 +491,16 @@ class PersuasiveBot:
             if c != edited_c:
                 print("--------- different from edited candidates: act: {} ----------".format(act))
                 print("{}). {}".format(i, c))
+                print("edit to -->")
                 print(edited_c)
-                # log_this_turn.append("--------- different from edited candidates: act: {} ----------".format(act))
-                # log_this_turn.append(c)
-                # log_this_turn.append(edited_c)
+                log_this_turn.append("--------- different from edited candidates: act: {} ----------".format(act))
+                log_this_turn.append(c)
+                log_this_turn.append(edited_c)
             else:
                 print("----------------- act: {} ---------------------------".format(act))
                 print("{}). {}".format(i, edited_c))
-                # log_this_turn.append("----------------- act: {} ---------------------------".format(act))
-                # log_this_turn.append(edited_c)
+                log_this_turn.append("----------------- act: {} ---------------------------".format(act))
+                log_this_turn.append(edited_c)
             i += 1
         print("==================")
 
@@ -336,8 +509,8 @@ class PersuasiveBot:
             print("{}). {}".format(i, sent))
             i += 1
 
-        # log_this_turn.append("==================")
-        # self.logs['candidates'].append(log_this_turn)
+        log_this_turn.append("==================")
+        self.logs['candidates'].append(log_this_turn)
 
     def select_candidates(self, sent_candidates, sent_candidate_conflict_scores, sent_act_candidates, past_candidates):
         
@@ -348,7 +521,7 @@ class PersuasiveBot:
                 one_minus_score = 1 - np.array(sent_candidate_conflict_scores)
                 normalized_score = one_minus_score/(one_minus_score.sum())
 
-                if cfg.candidate_select_strategy == cfg.REPETITION_RATIO:
+                if cfg.candidate_select_strategy in [cfg.REPETITION_RATIO, cfg.IMITATION_LEARNING_SELECTION]:
                     # if cfg.debug:
                     #     print("~~~~~~~~in select_candidates~~~~~~~~~")
                     #     print("normalized_score: {}".format(normlized_score))
@@ -358,6 +531,8 @@ class PersuasiveBot:
                                         replace=False, p=normalized_score)[0], normalized_score
                 elif cfg.candidate_select_strategy == cfg.FIRST_OF_CANDIDATES:
                     return 0, normalized_score
+                else:
+                    raise ValueError(f"{cfg.candidate_select_strategy} is not supported in select_index()")
 
         selected_by_func = select_index()
         sents, sent_acts, past, scores = self.apply_human_rule(sent_candidates, sent_act_candidates, past_candidates,
@@ -370,7 +545,7 @@ class PersuasiveBot:
         rule_results = [self.human_rule.enforce(sents, sent_acts, past)
                         for sents, sent_acts, past in zip(sent_candidates, sent_act_candidates, past_candidates)]
         
-        if cfg.debug:
+        if cfg.verbose:
             pass
             print("rule_result:\n")
             print(rule_results)
@@ -395,7 +570,11 @@ class PersuasiveBot:
 
                 # encode the enforced rule sentences
                 prev_input = self.tokenizer.encode(" "+" ".join(enforced_sents))
-                prev_input = torch.LongTensor(prev_input).unsqueeze(0).to(self.device)
+                prev_input = torch.LongTensor(prev_input).unsqueeze(0).to(self.device1)
+
+                if past is not None and self.model_A.device != past[0].device:
+                    past = [p.to(self.model_A.device) for p in past]
+
                 _, past, hidden_state = self.model_A(prev_input, past=past)
 
                 # concatenate the enforced sentences from rule
@@ -436,7 +615,7 @@ class PersuasiveBot:
         failed_rule_results = [self.human_rule.enforce(sents, sent_acts, past) \
                               for sents, sent_acts, fail_reason, past, hidden_states in failed_candidates]
         
-        if cfg.debug:
+        if cfg.verbose:
             pass
             print("rule_result:\n")
             print(rule_results)
@@ -447,7 +626,11 @@ class PersuasiveBot:
                 enforced_sents, enforced_acts = rule_result
                 # encode the enforced rule sentences
                 prev_input = self.tokenizer.encode(" "+" ".join(enforced_sents))
-                prev_input = torch.LongTensor(prev_input).unsqueeze(0).to(self.device)
+                prev_input = torch.LongTensor(prev_input).unsqueeze(0).to(self.device1)
+                
+                if past is not None and self.model_A.device != past[0].device:
+                    past = [p.to(self.model_A.device) for p in past]
+
                 _, past, hidden_state = self.model_A(prev_input, past=past)
 
                 # concatenate the enforced sentences from rule
@@ -465,7 +648,11 @@ class PersuasiveBot:
                 enforced_sents, enforced_acts = rule_result
                 # encode the enforced rule sentences
                 prev_input = self.tokenizer.encode(" "+" ".join(enforced_sents))
-                prev_input = torch.LongTensor(prev_input).unsqueeze(0).to(self.device)
+                prev_input = torch.LongTensor(prev_input).unsqueeze(0).to(self.device1)
+
+                if past is not None and self.model_A.device != past[0].device:
+                    past = [p.to(self.model_A.device) for p in past]
+
                 _, past, hidden_state = self.model_A(prev_input, past=past)
 
                 # concatenate the enforced sentences from rule
@@ -487,8 +674,9 @@ class PersuasiveBot:
         except:
             return usr_input        
 
-    def sys_respond_and_update(self, past_is_None):
+    def sys_respond_and_update(self, mode):
         # start A's utterance
+        past_is_None = (self.past is None)
         sent_candidates, edited_sent_candidates, sent_candidate_conflict_scores, sent_act_candidates, past_candidates, hidden_states_candidates = [], [], [], [], [], []
         have_enough_candidates = False
         num_rounds = 0
@@ -496,11 +684,18 @@ class PersuasiveBot:
         while not have_enough_candidates and num_rounds < int(cfg.MAX_NUM_CANDIDATES/cfg.NUM_CANDIDATES):
             num_rounds += 1
             for _ in range(cfg.NUM_CANDIDATES):
-                sent, past, hidden_states = self.sample_one_sent(past=self.past)
+                sent, past, hidden_states = self.sample_one_sent(past=self.past, model=self.model_A)                
+                # past_test, hidden_states_test = self.sample_one_sent_test(past=self.past, model=self.model_A, sent=sent)
+                # # past_test_2, hidden_states_test_2 = self.sample_one_sent_test_2(past=self.past, model=self.model_A, sent=sent)
+                # if self.turn_i in [0, 5] and _ in [0, 9]:
+                #     pdb.set_trace()
                 sents = sent_tokenize(sent)
                 
                 # use regex to re-label
-                sent_acts = self.global_profile.regex_label(sents, self.context, self.turn_i)
+                sent_acts, _ = self.global_profile.regex_label(self.model_clf,
+                                                               sents, 
+                                                               which_task="A")
+                                                               
 
                 # check conflict condition
                 # conflict_status_with_sys, conflict_amount_with_sys, edited_sents, edited_sent_acts = self.sys_profile.check_conflict(sents, sent_acts)
@@ -523,21 +718,24 @@ class PersuasiveBot:
                     failed_candidates.append([sents, sent_acts, fail_reason, past, hidden_states])
 
             have_enough_candidates = (len(past_candidates) > 0)
-        if not have_enough_candidates:
+        if (not have_enough_candidates):
             # as long as it's not a contradiction, randomly pick one 
-                if cfg.debug:
-                    print("no enough candidates! randomly generate the next one!")
-                sent, past, hidden_states = self.sample_one_sent(past=self.past)
-                sents = sent_tokenize(sent)
+            if cfg.debug:
+                print("no enough candidates! randomly generate the next one!")
+            sent, past, hidden_states = self.sample_one_sent(past=self.past, model=self.model_A)
+            sents = sent_tokenize(sent)
 
-                sent_acts = self.global_profile.regex_label(sents, self.context, self.turn_i)
-                sent_candidates.append(sents)
-                edited_sent_candidates.append(sents)
-                sent_candidate_conflict_scores.append(0)
-                sent_act_candidates.append(sent_acts)
-                past_candidates.append(past)
-                hidden_states_candidates.append(hidden_states)
-        
+            sent_acts, _ = self.global_profile.regex_label(self.model_clf,
+                                                           sents, 
+                                                           which_task="A")
+            sent_candidates.append(sents)
+            edited_sent_candidates.append(sents)
+            sent_candidate_conflict_scores.append(0)
+            sent_act_candidates.append(sent_acts)
+            past_candidates.append(past)
+            hidden_states_candidates.append(hidden_states)
+
+
         self.logs['failed_candidates'].append(failed_candidates)
 
         # check consistency and pick one candidate
@@ -550,50 +748,152 @@ class PersuasiveBot:
                                                 failed_candidates)
             human_selected_ids = self.human_select_candidates()
             if type(human_selected_ids) is list:
-                selected_i = human_selected_ids[0]
-                if True:
-                    sents, sent_acts, past = sent_candidates[selected_i], sent_act_candidates[selected_i], past_candidates[selected_i]
+                selected_i = np.random.choice(human_selected_ids)
+                if False:
+                    if selected_i < len(sent_candidates):
+                        sents, sent_acts, past = sent_candidates[selected_i], sent_act_candidates[selected_i], past_candidates[selected_i]
+                    else:
+                        failed_candidate = failed_candidates[selected_i-len(sent_candidates)]
+                        sents, sent_acts, past = failed_candidate[0], failed_candidate[1], failed_candidate[3]
                 else:
-                    sents, sent_acts, past = edited_sent_candidates[selected_i], sent_act_candidates[selected_i], past_candidates[selected_i]
-                self.log_human_demonstration(sent_candidates, edited_sent_candidates, sent_act_candidates, past_candidates, hidden_states_candidates,
+                    if selected_i < len(edited_sent_candidates):
+                        sents, sent_acts, past = edited_sent_candidates[selected_i], sent_act_candidates[selected_i], past_candidates[selected_i]
+                    else:
+                        failed_candidate = failed_candidates[selected_i-len(edited_sent_candidates)]
+                        sents, sent_acts, past = failed_candidate[0], failed_candidate[1], failed_candidate[3]
+                sents_success, sents_failed = self.log_human_demonstration(sent_candidates, edited_sent_candidates, sent_act_candidates, past_candidates, 
+                                            hidden_states_candidates,
                                             failed_candidates, human_selected_ids)
             else:
                 prev_input = self.tokenizer.encode("A:" + human_selected_ids)
-                prev_input = torch.LongTensor(prev_input).unsqueeze(0).to(self.device)
+                prev_input = torch.LongTensor(prev_input).unsqueeze(0).to(self.device1)
+
+                if self.past is not None and self.model_A.device != self.past[0].device:
+                    past = [p.to(self.model_A.device) for p in self.past]
+                    self.past = past
 
                 _, past, hidden_state = self.model_A(prev_input, past=self.past)
 
                 sent = human_selected_ids
                 sents = sent_tokenize(sent)
-                sent_acts = self.global_profile.regex_label(sents, self.context, self.turn_i)
+                sent_acts, _ = self.global_profile.regex_label(self.model_clf,
+                                                               sents, 
+                                                               which_task="A")
                 
-                self.log_human_demonstration(sent_candidates, edited_sent_candidates, sent_act_candidates, past_candidates, hidden_states_candidates,
+                sents_success, sents_failed = self.log_human_demonstration(sent_candidates, edited_sent_candidates, sent_act_candidates, past_candidates, hidden_states_candidates,
                                             failed_candidates, human_selected_ids=[], human_added_candidates=[[sents, sent_acts, past, hidden_state]])
                 
             
+        elif cfg.candidate_select_strategy == cfg.IMITATION_LEARNING_SELECTION:
+            sent_candidates, edited_sent_candidates, sent_act_candidates, past_candidates,\
+            failed_candidates = self.edit_with_human_rule(sent_candidates, edited_sent_candidates, sent_act_candidates, past_candidates,\
+                             failed_candidates)            
+            model_selected_id_for_success_candidates, model_selected_id_for_failed_candidates = self.il_model_select_candidates(sent_candidates, 
+                                                              edited_sent_candidates, 
+                                                              sent_act_candidates, 
+                                                              past_candidates, 
+                                                              hidden_states_candidates,
+                                                              failed_candidates)
+            selected_T_F = [True if i in model_selected_id_for_success_candidates + model_selected_id_for_failed_candidates else False \
+                            for i in range(len(edited_sent_candidates)+len(failed_candidates))]
+            if len(model_selected_id_for_success_candidates) > 0:
+                selected_i = np.random.choice(model_selected_id_for_success_candidates)
+                sents, sent_acts, past = edited_sent_candidates[selected_i], sent_act_candidates[selected_i], \
+                                                 past_candidates[selected_i]
+
+            # elif len(model_selected_id_for_failed_candidates) > 0:
+            #     selected_i = np.random.choice(model_selected_id_for_failed_candidates)
+            #     failed_candidate = failed_candidates[selected_i-len(edited_sent_candidates)]
+            #     sents, sent_acts, past = failed_candidate[0], failed_candidate[1], failed_candidate[3]
+
+            else:
+                sents, sent_acts, past, scores = self.select_candidates(edited_sent_candidates, sent_candidate_conflict_scores, sent_act_candidates, past_candidates)
+            # if not cfg.self_play_mode:
+            sents_success, sents_failed = self.print_candidates(sent_candidates, edited_sent_candidates, sent_act_candidates, selected_T_F, failed_candidates)
         else:
             sents, sent_acts, past, scores = self.select_candidates(edited_sent_candidates, sent_candidate_conflict_scores, sent_act_candidates, past_candidates)
-            self.print_candidates(sent_candidates, edited_sent_candidates, sent_act_candidates, scores)
+            # if not cfg.self_play_mode:
+            sents_success, sents_failed = self.print_candidates(sent_candidates, edited_sent_candidates, sent_act_candidates, scores, failed_candidates)
         
         # check conflict within the sents
         sents, sent_acts = self.check_conflict_within_selected_sents(sents, sent_acts)
         
-        self.global_profile.update(sents=sents, sent_labels=sent_acts, who=self.domain.SYS) #self.last_sys_labels = self.sys_profile.update(sys_texts=sents, sys_labels=sent_acts)
 
-        # join sentences! finally!
-        sent = " ".join(sents)
-        if sent == "ARDM MEMORY RESTARTS!":
-            self.past = None
-            return "ARDM MEMORY RESTARTS!"
-        self.past = past
+        # update
+        if mode != cfg.supervised_mode:
+            self.global_profile.update(sents=sents, sent_labels=sent_acts, who=self.domain.SYS) #self.last_sys_labels = self.sys_profile.update(sys_texts=sents, sys_labels=sent_acts)
 
-        # print("A:" + tokenizer.decode(sent))
-        # finish tail
-        prev_input = torch.LongTensor(self.eos).unsqueeze(0).to(self.device)
-        pdb.set_trace()
-        _, self.past, hidden_states = self.model_A(prev_input, past=self.past)
+            # join sentences! finally!
+            sent = " ".join(sents)
+            # if sent == "ARDM MEMORY RESTARTS!":
+            #     self.past = None
+            #     return "ARDM MEMORY RESTARTS!"
+            self.past = past
+            # set past for model_clf
+            self.model_clf.set_past(sent=sent, 
+                                    which_task="A")
+
+            # print("A:" + tokenizer.decode(sent))
+            # finish tail
+            prev_input = torch.LongTensor(self.eos).unsqueeze(0).to(self.device1)
+            # pdb.set_trace()
+            if self.past is not None and self.model_A.device != self.past[0].device:
+                past = [p.to(self.model_A.device) for p in self.past]
+                self.past = past
+
+            _, self.past, hidden_states = self.model_A(prev_input, past=self.past)
+
+
+        else:
+            sent = " ".join(sents)
+
+        return sent, [sents_success, sents_failed], have_enough_candidates
+
+    def il_model_select_candidates(self, sent_candidates, 
+                                   edited_sent_candidates, 
+                                   sent_act_candidates, 
+                                   past_candidates,
+                                   hidden_states_candidates, 
+                                   failed_candidates):
+        left_id_for_success_candidates = []
+        left_id_for_failed_candidates = []
+        i = 0
+        for sent, edited_sent, sent_act, past, hidden_state in zip(sent_candidates, edited_sent_candidates,
+                                                                   sent_act_candidates, past_candidates, hidden_states_candidates):
+            # pdb.set_trace()
+            if type(edited_sent) is not list:
+                edited_sent = [edited_sent]
+            clf_predicted_acts, clf_past = self.model_clf.predict(separate_sents=edited_sent, 
+                                                                  which_task="TF")
+            
+            # if hidden_state[-1] is not None:
+            #     if hidden_state[-1].device != self.model_clf.device:
+            #         last_hidden_state = hidden_state[-1].to(self.model_clf.device)
+            #     else:
+            #         last_hidden_state = hidden_state[-1]
+            # outputs = self.model_clf(hidden_states=last_hidden_state)
+            # _, predicted_label = torch.max(outputs, 1)
+
+            if clf_predicted_acts == 1:#type(predicted_label.item()) is int and predicted_label.item() == 1:
+                left_id_for_success_candidates.append(i)
+            i += 1
         
-        return sent
+        for sent, sent_act, reason, past, hidden_state in failed_candidates:
+            # if hidden_state[-1] is not None and hidden_state[-1].device != self.model_clf.device:
+            #     last_hidden_state = hidden_state[-1].to(self.model_clf.device)
+            # outputs = self.model_clf(hidden_states=last_hidden_state)
+            # _, predicted_label = torch.max(outputs, 1)
+
+            # if type(predicted_label.item()) is int and predicted_label.item() == 1:
+            #     left_id_for_failed_candidates.append(i)
+            if type(sent) is not list:
+                sent = [sent]
+            clf_predicted_acts, clf_past = self.model_clf.predict(separate_sents=sent, 
+                                                                  which_task="TF")
+            if clf_predicted_acts == 1:
+                left_id_for_failed_candidates.append(i)
+
+        return left_id_for_success_candidates, left_id_for_failed_candidates
 
     def check_conflict_within_selected_sents(self, sents, sent_acts):
         statuses = [True]*len(sents)
@@ -615,29 +915,37 @@ class PersuasiveBot:
         return edited_sents, edited_sent_acts
 
     def save(self):
-        print("\n")
+        # print("\n")
         logging.debug("\n")
         logging.debug("*************************** new dialog ****************************************")
         for turn_i in range(len(self.logs['responses'])):
             for k in ['responses', 'candidates', 'failed_candidates', 'global_profiles']:
-                print("{}\n".format(k))
-                print("-"*100)
+                # print("{}\n".format(k))
+                # print("-"*100)
                 logging.debug("{}\n".format(k))
                 if k in ['responses', 'candidates', 'failed_candidates']:
-                    for a in self.logs[k][turn_i]:
-                        print(a)
-                        logging.debug(a)
+                    try:
+                        if k == "failed_candidates":
+                            for a in self.logs[k][turn_i]:
+                                sents, sent_acts, fail_reason, past, hidden_states = a
+                                logging.debug("------------failed_candidates: {} - reason: {}-----------".format(sent_acts, fail_reason))
+                                logging.debug(sents)
+                        for a in self.logs[k][turn_i]:
+                            # print(a)
+                            logging.debug(a)
+                    except:
+                        pdb.set_trace()
                 else:
                     for world in self.logs[k][turn_i]:                        
                         for profile in self.logs[k][turn_i][world]:
-                            print("*******{}: {}*******".format(world, profile))
+                            # print("*******{}: {}*******".format(world, profile))
                             logging.debug("*******{}: {}*******".format(world, profile))
                             for key, value in self.logs[k][turn_i][world][profile].items():
-                                print("{}: {}".format(key, value))
+                                # print("{}: {}".format(key, value))
                                 logging.debug("{}: {}".format(key, value))
-                            print("")
+                            # print("")
                             logging.debug("")
-            print("\n")
+            # print("\n")
             logging.debug("\n")
         
         logging.debug("*************************** dialog end ****************************************")
@@ -646,10 +954,11 @@ class PersuasiveBot:
                                       failed_candidates, human_selected_ids,
                                       human_added_candidates=None):
         # records = {}
+        sents_success, sents_failed = [], []
         csv_records = []
         context = deepcopy(self.global_profile.history)
         context_act = deepcopy(self.global_profile.history_label)
-        hidden_states_before_generation = deepcopy(self.b_hidden_states) if self.b_hidden_states is None else self.b_hidden_states.clone().detach()#deepcopy(self.b_hidden_states)
+        hidden_states_before_generation = deepcopy(self.b_hidden_states) if self.b_hidden_states is None else self.b_hidden_states[-1].clone().detach()#deepcopy(self.b_hidden_states)
         past_before_generation = deepcopy(self.past) if self.past is None else self.past[-1].clone().detach()#[p.clone().detach() for p in self.past]#deepcopy(self.past)
         sys_world_sys_profile = deepcopy(self.global_profile.sys_world.sys_profile)
         sys_world_usr_profile = deepcopy(self.global_profile.sys_world.usr_profile)
@@ -669,8 +978,9 @@ class PersuasiveBot:
         i = 0
         for sent, edited_sent, sent_act, past, hidden_state in zip(sent_candidates, edited_sent_candidates,
                                                                    sent_act_candidates, past_candidates, hidden_states_candidates):
+            # pdb.set_trace()
             record = {
-                      'hidden_states_after_generation': hidden_state.clone().detach(),#deepcopy(hidden_state),
+                      'hidden_states_after_generation': hidden_state[-1].clone().detach(),#deepcopy(hidden_state),
                       'past_after_generation': past[-1].clone().detach(),#[p.clone().detach() for p in past],
                       'sent': sent,
                       'edited_sent': edited_sent,
@@ -684,10 +994,14 @@ class PersuasiveBot:
             records['individual_features'].append(record)
             csv_records.append(csv_record)
             i += 1
+            if i in human_selected_ids:
+                sents_success.append(edited_sent)
+            else:
+                sents_failed.append(edited_sent)
 
         for sent, sent_act, reason, past, hidden_state in failed_candidates:
             record = {
-                      'hidden_states_after_generation': hidden_state.clone().detach(),#deepcopy(hidden_state),
+                      'hidden_states_after_generation': hidden_state[-1].clone().detach(),#deepcopy(hidden_state),
                       'past_after_generation': past[-1].clone().detach(),#[p.clone().detach() for p in past],,
                       'sent': sent,
                       'edited_sent': sent,
@@ -701,11 +1015,16 @@ class PersuasiveBot:
             records['individual_features'].append(record)
             csv_records.append(csv_record)
             i += 1
+            if i in human_selected_ids:
+                sents_success.append(sent)
+            else:
+                sents_failed.append(sent)
+
 
         if human_added_candidates is not None:
             for sent, sent_act, past, hidden_state in human_added_candidates:
                 record = {
-                        'hidden_states_after_generation': hidden_state.clone().detach(),#deepcopy(hidden_state),
+                        'hidden_states_after_generation': hidden_state[-1].clone().detach(),#deepcopy(hidden_state),
                         'past_after_generation': past[-1].clone().detach(),#[p.clone().detach() for p in past],,
                         'sent': sent,
                         'edited_sent': sent,
@@ -715,10 +1034,11 @@ class PersuasiveBot:
                         'pick_or_not': True, 
                         }
                 csv_record = [context, context_act, sys_world_sys_profile, sys_world_usr_profile, usr_world_sys_profile, usr_world_usr_profile, 
-                            sent, sent, sent_act, reason, True, i in human_selected_ids]
+                            sent, sent, sent_act, "human_added_sentence", False, True]
                 records['individual_features'].append(record)
                 csv_records.append(csv_record)
                 i += 1
+                sents_success.append(sent)
 
 
         if not os.path.exists(cfg.demonstration_csv):
@@ -745,35 +1065,52 @@ class PersuasiveBot:
             with open(cfg.demonstration_pkl, "wb") as fh:
                 pkl.dump([records], fh)
         
+        return sents_success, sents_failed
 
 if __name__ == "__main__":
     logging.basicConfig(filename=cfg.log_file,level=logging.DEBUG)
     
 
     bot = PersuasiveBot()
-    bot.reload()
+    pdb.set_trace()
+    # bot.reload()
     user_text = ""
-    signal.signal(signal.SIGINT, signal.default_int_handler)
+    # signal.signal(signal.SIGINT, signal.default_int_handler)
 
-    while True:
+    MAX_DIALOGS = 2
+    dial_i = 0
+    while dial_i < MAX_DIALOGS:
         try:
             if bot.past is not None:
-                user_text  = input("user: ")
+                if cfg.mode != cfg.self_play_mode:
+                    user_text  = input("user: ")
+                else:
+                    user_text = None
             else:
+                dial_i += 1
+                print("\n\n\n")
                 print("INIT MEMORY!")
                 bot.save()
                 bot.reload()
             
-            response = bot.chat(user_text, 0)
+
+            result = bot.chat(input_text=user_text, mode=cfg.mode)
+            if result is not None:
+                response, [sents_success, sents_failed], have_enough_candidates = result
             if cfg.candidate_select_strategy != cfg.HUMAN_SELECTION:
-                bot.global_profile.print()
+                if cfg.verbose:
+                    bot.global_profile.print()
             
-            if response == "ARDM MEMORY RESTARTS!":
-                print("ARDM MEMORY RESTARTS!")
-            else:
+            # if response == "ARDM MEMORY RESTARTS!":
+            #     print("ARDM MEMORY RESTARTS!")
+            # else:
+            if result is not None:
+                print("Turn {}".format(bot.turn_i))
                 print("system: ", response)
-            print("$$$$$$$$$$$$$$$$$$$$$\n\n\n\n\n\n")
+            print("$$$$$$$$$$$$$$$$$$$$$")
 
         except KeyboardInterrupt:
             bot.save()
             sys.exit()
+
+        

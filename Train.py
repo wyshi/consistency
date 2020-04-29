@@ -19,9 +19,10 @@ import time
 from torch.utils.tensorboard import SummaryWriter
 from apex import amp
 from allennlp.training.checkpointer import Checkpointer
-from gpt_model import GPT2SimpleLM
-from pytorch_pretrained_bert import GPT2Tokenizer, OpenAIAdam, GPT2Model
+# from gpt_model import GPT2SimpleLM
+# from pytorch_pretrained_bert import GPT2Tokenizer, OpenAIAdam, GPT2Model
 # from torchfly.criterions import SequenceFocalLoss, SequenceCrossEntropyLoss
+from transformers import GPT2LMHeadModel, GPT2Tokenizer, AdamW, WarmupLinearSchedule
 from torchfly.modules.losses import SequenceFocalLoss, SequenceCrossEntropyLoss
 from UnlikelihoodLoss import SequenceUnlikelihoodLoss
 # In[2]:
@@ -37,13 +38,45 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3,4,5,6,7"
 # In[3]:
 
 
+# class PersuadeDataset(Dataset):
+#     def __init__(self, data, tokenizer):
+#         self.data = data
+#         self.tokenizer = tokenizer
+#         self.tokenizer.max_len = 1500
+#         self.turn_ending = tokenizer.encode("\n\n\n")
+#         self.dialog_ending = [tokenizer.encoder["[EOS]"]]
+        
+#     def __len__(self):
+#         return len(self.data)
+    
+#     def __getitem__(self, index):
+#         dial_tokens = [tokenizer.encode(item) + self.turn_ending for item in self.data[index]]
+#         role_ids = [0 if item[0] == 32 else 1 for item in dial_tokens]
+#         dial_tokens[-1] = dial_tokens[-1][:-2] + self.dialog_ending
+#         return role_ids, dial_tokens
+        
+
+# class Collate_Function:
+#     """This function handles batch collate.
+#     """
+#     def __init__(self, tokenizer):
+#         self.tokenizer = tokenizer
+#         self.EOS = self.tokenizer.encoder["[EOS]"]
+        
+#     def __call__(self, unpacked_data):
+#         return unpacked_data
+
+
+# # In[4]:
+
 class PersuadeDataset(Dataset):
     def __init__(self, data, tokenizer):
         self.data = data
         self.tokenizer = tokenizer
         self.tokenizer.max_len = 1500
-        self.turn_ending = tokenizer.encode("\n\n\n")
-        self.dialog_ending = [tokenizer.encoder["[EOS]"]]
+        # tokenizer weird behavior
+        self.turn_ending = [628, 198]
+        # tokenizer.encode("\n\n\n")
         
     def __len__(self):
         return len(self.data)
@@ -51,64 +84,53 @@ class PersuadeDataset(Dataset):
     def __getitem__(self, index):
         dial_tokens = [tokenizer.encode(item) + self.turn_ending for item in self.data[index]]
         role_ids = [0 if item[0] == 32 else 1 for item in dial_tokens]
-        dial_tokens[-1] = dial_tokens[-1][:-2] + self.dialog_ending
         return role_ids, dial_tokens
         
-
-class Collate_Function:
-    """This function handles batch collate.
-    """
-    def __init__(self, tokenizer):
-        self.tokenizer = tokenizer
-        self.EOS = self.tokenizer.encoder["[EOS]"]
-        
-    def __call__(self, unpacked_data):
+    def collate(self, unpacked_data):
         return unpacked_data
 
+tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
 
-# In[4]:
-
-
-tokenizer = torch.load("DataProcess/special3_gpt2_tokenizer.pkl")
-
-class GPT2SmallConfig:
-    vocab_size = 50257 + len(tokenizer.__special_tokens__)
-    n_special = len(tokenizer.__special_tokens__)
-    n_positions = 1024
-    n_ctx = 1024
-    n_embd = 768
-    n_layer = 12
-    n_head = 12
-    resid_pdrop = 0.1
-    embd_pdrop = 0.1
-    attn_pdrop = 0.1
-    layer_norm_epsilon = 1e-5
-    initializer_range = 0.02
-    gradient_checkpointing = False
+# class GPT2SmallConfig:
+#     vocab_size = 50257 + len(tokenizer.__special_tokens__)
+#     n_special = len(tokenizer.__special_tokens__)
+#     n_positions = 1024
+#     n_ctx = 1024
+#     n_embd = 768
+#     n_layer = 12
+#     n_head = 12
+#     resid_pdrop = 0.1
+#     embd_pdrop = 0.1
+#     attn_pdrop = 0.1
+#     layer_norm_epsilon = 1e-5
+#     initializer_range = 0.02
+#     gradient_checkpointing = False
     
-class GPT2MediumConfig:
-    vocab_size = 50257 + len(tokenizer.__special_tokens__)
-    n_special = len(tokenizer.__special_tokens__)
-    n_positions = 1024
-    n_ctx = 1024
-    n_embd = 1024
-    n_layer = 24
-    n_head = 16
-    resid_pdrop = 0.1
-    embd_pdrop = 0.1
-    attn_pdrop = 0.1
-    layer_norm_epsilon = 1e-5
-    initializer_range = 0.02
-    gradient_checkpointing = True
+# class GPT2MediumConfig:
+#     vocab_size = 50257 + len(tokenizer.__special_tokens__)
+#     n_special = len(tokenizer.__special_tokens__)
+#     n_positions = 1024
+#     n_ctx = 1024
+#     n_embd = 1024
+#     n_layer = 24
+#     n_head = 16
+#     resid_pdrop = 0.1
+#     embd_pdrop = 0.1
+#     attn_pdrop = 0.1
+#     layer_norm_epsilon = 1e-5
+#     initializer_range = 0.02
+#     gradient_checkpointing = True
 
 
 # In[5]:
 
 
-model_A = GPT2SimpleLM(GPT2SmallConfig)
-model_B = GPT2SimpleLM(GPT2SmallConfig)
-model_A_states, model_B_states = torch.load("Checkpoint/best.th", map_location="cuda:5")#torch.load("CheckpointMedium/model_state_epoch_3.th")
-print("load success")
+
+model_A = GPT2LMHeadModel.from_pretrained("gpt2")
+model_B = GPT2LMHeadModel.from_pretrained("gpt2")
+# model_A_states, model_B_states = torch.load("Checkpoint/best.th", map_location="cuda:5")#torch.load("CheckpointMedium/model_state_epoch_3.th")
+# print("load success")
+
 # model_A.load_state_dict(torch.load("/home/qingyang/Desktop/GPT2_Modification/special3_gpt2_small.pth"))
 # model_B.load_state_dict(torch.load("/home/qingyang/Desktop/GPT2_Modification/special3_gpt2_small.pth"))
 
@@ -130,16 +152,15 @@ train_dataset = PersuadeDataset(train_data, tokenizer)
 val_dataset = PersuadeDataset(val_data, tokenizer)
 
 batch_size = 1
-collate_func = Collate_Function(tokenizer)
 
 train_dataloader = DataLoader(dataset=train_dataset, 
                               shuffle=True, 
                               batch_size=batch_size, 
-                              collate_fn=collate_func)
+                              collate_fn=train_dataset.collate)
 val_dataloader = DataLoader(dataset=val_dataset, 
                             shuffle=False, 
                             batch_size=batch_size, 
-                            collate_fn=collate_func)
+                            collate_fn=train_dataset.collate)
 
 
 # ## Define the model
