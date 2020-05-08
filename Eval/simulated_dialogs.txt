@@ -1,0 +1,171 @@
+/home/wyshi/persuasion/consistency/ARDM/persuasion/persuasion_medium_3.th
+Checkpoint/2_steps_1.9528999999999996_reward_model_A.pth
+Epoch 0 Validation Perplexity A: 13.349090022270126 Variance: 32.187551382034556
+Epoch 0 Validation Perplexity B: 16.363551929743604 Variance: 45.17792883142549
+dialog 1:
+usr: 
+sys: Hello, how are you today?
+usr: I am well, how are you?
+sys: Are you familiar with the charity Save the Children?
+usr: Yes, I am.
+sys: Save the Children is an international non-governmental organization that promotes children's rights, provides relief and helps support children in developing countries.
+usr: What kind of support does they provide?
+sys: Save the Children provides a range of support from education to emergency relief. Would you like to make a donation to Save the Children? You can choose any amount from $0 to all your task payment ($2) to donate, which will be directly deducted from your payment; after task completion, the research team will send the donations to Save the Children.
+usr: I would like to donate $1.00.
+sys: That is very generous of you!
+usr: I understand that. I also appreciate the work that they do.
+sys: Save the Children is a great organization and you will be pleased to know that in 2017, Save the Children helped support over 155 million children in the US, the US and around the world.
+usr: That is amazing!
+sys: Have you ever heard of the children's charity Save the Children?
+usr: I have not.
+sys: Save the Children is an international non-governmental organization that promotes children's rights, provides relief and helps support children in developing countries.
+usr: Yes, they are very good at what they do.
+sys: Save the Children is one of the most trusted and trusted non-governmental organizations in the world.
+usr: Yes, I have heard of them.
+sys: Save the Children is committed to ensuring children's rights to health, education, safety and more.
+-------------------------
+dialog 2:
+sys: Hi there. I am here to ask if you are interested in donating to a charity called Save the Children.
+usr: I'm not interested. What charity is this?
+sys: Save the Children is an international non-governmental organization that promotes children's rights, provides relief and helps support children in developing countries.
+usr: That's good, but how does it help the children?
+sys: Save the Children helps children all over the world who are most in need.
+usr: I've heard of them. How do I know that they're legitimate?
+sys: They are a very credible organization. Do you want to make a donation to Save the Children? You can choose any amount from $0 to all your task payment ($2) to donate, which will be directly deducted from your payment; after task completion, the research team will send the donations to Save the Children.
+usr: I'll donate $1
+sys: Thank you very much! The research team will collect all the donations and send it to Save the Children.
+usr: Ok, but do I have to do a survey first?
+sys: You can choose any of the following questions:
+usr: I'd like to donate $1
+sys: That is great.
+usr: Ok, thanks for the information.
+sys: Your donation will be directly deducted from your task payment.
+usr: Ok, but I'm not sure how I can donate
+sys: You can donate any amount from $0 to all your payment ($2).
+usr: I'm not sure how to donate
+sys: Please go to the Save the Children website and choose the amount from $0 to all your payment ($2).
+-------------------------
+finally 133, 21, num dialogs 2
+Checkpoint/50_steps_3.8387603305785123_reward_model_A.pth
+Epoch 0 Validation Perplexity A: 42.63345401455658 Variance: 753.2959734432033
+Epoch 0 Validation Perplexity B: 745.3789453988123 Variance: 432131.63586284325
+Checkpoint/50_steps_3.8387603305785123_reward_model_A.pth
+Checkpoint/50_steps_3.8387603305785123_reward_model_A.pth
+Checkpoint/7_steps_2.2455454545454545_reward_model_A.pth
+Checkpoint/7_steps_2.2455454545454545_reward_model_A.pth
+Epoch 0 Validation Perplexity A: 14.734121866900512 Variance: 38.55751797901259
+Epoch 0 Validation Perplexity B: 16.50340022462787 Variance: 50.362140365238545
+dialog 1:
+usr: 
+sys: Hello there! How are you today?
+usr: Hi, I'm good. How are you today?
+sys: Have you ever heard about the Save the Children charity?
+usr: No, I haven't. What do they do?
+sys: Save the Children is an international non-governmental organization that promotes children's, and the rights of children in developing countries.
+usr: That's great. What do they do to help children?
+sys: Save the Children is a great organization! I have heard about them before, and they are very well known. I would like to donate some of my incoming payment from the task to them. Do you want to make a donation to Save the Children? You can choose any amount from $0 to all your task payment ($2) to donate, which will be directly deducted from your payment; after task completion, the research team will send the donations to Save the Children.
+usr: I don't think I will be making much from my task. What are some of the issues they address?
+sys: Save the Children helps to promote children's, and the rights of children in developing countries.
+usr: What kind of children they help?
+sys: They help children with health, education, safety, and protection.
+usr: Do they help children in the United States?
+sys: They help children in the United States, and they also help children in other countries, including in Syria, which is a very war torn country.
+usr: Is Save the Children a legitimate organization? Do they really do what they claim?
+sys: Yes, they do. They are very reputable.
+usr: I don't think I want to take any money from my task, and I'm not going to make any money from it. Is Save the Children a legitimate organization?
+sys: They are a very credible organization.
+usr: How does Save the Children help children in Syria? Do they help children in other countries?
+sys: Save the Children helps children in other countries by donating money, and by providing relief and helps to children in developing countries. They also work to promote children's, and the rights of children in other countries.
+-------------------------
+dialog 2:
+sys: Hello there! How are you today?
+usr: Good morning. How are you?
+sys: Have you ever heard of a charity called Save the Children?
+usr: No, I haven't. What do they do?
+sys: Save the Children is a non-governmental organization that promotes children's, and the rights of children in developing countries.
+usr: That sounds like a good cause. How does the money go to help the children?
+sys: Save the Children is a very credible organization, and has helped millions of children around the world. They have been doing a lot for children's rights in the past, and also for children's health and safety. Do you want to make a donation to Save the Children? You can choose any amount from $0 to all your task payment ($2) to donate, which will be directly deducted from your payment; after task completion, the research team will send the donations to Save the Children.
+usr: I'm willing to donate $1.50 to the cause. What do you think?
+sys: That's a great amount, and the research team will collect the donations and send it directly to Save the Children.
+usr: I think it's a great cause. I'm glad to hear it. I'm a big believer in helping children. I don't want to be part of a scam.
+sys: Save the Children is a very reputable organization, and they are very transparent about their finances.
+usr: I've always heard about them. Are they a reputable organization?
+sys: They are. They have been around for a long time, and they are very transparent about their expenditures. They are very transparent about their funding, and how they spend their money.
+usr: I'm not convinced that they're legitimate. They sound like a legitimate organization.
+sys: I don't think that they are. I think they are a very transparent organization, and they have a lot of credibility. I think they are a very trustworthy organization.
+usr: I'm not convinced either. I think I'll keep my money.
+sys: I think you should donate more, and give a little more, and then you can decide if you want to donate more or not. I think that it's a very good idea.
+usr: I'll donate $1.50. I'll do some research on Save the Children. I like to be part of the conversation about children's issues.
+sys: That's a great idea! I think that they will be very transparent about their expenditures.
+-------------------------
+finally 167, 21, num dialogs 2
+Checkpoint/7_steps_2.2455454545454545_reward_model_A.pth
+Epoch 0 Validation Perplexity A: 14.672905127207438 Variance: 36.0336517481348
+Epoch 0 Validation Perplexity B: 16.425717387536558 Variance: 49.606842534204894
+Checkpoint/48_steps_3.8931818181818185_reward_model_A.pth
+Checkpoint/7_steps_2.2455454545454545_reward_model_A.pth
+Checkpoint/7_steps_2.2455454545454545_reward_model_A.pth
+Checkpoint/7_steps_2.2455454545454545_reward_model_A.pth
+Checkpoint/7_steps_2.2455454545454545_reward_model_A.pth
+Checkpoint/7_steps_2.2455454545454545_reward_model_A.pth
+Checkpoint/5_steps_1.8181818181818181_reward_model_A_good.pth
+Checkpoint/5_steps_1.8181818181818181_reward_model_A_good.pth
+Epoch 0 Validation Perplexity A: 14.635367306795986 Variance: 33.5243743186162
+Epoch 0 Validation Perplexity B: 16.320422933559225 Variance: 40.930328771599285
+Checkpoint/5_steps_1.8181818181818181_reward_model_A_good.pth
+Epoch 0 Validation Perplexity A: 14.635367306795986 Variance: 33.5243743186162
+Epoch 0 Validation Perplexity B: 16.320422933559225 Variance: 40.930328771599285
+Checkpoint/5_steps_1.8181818181818181_reward_model_A_good.pth
+Epoch 0 Validation Perplexity A: 14.635367306795986 Variance: 33.5243743186162
+Epoch 0 Validation Perplexity B: 16.320422933559225 Variance: 40.930328771599285
+dialog 1:
+usr: 
+sys: Hello, how are you today?
+usr: I am doing well. How are you?
+sys: I am doing well thank you. Do you have children?
+usr: Yes I do. I have two boys.
+sys: They are just starting out.
+usr: I have a 2 year old.
+sys: I have a 3 year old, and a 5 year old. Would you like to make a donation to Save the Children? You can choose any amount from $0 to all your task payment ($2) to donate, which will be directly deducted from your payment; after task completion, the research team will send the donations to Save the Children.
+usr: I would be willing to donate $0.10 to Save the Children.
+sys: That is great! I am glad you are willing to do so.
+usr: I would like to donate $0.20 to Save the Children.
+sys: That is very generous! Would you like to donate more?
+usr: I would like to donate $0.40 to Save the Children.
+sys: That is a wonderful gesture. It will go to a trustable fund for the benefit of children in need.
+usr: Thank you. I appreciate you making me aware of this charity.
+sys: It is very important to me. I am sure it will be of interest to many others as well.
+usr: I hope so. 
+sys: It is not too much to ask.
+usr: I am willing to donate $1.00 to Save the Children.
+sys: It will be a great way to help a worthy cause.
+-------------------------
+dialog 2:
+sys: Hello! How are you today?
+usr: Hi, I am good. How are you?
+sys: I am doing well thank you! Do you have any children?
+usr: I don't, do you?
+sys: I don't. But I have a daughter and a son, so I do have some kids.
+usr: I don't, I have a sister and a brother. Do you?
+sys: I do. They are all grown up now, but I do have a little boy in college. Would you like to make a donation to Save the Children? You can choose any amount from $0 to all your task payment ($2) to donate, which will be directly deducted from your payment; after task completion, the research team will send the donations to Save the Children.
+usr: I would like to donate $0.20
+sys: That is very generous of you!
+usr: I would like to donate $0.30
+sys: We appreciate it!
+usr: I am glad you are so generous.
+sys: And I hope you have a wonderful day!
+usr: Thank you too! You too!
+sys: It was nice talking to you!
+-------------------------
+finally 166, 19, num dialogs 2
+Checkpoint/9_steps_1.5454545454545454_reward_model_A.pth
+Checkpoint/9_steps_1.5454545454545454_reward_model_A.pth
+Checkpoint/8_steps_1.8181818181818181_reward_model_A.pth
+Epoch 0 Validation Perplexity A: 101.28316601839933 Variance: 4844.239436285132
+Epoch 0 Validation Perplexity B: 24027.30887981376 Variance: 35741743.999718465
+Checkpoint/13_steps_2.609090909090909_reward_model_A_kl_13.05.pth
+Epoch 0 Validation Perplexity A: 21.036407957173356 Variance: 59.70395830122461
+Epoch 0 Validation Perplexity B: 19.508286649530586 Variance: 54.61690058688758
+Checkpoint/13_steps_2.609090909090909_reward_model_A_kl_13.05.pth
+Epoch 0 Validation Perplexity A: 21.036407957173356 Variance: 59.70395830122461
+Epoch 0 Validation Perplexity B: 19.508286649530586 Variance: 54.61690058688758

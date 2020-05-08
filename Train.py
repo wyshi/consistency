@@ -22,7 +22,7 @@ from allennlp.training.checkpointer import Checkpointer
 # from gpt_model import GPT2SimpleLM
 # from pytorch_pretrained_bert import GPT2Tokenizer, OpenAIAdam, GPT2Model
 # from torchfly.criterions import SequenceFocalLoss, SequenceCrossEntropyLoss
-from transformers import GPT2LMHeadModel, GPT2Tokenizer, AdamW, WarmupLinearSchedule
+from transformers import GPT2LMHeadModel, GPT2Tokenizer, AdamW#, WarmupLinearSchedule
 from torchfly.modules.losses import SequenceFocalLoss, SequenceCrossEntropyLoss
 from UnlikelihoodLoss import SequenceUnlikelihoodLoss
 # In[2]:
@@ -82,7 +82,7 @@ class PersuadeDataset(Dataset):
         return len(self.data)
     
     def __getitem__(self, index):
-        dial_tokens = [tokenizer.encode(item) + self.turn_ending for item in self.data[index]]
+        dial_tokens = [self.tokenizer.encode(item) + self.turn_ending for item in self.data[index]]
         role_ids = [0 if item[0] == 32 else 1 for item in dial_tokens]
         return role_ids, dial_tokens
         
@@ -126,11 +126,19 @@ tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
 
 
 
-model_A = GPT2LMHeadModel.from_pretrained("gpt2")
-model_B = GPT2LMHeadModel.from_pretrained("gpt2")
-# model_A_states, model_B_states = torch.load("Checkpoint/best.th", map_location="cuda:5")#torch.load("CheckpointMedium/model_state_epoch_3.th")
+model_A = GPT2LMHeadModel.from_pretrained("gpt2-medium")
+model_B = GPT2LMHeadModel.from_pretrained("gpt2-medium")
+import config as cfg
+# model_A_states, model_B_states = torch.load(cfg.old_medium_model_dir, map_location="cuda:5")#torch.load("CheckpointMedium/model_state_epoch_3.th")
+# model_A_states['transformer.wte.weight'] = model_A_states['transformer.wte.weight'][:50257,:]
+# model_A_states['lm_head.weight'] = model_A_states['lm_head.decoder.weight'][:50257,:]
+# model_B_states['transformer.wte.weight'] = model_B_states['transformer.wte.weight'][:50257,:]
+# model_B_states['lm_head.weight'] = model_B_states['lm_head.decoder.weight'][:50257,:]
+model_A_states, model_B_states = torch.load("models/persuasion-gpt2-medium.pth", map_location="cuda:5")#torch.load("CheckpointMedium/model_state_epoch_3.th")
 # print("load success")
 
+model_A.load_state_dict(model_A_states, strict=False)
+model_B.load_state_dict(model_B_states, strict=False)
 # model_A.load_state_dict(torch.load("/home/qingyang/Desktop/GPT2_Modification/special3_gpt2_small.pth"))
 # model_B.load_state_dict(torch.load("/home/qingyang/Desktop/GPT2_Modification/special3_gpt2_small.pth"))
 
@@ -180,7 +188,7 @@ model_B = model_B.to(device)
 # define the losses
 criterion = SequenceFocalLoss(gamma=1.0, beta=0.0)
 eval_criterion = SequenceCrossEntropyLoss()
-unlikelihood_criterion = SequenceUnlikelihoodLoss(padding_idx=tokenizer.encoder["[PAD]"])
+# unlikelihood_criterion = SequenceUnlikelihoodLoss(padding_idx=tokenizer.encoder["[PAD]"])
 
 # In[9]:
 
@@ -246,10 +254,10 @@ def train_one_iter(batch, update_count, fp16=False):
     
     return record_loss, perplexity
 
-
-def validate(dataloader):
+import tqdm
+def validate(dataloader, ep=0):
     with torch.no_grad():
-        pbar = progress_bar(dataloader)
+        pbar = tqdm.tqdm(dataloader)
 
         total_ppl = []
 
@@ -288,7 +296,7 @@ def validate(dataloader):
             ppl = torch.exp(loss)
             total_ppl.extend(ppl.tolist())
 
-        print(f"Epcoh {ep} Validation Perplexity: {np.mean(total_ppl)} Variance: {np.var(total_ppl)}")
+        print(f"Epoch {ep} Validation Perplexity: {np.mean(total_ppl)} Variance: {np.var(total_ppl)}")
         
         return np.mean(total_ppl)
 
@@ -297,91 +305,92 @@ def validate(dataloader):
 
 # In[10]:
 
-
-checkpointer = Checkpointer(serialization_dir="Checkpoint", 
-                            keep_serialized_model_every_num_seconds=3600*2, 
-                            num_serialized_models_to_keep=5)
-
-
-# In[11]:
+if False:
+    checkpointer = Checkpointer(serialization_dir="Checkpoint", 
+                                keep_serialized_model_every_num_seconds=3600*2, 
+                                num_serialized_models_to_keep=5)
 
 
-# optimizer
-num_epochs = 10
-num_gradients_accumulation = 1
-num_train_optimization_steps = num_train_optimization_steps = len(train_dataset) * num_epochs // batch_size // num_gradients_accumulation
-
-param_optimizer = list(model_A.named_parameters()) + list(model_B.named_parameters())
-no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
-optimizer_grouped_parameters = [
-    {'params': [p for n, p in param_optimizer if not any(nd in n for nd in no_decay)], 'weight_decay': 0.01},
-    {'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}
-    ]
+    # In[11]:
 
 
-optimizer = OpenAIAdam(optimizer_grouped_parameters,
-                       lr=2e-5,
-                       warmup=0.1,
-                       max_grad_norm=1.0,
-                       weight_decay=0.01,
-                       t_total=num_train_optimization_steps)
+    # optimizer
+    num_epochs = 10
+    num_gradients_accumulation = 1
+    num_train_optimization_steps = num_train_optimization_steps = len(train_dataset) * num_epochs // batch_size // num_gradients_accumulation
+
+    param_optimizer = list(model_A.named_parameters()) + list(model_B.named_parameters())
+    no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
+    optimizer_grouped_parameters = [
+        {'params': [p for n, p in param_optimizer if not any(nd in n for nd in no_decay)], 'weight_decay': 0.01},
+        {'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}
+        ]
 
 
-# In[12]:
+    optimizer = OpenAIAdam(optimizer_grouped_parameters,
+                        lr=2e-5,
+                        warmup=0.1,
+                        max_grad_norm=1.0,
+                        weight_decay=0.01,
+                        t_total=num_train_optimization_steps)
 
 
-# support fp16
-# [model_A, model_B], optimizer = amp.initialize([model_A, model_B], optimizer, opt_level="O1")
+    # In[12]:
+
+
+    # support fp16
+    # [model_A, model_B], optimizer = amp.initialize([model_A, model_B], optimizer, opt_level="O1")
 
 
 # In[13]:
+if False:
+    from tqdm import tqdm as tqdm_bar
+    update_count = 0
+    progress_bar = tqdm.tqdm_notebook
+    start = time.time()
+    old_ppl = -float('Inf')
 
-from tqdm import tqdm as tqdm_bar
-update_count = 0
-progress_bar = tqdm.tqdm_notebook
-start = time.time()
-old_ppl = -float('Inf')
+    for ep in tqdm_bar(range(num_epochs)):
 
-for ep in tqdm_bar(range(num_epochs)):
-
-    "Training"
-    pbar = progress_bar(train_dataloader)
-    model_A.train()
-    model_B.train()
-    
-    for batch in pbar:
-        batch = batch[0]
-        # without relative position
-        if sum([len(item) for item in batch[1]]) > 1024:
-            continue
-            
-        record_loss, perplexity = train_one_iter(batch, update_count, fp16=False)
+        "Training"
+        pbar = progress_bar(train_dataloader)
+        model_A.train()
+        model_B.train()
         
-        update_count += 1
-
-        if update_count % num_gradients_accumulation == num_gradients_accumulation - 1:
-            # update for gradient accumulation
-            optimizer.step()
-            optimizer.zero_grad()
+        for batch in pbar:
+            batch = batch[0]
+            # without relative position
+            if sum([len(item) for item in batch[1]]) > 1024:
+                continue
+                
+            record_loss, perplexity = train_one_iter(batch, update_count, fp16=False)
             
-            # speed measure
-            end = time.time()
-            speed = batch_size * num_gradients_accumulation / (end - start)
-            start = end
-            
-            # show progress
-            pbar.set_postfix(loss=record_loss, perplexity=perplexity, speed=speed)
+            update_count += 1
 
-    "Evaluation"
-    model_A.eval()
-    model_B.eval()
-    ppl = validate(val_dataloader)
-    
-    is_best_so_far = ppl > old_ppl
-    old_ppl = ppl
-    checkpointer.save_checkpoint(ep, [model_A.state_dict(), model_B.state_dict()], {"None": None}, is_best_so_far)
+            if update_count % num_gradients_accumulation == num_gradients_accumulation - 1:
+                # update for gradient accumulation
+                optimizer.step()
+                optimizer.zero_grad()
+                
+                # speed measure
+                end = time.time()
+                speed = batch_size * num_gradients_accumulation / (end - start)
+                start = end
+                
+                # show progress
+                pbar.set_postfix(loss=record_loss, perplexity=perplexity, speed=speed)
 
+        "Evaluation"
+        model_A.eval()
+        model_B.eval()
+        ppl = validate(val_dataloader)
+        
+        is_best_so_far = ppl > old_ppl
+        old_ppl = ppl
+        checkpointer.save_checkpoint(ep, [model_A.state_dict(), model_B.state_dict()], {"None": None}, is_best_so_far)
 
+else:
+    validate(val_dataloader)
 # In[ ]:
 
 

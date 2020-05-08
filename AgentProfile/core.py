@@ -16,6 +16,7 @@ class SystemAct(object):
     other_inquiry = "other-inquiry"
     propose_donation_inquiry = "propose-donation-inquiry"
     greeting_inquiry = "greeting-inquiry"
+    greeting_answer = "greeting-answer"
     ### other things that contain inquiries
 
     #############################################################

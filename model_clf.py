@@ -1,5 +1,3 @@
-import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"
 import argparse
 from nltk.tokenize import sent_tokenize
 
@@ -398,6 +396,11 @@ class ModelClassifier(object):
     def reload(self):
         self.past = None
         self.history = []
+
+    def parameters(self):
+        parameters_list = list(self.model_A.parameters()) + list(self.model_B.parameters()) + list(self.clf_A.parameters())\
+                          + list(self.clf_B.parameters()) + list(self.clf_TF.parameters())
+        return parameters_list
 
     def to_device(self, device):
         # to device
@@ -964,6 +967,9 @@ def build_model_classifier(model_dir, device1, device2):
     
     model_clf.load_model(all_model_dir=model_dir)
 
+    for param in model_clf.parameters():
+        param.requires_grad = False
+    
     return model_clf
 
 if __name__ == "__main__": 

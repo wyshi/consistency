@@ -1,8 +1,12 @@
 #!/usr/bin/env python
 # coding: utf-8
 # logging is important
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3,4,5,6,7"
+
+from time import time
 import logging
-logging.basicConfig(filename='ppo1.log', level=logging.INFO)
+logging.basicConfig(filename='ppo7.log', level=logging.INFO)
 # logging.basicConfig(filename='hello2.log', level=logging.INFO)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -48,7 +52,7 @@ from transformers import GPT2LMHeadModel, GPT2Tokenizer, GPT2Config
 # from gpt_model import GPT2SimpleLM, GPT2MultipleChoiceHead
 from GPTModel1 import GPT2LMHeadModel_modified
 from pytorch_pretrained_bert import OpenAIAdam
-from PersuasionInteract import PersuasiveBot
+from PersuasionInteract import PersuasiveBot, sent_tokenize_modified
 from nltk.tokenize import sent_tokenize
 import config as cfg
 from copy import deepcopy
@@ -78,21 +82,23 @@ from torchfly.modules.losses import SequenceFocalLoss, SequenceCrossEntropyLoss
 class PpoParams:
     ppo_epoch = 2
     num_dialogs_to_sample = 1 # number of dialog in one batch
-    batchsize = 128 
-    mini_batchsize = 8
-    self_play_prob = 0.2
+    mini_batchsize = 16#8
+    batchsize = mini_batchsize*2#128 
+    self_play_prob = 0.0
 
 def make_batch_sequences(sampled_sequences, type_func=torch.LongTensor, padding_value=1):
     # transform into LongTensor
     sampled_sequences = [type_func(item) 
                         for item in sampled_sequences 
                         if not isinstance(item,  type_func)]
-    
-    batch_sequences = nn.utils.rnn.pad_sequence(sampled_sequences, 
-                                                batch_first=True, 
-                                                padding_value=padding_value)
-    return batch_sequences
+    try:
+        batch_sequences = nn.utils.rnn.pad_sequence(sampled_sequences, 
+                                                    batch_first=True, 
+                                                    padding_value=padding_value)
+        return batch_sequences
 
+    except:
+        pdb.set_trace()
 
 class PersuadeDataset(Dataset):
     def __init__(self, data, tokenizer):
@@ -112,60 +118,183 @@ class PersuadeDataset(Dataset):
     def collate(self, unpacked_data):
         return unpacked_data
 
-def load_model(cfg, device1, device2, split_into, model_A_dir=None):
+def load_model(cfg, device1, device2, split_into1, split_into2, dropout, device_list1, device_list2, 
+               model_A_dir=None, use_old_model_B=False):
     if cfg.model_size == "small":
-        # lm_config1 = GPT2Config().from_pretrained('gpt2')
-        # lm_config2 = GPT2Config().from_pretrained('gpt2')
-        # lm_config1.output_hidden_states = True
-        # lm_config2.output_hidden_states = True
+        lm_config1 = GPT2Config().from_pretrained('gpt2')
+        lm_config1.output_hidden_states = True
+        lm_config1.resid_pdrop =dropout
+        lm_config1.embd_pdrop  =dropout
+        lm_config1.attn_pdrop  =dropout
+        lm_config1.summary_first_dropout=dropout
+
+        lm_config2 = GPT2Config().from_pretrained('gpt2')
+        lm_config2.output_hidden_states = True
+        lm_config2.resid_pdrop =dropout
+        lm_config2.embd_pdrop  =dropout
+        lm_config2.attn_pdrop  =dropout
+        lm_config2.summary_first_dropout=dropout
         # model_A = GPT2LMHeadModel_modified(config=lm_config1, device=device1, split_into=split_into)
         # model_B = GPT2LMHeadModel_modified(config=lm_config2, device=device2, split_into=split_into)
-        model_A = GPT2LMHeadModel_modified.from_pretrained("gpt2", output_hidden_states=True)
-        model_A.set_variables(device=device1, split_into=split_into)
-        model_B = GPT2LMHeadModel_modified.from_pretrained("gpt2", output_hidden_states=True)
-        model_B.set_variables(device=device2, split_into=split_into)
+        # model_A = GPT2LMHeadModel_modified.from_pretrained("gpt2", output_hidden_states=True,
+        #                                                     resid_pdrop =dropout,
+        #                                                     embd_pdrop  =dropout,
+        #                                                     attn_pdrop  =dropout,
+        #                                                     summary_first_dropout=dropout)
+        model_A = GPT2LMHeadModel_modified(config=lm_config1)
+        model_A.set_variables(device=device1, split_into=split_into1, device_list=device_list1)
+        # model_B = GPT2LMHeadModel_modified.from_pretrained("gpt2", output_hidden_states=True,
+        #                                                     resid_pdrop =dropout,
+        #                                                     embd_pdrop  =dropout,
+        #                                                     attn_pdrop  =dropout,
+        #                                                     summary_first_dropout=dropout        )
+        model_B = GPT2LMHeadModel_modified(config=lm_config2)
+        model_B.set_variables(device=device2, split_into=split_into2, device_list=device_list2)
     elif cfg.model_size == "medium":
-        # lm_config1 = GPT2Config().from_pretrained('gpt2-medium')
-        # lm_config2 = GPT2Config().from_pretrained('gpt2-medium')
-        # lm_config1.output_hidden_states = True
-        # lm_config2.output_hidden_states = True
+        lm_config1 = GPT2Config().from_pretrained('gpt2-medium')
+        lm_config1.output_hidden_states = True
+        lm_config1.resid_pdrop =dropout
+        lm_config1.embd_pdrop  =dropout
+        lm_config1.attn_pdrop  =dropout
+        lm_config1.summary_first_dropout=dropout
+
+        lm_config2 = GPT2Config().from_pretrained('gpt2-medium')
+        lm_config2.output_hidden_states = True
+        lm_config2.resid_pdrop =dropout
+        lm_config2.embd_pdrop  =dropout
+        lm_config2.attn_pdrop  =dropout
+        lm_config2.summary_first_dropout=dropout
         # model_A = GPT2LMHeadModel_modified(config=lm_config1, device=device1, split_into=split_into)
         # model_B = GPT2LMHeadModel_modified(config=lm_config2, device=device2, split_into=split_into)
-        model_A = GPT2LMHeadModel_modified.from_pretrained("gpt2-medium", output_hidden_states=True)
-        model_A.set_variables(device=device1, split_into=split_into)
-        model_B = GPT2LMHeadModel_modified.from_pretrained("gpt2-medium", output_hidden_states=True)
-        model_B.set_variables(device=device2, split_into=split_into)
+        # model_A = GPT2LMHeadModel_modified.from_pretrained("gpt2-medium", output_hidden_states=True,
+        #                                                     resid_pdrop =dropout,
+        #                                                     embd_pdrop  =dropout,
+        #                                                     attn_pdrop  =dropout,
+        #                                                     summary_first_dropout=dropout        )
+        model_A = GPT2LMHeadModel_modified(config=lm_config1)
+        model_A.set_variables(device=device1, split_into=split_into1, device_list=device_list1)
+        # model_B = GPT2LMHeadModel_modified.from_pretrained("gpt2-medium", output_hidden_states=True,
+        #                                                     resid_pdrop =dropout,
+        #                                                     embd_pdrop  =dropout,
+        #                                                     attn_pdrop  =dropout,
+        #                                                     summary_first_dropout=dropout)
+        model_B = GPT2LMHeadModel_modified(config=lm_config2)
+        model_B.set_variables(device=device2, split_into=split_into2, device_list=device_list2)
 
    # pdb.set_trace()
     # load the model
     if cfg.model_size == "small":
-        model_A_states, model_B_states = torch.load(cfg.new_small_model_dir)
+        if cfg.use_old_model:
+            model_A_states, model_B_states = torch.load(cfg.old_small_model_dir, map_location=device1)
+            model_A_states['transformer.wte.weight'] = model_A_states['transformer.wte.weight'][:50257,:]
+            model_A_states['lm_head.weight'] = model_A_states['lm_head.decoder.weight'][:50257,:]
+            model_B_states['transformer.wte.weight'] = model_B_states['transformer.wte.weight'][:50257,:]
+            model_B_states['lm_head.weight'] = model_B_states['lm_head.decoder.weight'][:50257,:]
+            print("loaded old small model")
+        else:
+            model_A_states, model_B_states = torch.load(cfg.new_small_model_dir, map_location=device1)
+            print("loaded new small model")
     elif cfg.model_size == "medium":
         if cfg.use_old_model:
-            model_A_states, model_B_states = torch.load(cfg.old_medium_model_dir)
+            model_A_states, model_B_states = torch.load(cfg.old_medium_model_dir, map_location=device1)
             model_A_states['transformer.wte.weight'] = model_A_states['transformer.wte.weight'][:50257,:]
             model_A_states['lm_head.weight'] = model_A_states['lm_head.decoder.weight'][:50257,:]
             model_B_states['transformer.wte.weight'] = model_B_states['transformer.wte.weight'][:50257,:]
             model_B_states['lm_head.weight'] = model_B_states['lm_head.decoder.weight'][:50257,:]
             print("loaded old medium model")
         else:
-            model_A_states, model_B_states = torch.load(cfg.new_medium_model_dir)
-
-    if model_A_dir is not None:
-        model_A_states = torch.load(model_A_dir)
-        print("loaded RL-NEW model!!!")
-    if cfg.use_old_model:
-        strict = False
+            model_A_states, model_B_states = torch.load(cfg.new_medium_model_dir, map_location=device1)
+            print("loaded new medium model")
+    if model_A_dir is not None and model_A_dir != cfg.old_medium_model_dir:
+        if use_old_model_B:
+            model_A_states, _ = torch.load(model_A_dir)
+            print("loaded RL-NEW model!!! model_A only")
+            strict_A, strict_B = True, False
+        else:
+            model_A_states, model_B_states = torch.load(model_A_dir)
+            print("loaded RL-NEW model!!! model_A and model_B")
+            strict_A, strict_B = True, True
     else:
-        strict = True
-    model_A.load_state_dict(model_A_states, strict=strict)
-    model_B.load_state_dict(model_B_states, strict=strict)
+        strict_A = False
+        strict_B = False
+    model_A.load_state_dict(model_A_states, strict=strict_A)
+    model_B.load_state_dict(model_B_states, strict=strict_B)
 
+    del model_A_states, model_B_states
+    torch.cuda.empty_cache()
     # to device
     model_A.to(device1)
     model_B.to(device2)
  
     return model_A, model_B
+
+def load_GPT2(cfg, device1, split_into, device_list, dropout):
+    if cfg.model_size == "small":
+        lm_config1 = GPT2Config().from_pretrained('gpt2')
+        lm_config1.output_hidden_states = True
+        lm_config1.resid_pdrop =dropout
+        lm_config1.embd_pdrop  =dropout
+        lm_config1.attn_pdrop  =dropout
+        lm_config1.summary_first_dropout=dropout
+
+        # model_A = GPT2LMHeadModel_modified.from_pretrained("gpt2", output_hidden_states=True, 
+        #                                                     resid_pdrop =dropout,
+        #                                                     embd_pdrop  =dropout,
+        #                                                     attn_pdrop  =dropout,
+        #                                                     summary_first_dropout=dropout)
+        model_A = GPT2LMHeadModel_modified(config=lm_config1)
+        model_A.set_variables(device=device1, split_into=split_into, device_list=device_list)
+    elif cfg.model_size == "medium":
+        lm_config1 = GPT2Config().from_pretrained('gpt2-medium')
+        lm_config1.output_hidden_states = True
+        lm_config1.resid_pdrop =dropout
+        lm_config1.embd_pdrop  =dropout
+        lm_config1.attn_pdrop  =dropout
+        lm_config1.summary_first_dropout=dropout
+        # model_A = GPT2LMHeadModel_modified.from_pretrained("gpt2-medium", output_hidden_states=True,
+        #                                                     resid_pdrop =dropout,
+        #                                                     embd_pdrop  =dropout,
+        #                                                     attn_pdrop  =dropout,
+        #                                                     summary_first_dropout=dropout)
+        model_A = GPT2LMHeadModel_modified(config=lm_config1)
+        model_A.set_variables(device=device1, split_into=split_into, device_list=device_list)
+
+    if cfg.model_size == "small":
+        if cfg.use_old_model:
+            model_A_states, model_B_states = torch.load(cfg.old_small_model_dir, map_location=device1)
+            del model_B_states
+            torch.cuda.empty_cache()
+            model_A_states['transformer.wte.weight'] = model_A_states['transformer.wte.weight'][:50257,:]
+            model_A_states['lm_head.weight'] = model_A_states['lm_head.decoder.weight'][:50257,:]
+            print("loaded old small model")
+        else:
+            model_A_states, model_B_states = torch.load(cfg.new_small_model_dir, map_location=device1)
+            print("loaded new small model")
+
+        # model_A_states = torch.load("Checkpoint/original_GPT2_small.pth")
+    elif cfg.model_size == "medium":
+        if cfg.use_old_model:
+            model_A_states, model_B_states = torch.load(cfg.old_medium_model_dir, map_location=device1)
+            del model_B_states
+            torch.cuda.empty_cache()
+            model_A_states['transformer.wte.weight'] = model_A_states['transformer.wte.weight'][:50257,:]
+            model_A_states['lm_head.weight'] = model_A_states['lm_head.decoder.weight'][:50257,:]
+            print("loaded old medium model")
+        else:
+            model_A_states, model_B_states = torch.load(cfg.new_medium_model_dir, map_location=device1)
+            print("loaded new medium model")
+        # model_A_states = torch.load("Checkpoint/original_GPT2_medium.pth")
+
+    model_A.load_state_dict(model_A_states, strict=False)
+    del model_A_states
+    torch.cuda.empty_cache()
+    # to device
+    model_A.to(device1)
+
+    for param in model_A.parameters():
+        param.requires_grad = False
+
+    return model_A
 
 
 
@@ -214,7 +343,15 @@ class ReplayBuffer:
         
     def add(self, samples):
         self.buffer.extend(samples)
-        
+
+    def mean(self):
+        original_rewards = [item[-2] for item in self.buffer]
+        return np.mean(original_rewards)
+
+    def std(self):
+        original_rewards = [item[-2] for item in self.buffer]
+        return np.std(original_rewards)
+
     def __getitem__(self, index):
         return self.buffer[index]
 
@@ -228,10 +365,13 @@ class CustomRewardFunc:
     """Give reward for the entire sequence
     """
     def __init__(self):
-        self.ground_truth_reward = 2
+        self.ground_truth_reward = 10
         self.success_candidates_reward = 2
-        self.backup_candidates_reward = 1
+        self.backup_candidates_reward = 0.5
         self.failed_candidates_reward = -2
+        self.long_candidate_penalty = -3
+        self.len_denominator = float('Inf')
+        self.len_cut = 50
 
 
     def __call__(self, sequences, have_enough_candidates, with_ground_truth):
@@ -240,21 +380,47 @@ class CustomRewardFunc:
         else:
             sents_success, sents_failed = sequences
 
+        rewards = []
         if have_enough_candidates:
-            rewards = [self.success_candidates_reward]*len(sents_success) + \
-                    [self.failed_candidates_reward]*len(sents_failed)                
+            for sent in sents_success:
+                if len(sent.split()) < self.len_cut:
+                    rewards.append(self.success_candidates_reward + len(sent.split())/self.len_denominator)
+                else:
+                    rewards.append(self.long_candidate_penalty)
+            for sent in sents_failed:
+                if len(sent.split()) < self.len_cut:
+                    rewards.append(self.failed_candidates_reward - len(sent.split())/self.len_denominator)
+                else:
+                    rewards.append(self.long_candidate_penalty)
+            # rewards = [self.success_candidates_reward]*len(sents_success) + \
+            #         [self.failed_candidates_reward]*len(sents_failed)                
         else:
-            rewards = [self.backup_candidates_reward]*len(sents_success) + \
-                    [self.failed_candidates_reward]*len(sents_failed)
+            for sent in sents_success:
+                if len(sent.split()) < self.len_cut:
+                    rewards.append(self.backup_candidates_reward + len(sent.split())/self.len_denominator)
+                else:
+                    rewards.append(self.long_candidate_penalty)
+            for sent in sents_failed:
+                if len(sent.split()) < self.len_cut:
+                    rewards.append(self.failed_candidates_reward - len(sent.split())/self.len_denominator)
+                else:
+                    rewards.append(self.long_candidate_penalty)
+
+            # rewards = [self.backup_candidates_reward]*len(sents_success) + \
+            #         [self.failed_candidates_reward]*len(sents_failed)
         
+
         if with_ground_truth:
-            rewards = [self.ground_truth_reward] + rewards
+            rewards = [self.ground_truth_reward + len(sent.split())/self.len_denominator] + rewards
+
+        
 
         return rewards
 
         # for seq in sequences:
         #     seq_reward = seq.count(self.reward_token)
         #     rewards.append(seq_reward)
+
 
 
 # import pickle as pkl
@@ -266,14 +432,14 @@ class CustomRewardFunc:
 class Actor(PersuasiveBot):
     """Text Generation
     """
-    def __init__(self, model_A, model_B, tokenizer, device1, device2):
+    def __init__(self, model_A, model_B, tokenizer, device1, device2, dialog_i):
         super().__init__(model_A=model_A, model_B=model_B, tokenizer=tokenizer, device1=device1, device2=device2)
         
         train_data = torch.load("DataProcess/train_dialogs.pkl")
         val_data = torch.load("DataProcess/val_dialogs.pkl")
         self.train_dataset = PersuadeDataset(train_data, tokenizer)
         self.val_dataset = PersuadeDataset(val_data, tokenizer)
-        self.dialog_i = 0
+        self.dialog_i = dialog_i
         # batch_size = 1
 
         # self.train_dataloader = DataLoader(dataset=train_dataset, 
@@ -305,11 +471,13 @@ class Actor(PersuasiveBot):
         with torch.no_grad():
             for _ in range(sample_size):
                 if mode is None:
-                    if self.dialog_i > 0:#True: #self.dialog_i > 0:
+                    if True: #self.dialog_i > 0:#True: #self.dialog_i > 0:
                         mode = np.random.choice([cfg.self_play_mode, cfg.supervised_mode], replace=False, 
                                                 p=[PpoParams.self_play_prob, 1-PpoParams.self_play_prob])
                     else:
                         mode = cfg.self_play_mode
+                if mode == cfg.self_play_mode:
+                    pdb.set_trace()
                 logger.info(f"in mode: {mode}")
                 if mode == cfg.supervised_mode:
                     batch = self.train_dataset[np.random.choice(len(self.train_dataset))]
@@ -331,7 +499,7 @@ class Actor(PersuasiveBot):
                         if role_id == 0:
                             if self.past is None:
                                 user_text = ""
-                            response, [sents_success, sents_failed], have_enough_candidates = self.chat(input_text=user_text, mode=mode)
+                            response, [sents_success, sents_failed], have_enough_candidates, usr_input_text = self.chat(input_text=user_text, mode=mode)
                             ground_truth = dial_sent
                             try:
                                 assert not ground_truth.startswith("A:")
@@ -343,7 +511,7 @@ class Actor(PersuasiveBot):
                             # print(f"sent_success: \n{sents_success}")
                             # print(f"sent_failed: \n{sents_failed}")
                             # update
-                            ground_truth_sents = sent_tokenize(ground_truth)                    
+                            ground_truth_sents = sent_tokenize_modified(ground_truth)                    
                             sent_acts, _ = self.global_profile.regex_label(self.model_clf,
                                                                 ground_truth_sents, 
                                                                 which_task="A")
@@ -366,7 +534,7 @@ class Actor(PersuasiveBot):
                                 final_contexts.append(deepcopy(self.contexts))
                                 final_sents.append("A:"+sent)
                                 final_rewards.append(reward)
-                                final_context_ids.append(f"{self.dialog_i}-{self.turn_i}")
+                                final_context_ids.append(f"{self.dialog_i}-{self.turn_i}-supervised")
                                 # self.replay_buffer.add([deepcopy(self.contexts), "A:"+sent, reward])
 
                             # update contexts
@@ -399,15 +567,16 @@ class Actor(PersuasiveBot):
                         if self.past is None:
                             user_text = ""
                         else:
-                            user_text = self.generate_user_utt_self_play()                
+                            user_text, user_texts_labels = self.generate_user_utt_self_play()                
                         # system-side
-                            if "bye" in user_text.lower() or "have a great day" in user_text.lower() \
-                                or "have a great night" in user_text.lower() \
-                                or "have a good day" in user_text.lower() \
-                                or "have a good night" in user_text.lower() \
-                                or "have a nice day" in user_text.lower() \
-                                or "have a nice night" in user_text.lower() \
-                                or self.turn_i >= 10:
+                            if "closing" in user_texts_labels or self.turn_i >=10: #\
+                                # "bye" in user_text.lower() or "have a great day" in user_text.lower() \
+                                # or "have a great night" in user_text.lower() \
+                                # or "have a good day" in user_text.lower() \
+                                # or "have a good night" in user_text.lower() \
+                                # or "have a nice day" in user_text.lower() \
+                                # or "have a nice night" in user_text.lower() \
+                                # self.turn_i >= 10:
                                 break
 
                             self.contexts.append("B:"+user_text)
@@ -421,7 +590,7 @@ class Actor(PersuasiveBot):
                             final_contexts.append(deepcopy(self.contexts))
                             final_sents.append("A:"+sent)
                             final_rewards.append(reward)
-                            final_context_ids.append(f"{self.dialog_i}-{self.turn_i}")
+                            final_context_ids.append(f"{self.dialog_i}-{self.turn_i}-selfplay")
                             # self.replay_buffer.add([deepcopy(self.contexts), "A:"+sent, reward])
 
                         # update contexts
@@ -443,10 +612,15 @@ class Actor(PersuasiveBot):
 class Trainer:
     """Reinforcement Learning Trainer
     """
-    def __init__(self, actor, model_A, model_B, device1, device2):
+    def __init__(self, actor, model_A, model_B, device1, device2, GPT2_model, use_approx_kl):
+        self.use_approx_kl = use_approx_kl
         self.sample_size = 1 # num of dialog to sample at a time
-        self.maxlen = 1024
-        self.replay_buffer = ReplayBuffer(self.maxlen)
+        self.maxlen = 256
+        if REPLAY_BUFFER_DIR is None:
+            self.replay_buffer = ReplayBuffer(self.maxlen)
+        else:
+            self.replay_buffer = torch.load(REPLAY_BUFFER_DIR)
+            # pdb.set_trace()
         self.actor = actor
         self.tokenizer = tokenizer
         self.turn_ending = [628, 198]
@@ -456,6 +630,8 @@ class Trainer:
         self.device2 = device2
         assert self.model_A.device is self.device1
         assert self.model_B.device is self.device2
+
+        self.GPT2 = GPT2_model
 
         self.trained_steps = 0
         # self.reward_func = CustomRewardFunc(tokenizer)
@@ -500,15 +676,20 @@ class Trainer:
         all_rewards = np.array(all_rewards)
 
         if normalize_reward:
-            final_rewards = (all_rewards - all_rewards.mean()) / (all_rewards.std() + 1e-5)
+            if len(self.replay_buffer) > 0:
+                final_rewards = (all_rewards - self.replay_buffer.mean()) / (self.replay_buffer.std() + 1e-5)
+            else:  
+                final_rewards = (all_rewards - all_rewards.mean()) / (all_rewards.std() + 1e-5)
+            # final_rewards = (all_rewards - replay_buffer.mean()) / (replay_buffer.std() + 1e-5)
         else:
             final_rewards = all_rewards
         
         # pdb.set_trace()
-        assert len(all_contexts) == len(all_sents) == len(all_encoded_sents) == len(final_rewards) == len(all_context_ids)
-        self.replay_buffer.add(zip(all_contexts, all_sents, all_encoded_sents, final_rewards, all_context_ids))
+        assert len(all_contexts) == len(all_sents) == len(all_encoded_sents) == len(final_rewards) == len(all_context_ids) == len(all_rewards)
+        self.replay_buffer.add(zip(all_contexts, all_sents, all_encoded_sents, final_rewards, all_rewards, all_context_ids))
         
         # logging
+        logger.info(f"replay buffer mean: {self.replay_buffer.mean()}, {self.replay_buffer.std()}")
         logger.info("Collecting Samples finished!")
         
         return all_rewards
@@ -519,6 +700,9 @@ class Trainer:
 
         start = time.time()
         buffer_old_logprobs = [None] * len(buffer_sents)
+        buffer_old_logprobs_gpt2 = [None] * len(buffer_sents)
+        buffer_old_seq_logprobs = [None] * len(buffer_sents)
+        buffer_old_seq_logprobs_gpt2 = [None] * len(buffer_sents)
         indices = np.arange(len(buffer_sents))
         context_map = {}
 
@@ -549,24 +733,87 @@ class Trainer:
                 #     past = [p.to(self.model_A.device) for p in past]
                 
                 logits, past, hidden_states = self.model_A(batch_sents, past=past)
+                logits_gpt2, _, _ = self.GPT2(batch_sents, past=None)
+
 
                 # prepare the loss func inputs
                 logits = logits[:, :-1].contiguous()
+                logits_gpt2 = logits_gpt2[:, :-1].contiguous()
+                logits_gpt2 = logits_gpt2.to(logits.device)
                 target = batch_sents[:, 1:].contiguous()
+                mask = mask[:, 1:].contiguous()
+
+                sequences_logprobs = - criterion(logits, target, mask)
+                if self.use_approx_kl:
+                    old_logprobs = sequences_logprobs.sum(1)
+                
+                #gpt2 logprobs
+                sequences_logprobs_gpt2 = - criterion(logits_gpt2, target, mask)
+                if self.use_approx_kl:
+                    old_logprobs_gpt2 = sequences_logprobs_gpt2.sum(1)
+
+                # store
+                old_logprobs = old_logprobs.tolist()
+                old_logprobs_gpt2 = old_logprobs_gpt2.tolist()
+                if not self.use_approx_kl:
+                    sequences_logprobs = sequences_logprobs.tolist()
+                    sequences_logprobs_gpt2 = sequences_logprobs_gpt2.tolist()
+                for i, j in enumerate(context_map[context_id]['sent_ids']):
+                    buffer_old_logprobs[j] = old_logprobs[i]
+                    buffer_old_logprobs_gpt2[j] = old_logprobs_gpt2[i]
+                    if not self.use_approx_kl:
+                        buffer_old_seq_logprobs[j] = sequences_logprobs[i]
+                        buffer_old_seq_logprobs_gpt2[j] = sequences_logprobs_gpt2[i]
+        end = time.time()
+        speed = (end - start) / len(buffer_sents)
+
+        print(f"calculate_old_logprobs: {speed} per turn")
+        logger.info(f"calculate_old_logprobs: {speed} per turn")
+        # pdb.set_trace()
+        if self.use_approx_kl:
+            return buffer_old_logprobs, buffer_old_logprobs_gpt2#, buffer_old_seq_logprobs, buffer_old_seq_logprobs_gpt2
+        else:
+            return buffer_old_logprobs, buffer_old_logprobs_gpt2, buffer_old_seq_logprobs, buffer_old_seq_logprobs_gpt2
+
+
+    def calculate_old_logprobs_GPT2(self, buffer_sents, buffer_sequences):
+
+        buffer_old_logprobs = []
+        assert len(buffer_sents) == len(buffer_sequences)
+        indices = np.arange(len(buffer_sequences))
+
+        with torch.no_grad():
+            for i in range((len(buffer_sequences) // PpoParams.batchsize) + 1):
+                batch_indices = indices[i * PpoParams.batchsize : (i + 1) * PpoParams.batchsize]
+                batch_sequences = [buffer_sequences[j] for j in batch_indices]
+                if len(batch_sequences) == 0:
+                    assert (len(buffer_sequences) % PpoParams.batchsize) == 0
+                    break
+                
+                # pdb.set_trace()
+                # make batch
+                batch_sequences = make_batch_sequences(batch_sequences, padding_value=PAD_TOKEN)
+                mask = batch_sequences.ne(PAD_TOKEN).float()
+
+                # to device
+                device = self.GPT2.device
+                batch_sequences = batch_sequences.to(device)
+                mask = mask.to(device)
+
+                logits, past, _ = self.GPT2(batch_sequences)
+
+                # prepare the loss func inputs
+                logits = logits[:, :-1].contiguous()
+                target = batch_sequences[:, 1:].contiguous()
                 mask = mask[:, 1:].contiguous()
 
                 sequences_logprobs = - criterion(logits, target, mask)
                 old_logprobs = sequences_logprobs.sum(1)
 
                 # store
-                old_logprobs = old_logprobs.tolist()
-                for i, j in enumerate(context_map[context_id]['sent_ids']):
-                    buffer_old_logprobs[j] = old_logprobs[i]
-        end = time.time()
-        speed = (end - start) / len(buffer_sents)
-
-        print(f"calculate_old_logprobs: {speed} per turn")
-        logger.info(f"calculate_old_logprobs: {speed} per turn")
+                buffer_old_logprobs.extend(old_logprobs.tolist())
+        # pdb.set_trace()
+        assert len(buffer_old_logprobs) == len(buffer_sents)
         return buffer_old_logprobs
 
     def make_past(self, contexts):
@@ -593,7 +840,7 @@ class Trainer:
         return past
 
     def train_steps(self, total_steps):
-        for total_steps in tqdm(range(total_steps)):
+        for total_step in tqdm(range(total_steps)):
             self.trained_steps += 1
             start = time.time()
             
@@ -601,9 +848,13 @@ class Trainer:
             
             self.model_A.train()
             self.model_B.train()
-            buffer_contexts, buffer_sents, buffer_encoded_sents, buffer_rewards, buffer_context_ids = zip(*trainer.replay_buffer)
-            buffer_old_logprobs = self.calculate_old_logprobs(buffer_contexts, buffer_context_ids, buffer_sents, buffer_encoded_sents)
-
+            buffer_contexts, buffer_sents, buffer_encoded_sents, buffer_rewards, buffer_no_normalized_rewards, buffer_context_ids = zip(*trainer.replay_buffer)
+            buffer_old_logprobs, buffer_old_logprobs_gpt2 = self.calculate_old_logprobs(buffer_contexts, buffer_context_ids, buffer_sents, buffer_encoded_sents)
+            # these are lists of floats
+            # buffer_old_logprobs_gpt2 = self.calculate_old_logprobs_GPT2(buffer_sents, buffer_encoded_sents)
+            # pdb.set_trace()
+            
+            
             for ppo_epoch in tqdm(range(PpoParams.ppo_epoch)):
                 indices = np.arange(len(buffer_rewards))
                 np.random.shuffle(indices)
@@ -616,6 +867,7 @@ class Trainer:
                     sampled_sents = [buffer_sents[j] for j in sampled_indices]
                     sampled_encoded_sents = [buffer_encoded_sents[j] for j in sampled_indices]
                     sampled_old_logprobs = [buffer_old_logprobs[j] for j in sampled_indices]
+                    sampled_old_logprobs_gpt2 = [buffer_old_logprobs_gpt2[j] for j in sampled_indices]
                     sampled_rewards = [buffer_rewards[j] for j in sampled_indices]
 
                     # make batches
@@ -623,12 +875,15 @@ class Trainer:
                     # target_list = []
                     # mask_list = []
                     # torch.cuda.empty_cache()
+                    # pdb.set_trace()
+
                     sequence_logprob_list = []
                     try:
                         batch_encoded_sents = make_batch_sequences(sampled_encoded_sents, padding_value=PAD_TOKEN)
                     except:
                         pdb.set_trace()
-                    for i, (contexts, old_logprob, reward) in enumerate(zip(sampled_contexts, sampled_old_logprobs, sampled_rewards)):
+                    
+                    for i, (contexts, reward) in enumerate(zip(sampled_contexts, sampled_rewards)):
                         past = self.make_past(contexts)
                         encoded_sent = batch_encoded_sents[i, :].unsqueeze(0)
                         # pdb.set_trace()
@@ -654,31 +909,50 @@ class Trainer:
 
                         sequences_logprob = - criterion(logits, target, mask)
                         sequence_logprob_list.append(sequences_logprob)
+                        
+                        
+                        # loss = policy_loss + (sequences_logprob, kl)
+                        # loss.backward()
+                        # optimizer
+                        # loss_list.append(loss)
                         # logits_list.append(logits)
                         # target_list.append(target)
                         # mask_list.append(mask)
-                        # torch.cuda.empty_cache()
-                    
+                    # del past
+                    # torch.cuda.empty_cache()
+                    torch.nn.utils.clip_grad_norm_(self.model_A.parameters(), 0.5)
+                    optimizer.step()
+                    optimizer.zero_grad()
+
+
                     # pdb.set_trace()
                     # logits = torch.cat(logits_list)
                     # target = torch.cat(target_list)
                     # mask = torch.cat(mask_list)
     
+                    #(minibatch_size, 1)
                     old_logprobs = torch.FloatTensor(sampled_old_logprobs).to(self.device1)
+                    old_logprobs_gpt2 = torch.FloatTensor(sampled_old_logprobs_gpt2).to(self.device1)
                     sampled_rewards = torch.FloatTensor(sampled_rewards).to(self.device1)
 
                     # calc advantages
                     advantages = sampled_rewards
+                    advantages = advantages.clamp(-2, 2)
+                    # clip(advantages, 2, -2)
 
                     # pdb.set_trace()
+                    # (minibatch, logprob)
                     sequences_logprobs = torch.cat(sequence_logprob_list)#- criterion(logits, target, mask)
+                    # del sequence_logprob_list
 
-                    # here we need to calculate for the each token in the sequence
-                    entropy = - (sequences_logprobs.exp() * sequences_logprobs).sum(1)
-                    # print(f"entropy: {entropy}")
-                    logger.info(f"entropy: {entropy}")
-                    # entropy = entropy.clamp_min(min_entropy)
-                    logprobs = sequences_logprobs.sum(1)
+                    if USE_ENTROPY:
+                        # here we need to calculate for the each token in the sequence
+                        entropy = - (sequences_logprobs.exp() * sequences_logprobs).sum(1)
+                        # print(f"entropy: {entropy}")
+                        logger.info(f"entropy: {entropy}")
+                        # entropy = entropy.clamp_min(min_entropy)
+                    
+                    logprobs = sequences_logprobs.sum(1) #@@ normalize by length
 
                     # shape: (batch)
                     ratio = (logprobs - old_logprobs).exp()
@@ -693,24 +967,49 @@ class Trainer:
                     with torch.no_grad():
                         clipfrac = ((ratio - 1.0).abs() > clip_range).float().mean()
                         approx_kl = (logprobs - old_logprobs).pow(2).mean()
+                        # kl = sequences_logprob * (logprobs - old_logprobs).mean()#.pow(2).mean()
+                        # kl(p, q) = p*log(p/q) = p(logp-log q)
+                        # np.where(p != 0, p * np.log(p / q), 0)
 
+                    # calculate KL with original gpt2
+                    if not USE_ENTROPY:
+                        approx_kl_gpt2 = (logprobs - old_logprobs_gpt2).pow(2)
+                        # np.where(p != 0, p * np.log(p / q), 0)
+                    
                     # print the final clipfrac and approxl
                     print(f"Approx KL {approx_kl.item()}, Clip Frac {clipfrac.item()}")
                     logger.info(f"Approx KL {approx_kl.item()}, Clip Frac {clipfrac.item()}")
+                    if np.isnan(approx_kl.item()):
+                        pdb.set_trace()
 
                     # get the final loss
-                    loss = policy_loss.mean() - entropy_coef * entropy.mean()
+                    # loss = policy_loss.mean() - entropy_coef * entropy.mean()
+                    loss = policy_loss.mean() + kl_gpt2_coef * approx_kl_gpt2.mean()
+                    logger.info(f"policy_loss {policy_loss.mean().item()}")
+                    if policy_loss.mean().item() > 1e20:
+                        pdb.set_trace()
+                    if USE_ENTROPY:
+                        logger.info(f"entropy {entropy.mean().item()}")
+                    else:
+                        logger.info(f"approx_kl_gpt2 {approx_kl_gpt2.mean().item()}")
+                    logger.info(f"loss {loss.item()}")
 
                     # update the model
                     optimizer.zero_grad()
                     loss.backward()
                     # must clip the gradient for stability
+                    # pdb.set_trace()
                     torch.nn.utils.clip_grad_norm_(self.model_A.parameters(), 0.5)
+                    # pdb.set_trace() #assert not torch.isnan(grad).any()
                     optimizer.step()
+                    
                     # scheduler.step()
-                  
-            print("Mean Reward", np.mean(all_rewards))
-            logger.info(f"Mean Reward: {np.mean(all_rewards)}")
+
+            del past
+            torch.cuda.empty_cache() 
+            mean_reward = np.mean([r for r in all_rewards if r != self.actor.reward_func.ground_truth_reward])
+            print("Mean Reward", mean_reward)
+            logger.info(f"Mean Reward: {mean_reward}")
             end = time.time()
             speed = (end - start) / PpoParams.batchsize
             print("Speed", speed)
@@ -720,63 +1019,96 @@ class Trainer:
             logger.info(f"max memory A: {torch.cuda.max_memory_allocated(model_A.device)}")
             print(f"max memory B: {torch.cuda.max_memory_allocated(model_B.device)}")
             logger.info(f"max memory B: {torch.cuda.max_memory_allocated(model_B.device)}")
-            torch.save((self.model_A.state_dict(), self.model_B.state_dict()), f"Checkpoint/{self.trained_steps}_steps_{np.mean(all_rewards)}_reward_model_A.pth")
+            torch.save((self.model_A.state_dict(), self.model_B.state_dict()), f"Checkpoint/{self.trained_steps+PREVIOUS_STEPS}_steps_{np.mean(all_rewards)}_reward_model_A_kl_{round(approx_kl_gpt2.mean().item(), 2)}.pth")
+            torch.save(self.replay_buffer, f"Checkpoint/replay_buffer.pth")
 
-NEW_MODEL_A_DIR = None#"Checkpoint/20_steps_0.049586776859504134_reward_model_A.pth"
+if __name__ == "__main__":
+    NEW_MODEL_A_DIR = None#"Checkpoint/7_steps_2.3_reward_model_A_kl_47.13.pth"#None#"Checkpoint/9_steps_1.3272727272727274_reward_model_A.pth"#None#"Checkpoint/7_steps_1.984710743801653_reward_model_A.pth"#None#"Checkpoint/30_steps_2.0_reward_model_A.pth"#None#"Checkpoint/9_steps_-0.03278688524590164_reward_model_A.pth"#None#"Checkpoint/1_steps_1.12_reward_model_A.pth"#None#"Checkpoint/20_steps_0.049586776859504134_reward_model_A.pth"
+    REPLAY_BUFFER_DIR = None#"Checkpoint/replay_buffer.pth"#None#"Checkpoint/replay_buffer.pth"#None#"Checkpoint/replay_buffer.pth"#None#"Checkpoint/replay_buffer.pth"#"Checkpoint/replay_buffer.pth"#None#"Checkpoint/replay_buffer.pth"
 
-tokenizer = GPT2Tokenizer.from_pretrained("gpt2")#torch.load(tokenizer_dir)
-DEVICE1 = torch.device("cuda:1")
-DEVICE2 = torch.device("cuda:0")
-SPLIT_INTO = 2
+    if REPLAY_BUFFER_DIR is not None:
+        replay_buffer_temp = torch.load(REPLAY_BUFFER_DIR)
+        PREV_DIALOGS = max([int(r[-1].split('-')[0]) for r in replay_buffer_temp])+1
+    else:
+        PREV_DIALOGS = 0
+    print(f"{PREV_DIALOGS}")
+    # pdb.set_trace()
 
-model_A, model_B = load_model(cfg, device1=DEVICE1, device2=DEVICE2, split_into=SPLIT_INTO, model_A_dir=NEW_MODEL_A_DIR)
-pdb.set_trace()
+    tokenizer = GPT2Tokenizer.from_pretrained("gpt2")#torch.load(tokenizer_dir)
+    DEVICE1 = torch.device(cfg.model_A_device)
+    DEVICE1_list = cfg.model_A_device_list
+    SPLIT_INTO1= cfg.split_into_A
 
-PAD_TOKEN = tokenizer.encoder["<|endoftext|>"]
-clip_range = 0.2
-entropy_coef = 1e-5
-min_entropy = 10.0 # depends on the task
-criterion = SequenceCrossEntropyLoss()
+    DEVICE2 = torch.device(cfg.model_B_device)
+    DEVICE2_list = cfg.model_B_device_list
+    SPLIT_INTO2= cfg.split_into_B
+    
+    DEVICE3 = cfg.model_C_device
+    DEVICE3_list = cfg.model_C_device_list
+    # DEVICE3 = torch.device(cfg.model_GPT2_device)
+    SPLIT_INTO3 = cfg.split_into_C
 
-
-actor = Actor(model_A=model_A, model_B=model_B, tokenizer=tokenizer, device1=DEVICE1, device2=DEVICE2)
-
-pdb.set_trace()
-# optimizer
-num_epochs = 10
-num_gradients_accumulation = 1
-num_train_optimization_steps = 1000
-
-param_optimizer = list(model_A.named_parameters())# + list(model_B.named_parameters())
-no_decay = ['ln', 'bias', 'LayerNorm']
-optimizer_grouped_parameters = [
-    {'params': [p for n, p in param_optimizer if not any(nd in n for nd in no_decay)], 'weight_decay': 0.01},
-    {'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}
-    ]
-
-TOTAL_STEPS = 50
-num_train_optimization_steps = PpoParams.ppo_epoch * (PpoParams.batchsize // PpoParams.mini_batchsize) * TOTAL_STEPS
-
-from pytorch_pretrained_bert import OpenAIAdam
-optimizer = OpenAIAdam(optimizer_grouped_parameters,
-                       lr=2e-5,
-                       warmup=0.1,
-                       max_grad_norm=1.0,
-                       weight_decay=0.01,
-                       t_total=num_train_optimization_steps)
-from transformers import get_linear_schedule_with_warmup
-# optimizer = AdamW(optimizer_grouped_parameters,
-#                 lr=3e-5,
-#                 eps=1e-06)
-# scheduler = get_linear_schedule_with_warmup(optimizer,
-#                                  warmup_steps=100,
-#                                  num_training_steps=num_train_optimization_steps)
-# optimizer = FusedAdam(optimizer_grouped_parameters, 
-#                     lr=1e-6,
-#                     eps=1e-06,
-#                     bias_correction=False)
+    model_A, model_B = load_model(cfg=cfg, device1=DEVICE1, device2=DEVICE2, split_into1=SPLIT_INTO1,  split_into2=SPLIT_INTO2,
+                                dropout=0,
+                                model_A_dir=NEW_MODEL_A_DIR,
+                                device_list1=DEVICE1_list,
+                                device_list2=DEVICE2_list)
+    # pdb.set_trace()
+    GPT2_model = load_GPT2(cfg=cfg, device1=DEVICE3, split_into=SPLIT_INTO3, 
+                            dropout=0, device_list=DEVICE3_list)
+    # pdb.set_trace()
+    PAD_TOKEN = tokenizer.encoder["<|endoftext|>"]
+    USE_ENTROPY = False
+    clip_range = 0.2
+    entropy_coef = 1e-2
+    kl_gpt2_coef = 1e-3
+    min_entropy = 10.0 # depends on the task
+    criterion = SequenceCrossEntropyLoss()
 
 
+    actor = Actor(model_A=model_A, model_B=model_B, tokenizer=tokenizer, 
+                  device1=DEVICE1, device2=DEVICE2, dialog_i=PREV_DIALOGS)
+
+    # pdb.set_trace()
+    # optimizer
+    num_epochs = 10
+    num_gradients_accumulation = 1
+    num_train_optimization_steps = 1000
+
+    param_optimizer = list(model_A.named_parameters()) + list(model_B.named_parameters())
+    no_decay = ['ln', 'bias', 'LayerNorm']
+    optimizer_grouped_parameters = [
+        {'params': [p for n, p in param_optimizer if not any(nd in n for nd in no_decay)], 'weight_decay': 0.01},
+        {'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}
+        ]
+
+    PREVIOUS_STEPS = 7
+    TOTAL_STEPS = 50
+    num_train_optimization_steps = PpoParams.ppo_epoch * (PpoParams.batchsize // PpoParams.mini_batchsize) * TOTAL_STEPS
+
+    # from pytorch_pretrained_bert import OpenAIAdam
+    from fairseq.optim.adafactor import Adafactor
+    # optimizer = OpenAIAdam(optimizer_grouped_parameters,
+    #                     lr=2e-5,
+    #                     warmup=0.1,
+    #                     max_grad_norm=1.0,
+    #                     weight_decay=0.01,
+    #                     t_total=num_train_optimization_steps)
+    optimizer = Adafactor(optimizer_grouped_parameters,
+                          lr=2e-5,
+                          clip_threshold=1,
+                          )
+    # from transformers import get_linear_schedule_with_warmup
+    # optimizer = AdamW(optimizer_grouped_parameters,
+    #                 lr=3e-5,
+    #                 eps=1e-06)
+    # scheduler = get_linear_schedule_with_warmup(optimizer,
+    #                                  warmup_steps=100,
+    #                                  num_training_steps=num_train_optimization_steps)
+    # optimizer = FusedAdam(optimizer_grouped_parameters, 
+    #                     lr=1e-6,
+    #                     eps=1e-06,
+    #                     bias_correction=False)
 
 
 
@@ -784,28 +1116,34 @@ from transformers import get_linear_schedule_with_warmup
 
 
 
-trainer = Trainer(actor=actor, model_A=model_A, model_B=model_B, device1=DEVICE1, device2=DEVICE2)
+    IN_TRAINING = True
 
-if NEW_MODEL_A_DIR is None:
-    try:
-        trainer.train_steps(total_steps=TOTAL_STEPS)
-        print(torch.cuda.memory_summary(device=model_A.device, abbreviated=False))
-        print(torch.cuda.memory_summary(device=model_B.device, abbreviated=False))
+    trainer = Trainer(actor=actor, model_A=model_A, model_B=model_B, device1=DEVICE1, device2=DEVICE2,
+                      GPT2_model=GPT2_model, use_approx_kl=True)
 
-    except:
-        print(torch.cuda.memory_summary(device=model_A.device, abbreviated=False))
-        print(torch.cuda.memory_summary(device=model_B.device, abbreviated=False))
-else:
-    usr_text = ""
-    while True:
-        # interactive test
-        sys_sent, [sents_success, sents_failed], have_enough_candidates = actor.chat(usr_text)
-        print(f"sys: {sys_sent}\n")
-        # print(f"success:\n {sents_success}")
-        # print(f"failed:\n {sents_failed}")
+    if IN_TRAINING:
+        try:
+            trainer.train_steps(total_steps=TOTAL_STEPS)
+            print(torch.cuda.memory_summary(device=model_A.device, abbreviated=False))
+            print(torch.cuda.memory_summary(device=model_B.device, abbreviated=False))
 
-        usr_text = input("usr: ")
-# pdb.set_trace()
+        except:
+            torch.save((trainer.model_A.state_dict(), trainer.model_B.state_dict()), f"Checkpoint/in_exception_{trainer.trained_steps}_steps_reward_model_A.pth")
+            torch.save(trainer.replay_buffer, f"Checkpoint/replay_buffer_in_exception.pth")
+            print(torch.cuda.memory_summary(device=model_A.device, abbreviated=False))
+            print(torch.cuda.memory_summary(device=model_B.device, abbreviated=False))
+    else:
+        # assert NEW_MODEL_A_DIR
+        usr_text = ""
+        while True:
+            # interactive test
+            sys_sent, [sents_success, sents_failed], have_enough_candidates, usr_input_text = actor.chat(usr_text)
+            print(f"sys: {sys_sent}\n")
+            # print(f"success:\n {sents_success}")
+            # print(f"failed:\n {sents_failed}")
+
+            usr_text = input("usr: ")
+    # pdb.set_trace()
 
 
 

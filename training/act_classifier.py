@@ -142,8 +142,6 @@ class SequenceSummary(nn.Module):
 torch.backends.cudnn.benchmark = True
 torch.manual_seed(123)
 np.random.seed(123)
-import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3,4,5,6,7"
 
 class PersuadeDataset(Dataset):
     def __init__(self, data, tokenizer):

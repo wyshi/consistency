@@ -52,16 +52,18 @@ class HumanRule(object):
                int: one candidate selected
                str: no candidate selected, should append the returned sentence to the end
         """
-        # if cfg.rl_finetune:
-        #     return None
+        if cfg.rl_finetune:
+            return None
         if cfg.verbose:
             print("\n\n\n--------- rule enforce --------------")
         if self.chatbot.turn_i >= cfg.HAVE_TO_PROPOSE:
             # have to propose donation at this turn if it hasn't proposed yet
             enforced_acts = [SystemAct.propose_donation_inquiry, SystemAct.PROVIDE_DONATION_PROCEDURE]
             enforced_templates = self.sys_template.get_template(enforced_acts)
-            if (self.chatbot.global_profile.usr_world.usr_profile[self.chatbot.domain.WANT_TO_DONATE] != self.chatbot.domain.INIT)\
-                or SystemAct.propose_donation_inquiry not in self.chatbot.global_profile.sys_world.sent_profile.keys():
+            import pdb
+            pdb.set_trace()
+            if (self.chatbot.global_profile.usr_world.usr_profile[self.chatbot.domain.WANT_TO_DONATE] == self.chatbot.domain.INIT)\
+                or (SystemAct.propose_donation_inquiry not in self.chatbot.global_profile.sys_world.sent_profile.keys()):
             # if SystemAct.propose_donation_inquiry not in self.chatbot.global_profile.sys_world.sent_profile.keys():
                 # we should enforce rule
                 # we should check the enforced templates are not repetition

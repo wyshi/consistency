@@ -671,9 +671,9 @@ class GlobalProfile(object):
         vs 
         QA    to re-label
         """
+
         predicted_labels, past = model_clf.predict(separate_sents=sys_texts, 
-                                                      which_task=which_task)
-        
+                                                    which_task=which_task)
         def regex_label_for_one_utt(utt, predicted_label):
             # try:
             #     predicted_label = self.pred_model.predict(text=utt, his=context, turn=turn_i)
@@ -716,7 +716,10 @@ class GlobalProfile(object):
                     label = SystemAct.other_inquiry
 
             elif predicted_label in ["greeting"]:
-                label = SystemAct.greeting_inquiry
+                if "?" in sent:
+                    label = SystemAct.greeting_inquiry
+                else:
+                    label = SystemAct.greeting_answer
 
             elif predicted_label in ["source-related-inquiry"]:
                 label = SystemAct.organization_related_inquiry

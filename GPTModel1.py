@@ -1,8 +1,12 @@
 from transformers import GPT2Model, GPT2LMHeadModel, GPT2Tokenizer, GPT2Config#, Block
+from transformers.modeling_gpt2 import Attention, MLP
 from torch.nn import CrossEntropyLoss
 import torch
 import torch.nn as nn
 import pdb
+import config as cfg
+import torch.utils
+import torch.utils.checkpoint
 
 def move_to_device(past, target):
     try:
@@ -21,6 +25,31 @@ def move_to_device(past, target):
         return past
     except:
         pdb.set_trace()
+
+class Block(nn.Module):
+    def __init__(self, n_ctx, config, scale=False):
+        super().__init__()
+        nx = config.n_embd
+        self.ln_1 = nn.LayerNorm(nx, eps=config.layer_norm_epsilon)
+        self.attn = Attention(nx, n_ctx, config, scale)
+        self.ln_2 = nn.LayerNorm(nx, eps=config.layer_norm_epsilon)
+        self.mlp = MLP(4 * nx, config)
+
+    def forward(self, x, layer_past=None, attention_mask=None, head_mask=None):
+        output_attn = self.attn(
+            self.ln_1(x), layer_past=layer_past, attention_mask=attention_mask, head_mask=head_mask
+        )
+        a = output_attn[0]  # output_attn: a, present, (attentions)
+
+        x = x + a
+        m = self.mlp(self.ln_2(x))
+        x = x + m
+
+        outputs = [x] + output_attn[1:]
+        # return outputs
+        # return tuple(outputs)
+        assert len(outputs) == 2
+        return outputs[0], outputs[1]
 
 class GPT2LMHeadModel_modified(GPT2LMHeadModel):
     def __init__(self, config):
@@ -57,9 +86,9 @@ class GPT2LMHeadModel_modified(GPT2LMHeadModel):
 
         return outputs  # (loss), lm_logits, presents, (all hidden_states), (attentions)
 
-    def set_variables(self, device, split_into):
+    def set_variables(self, device, split_into, device_list=None):
         self.device = device
-        self.transformer = GPT2Model_modified(self.config, device, split_into)
+        self.transformer = GPT2Model_modified(self.config, device, split_into, device_list)
 
     def to(self, device):
         self.transformer.to()
@@ -144,13 +173,15 @@ class GPT2LMHeadModel_modified(GPT2LMHeadModel):
 
 
 class GPT2Model_modified(GPT2Model):
-    def __init__(self, config, device, split_into):
+    def __init__(self, config, device, split_into, device_list=None):
         super().__init__(config)
+        self.h = nn.ModuleList([Block(config.n_ctx, config, scale=True) for _ in range(config.n_layer)])
         self.past_max_len = config.n_ctx
         # self.config = config
         print(f"max_past_len = {self.past_max_len}")
 
         total_num_devices = torch.cuda.device_count()
+        # pdb.set_trace()
         print(f"{total_num_devices} devices are available!")
         if split_into > total_num_devices:
             print(f"try to split to {split_into} devices")
@@ -158,11 +189,19 @@ class GPT2Model_modified(GPT2Model):
 
         self.device = device
         self.split_into = split_into
-        if device.type == "cuda":
-            devices = range(device.index, device.index+split_into)
-            self.devices = [f"cuda:{d%total_num_devices}" for d in devices]
+        if device_list is None:
+            if device.type == "cuda":
+                devices = range(device.index, device.index+split_into)
+                self.devices = [f"cuda:{d%total_num_devices}" for d in devices]
+            else:
+                self.devices = ["cpu"]*split_into
         else:
-            devices = ["cpu"]*split_into
+            assert len(device_list) == split_into
+            self.devices = device_list
+            # if "cuda:"+str(device.index) == cfg.model_A_device_list[0]:
+            #     self.devices = cfg.model_A_device_list
+            # else:
+            #     self.devices = cfg.model_B_device_list
 
     def to(self):
         if self.split_into > 1:
@@ -181,6 +220,8 @@ class GPT2Model_modified(GPT2Model):
                     device_i = (device_i+1)%(self.split_into)
             
             self.ln_f.to(self.devices[device_i])
+        else:
+            super().to(self.device)
         
 
     def forward(
@@ -309,15 +350,17 @@ class GPT2Model_modified(GPT2Model):
         presents = ()
         all_attentions = []
         all_hidden_states = ()
+
         for i, (block, layer_past) in enumerate(zip(self.h, past)):
             hidden_states = move_to_device(hidden_states, block)      
             layer_past = move_to_device(layer_past, block)      
             if self.output_hidden_states:
                 all_hidden_states = all_hidden_states + (hidden_states.view(*output_shape),)
 
-            outputs = block(
-                hidden_states, layer_past=layer_past, attention_mask=attention_mask, head_mask=head_mask[i]
-            )
+            outputs = torch.utils.checkpoint.checkpoint(block, hidden_states, layer_past, attention_mask, head_mask[i])
+            # outputs = block(
+            #     hidden_states, layer_past=layer_past, attention_mask=attention_mask, head_mask=head_mask[i]
+            # )
 
             hidden_states, present = outputs[:2]
             if self.output_past:

@@ -43,6 +43,12 @@ import logging
 
 from copy import deepcopy
 
+def sent_tokenize_modified(sent):
+    sents = sent_tokenize(sent)
+    if sents == []:
+        sents = ['']
+    return sents
+
 def top_filtering(logits, top_k=0, top_p=0.0, filter_value=-float('Inf')):
     """ Filter a distribution of logits using top-k, top-p (nucleus) and/or threshold filtering
         Args:
@@ -65,6 +71,7 @@ def top_filtering(logits, top_k=0, top_p=0.0, filter_value=-float('Inf')):
         sorted_logits, sorted_indices = torch.sort(logits, descending=True)
         cumulative_probabilities = torch.cumsum(F.softmax(sorted_logits, dim=-1), dim=-1)
 
+        # pdb.set_trace()
         # Remove tokens with cumulative probability above the threshold
         sorted_indices_to_remove = cumulative_probabilities > top_p
         # Shift the indices to the right to keep also the first token above the threshold
@@ -141,11 +148,12 @@ class PersuasiveBot:
                 model_A_states, model_B_states = torch.load(cfg.new_small_model_dir)
             elif cfg.model_size == "medium":
                 if cfg.use_old_model:
-                    model_A_states, model_B_states = torch.load(cfg.old_medium_model_dir)
-                    model_A_states['transformer.wte.weight'] = model_A_states['transformer.wte.weight'][:50257,:]
-                    model_A_states['lm_head.weight'] = model_A_states['lm_head.decoder.weight'][:50257,:]
+                    _, model_B_states = torch.load(cfg.old_medium_model_dir)
+                    # model_A_states['transformer.wte.weight'] = model_A_states['transformer.wte.weight'][:50257,:]
+                    # model_A_states['lm_head.weight'] = model_A_states['lm_head.decoder.weight'][:50257,:]
                     model_B_states['transformer.wte.weight'] = model_B_states['transformer.wte.weight'][:50257,:]
                     model_B_states['lm_head.weight'] = model_B_states['lm_head.decoder.weight'][:50257,:]
+                    model_A_states, _ = torch.load("Checkpoint/20_steps_1.8069696969696971_reward_model_A.pth")
                 else:
                     model_A_states, model_B_states = torch.load(cfg.new_medium_model_dir)
 
@@ -170,72 +178,74 @@ class PersuasiveBot:
             self.model_A = model_A
             self.model_B = model_B
 
-    def chat(self, input_text=None, mode=cfg.interactive_mode):
+    def chat(self, input_text=None, mode=cfg.interactive_mode, sid=None):
         # sid = 0        
         # pdb.set_trace()
-        if self.past is None:
-            sys_sent, [sents_success, sents_failed], have_enough_candidates = self.sys_respond_and_update(mode=mode)
-            turn_responses = ["sys: "+sys_sent]
-        else:
-            # user-side
-            if mode != cfg.self_play_mode:
-                assert input_text is not None
-                if input_text == "quit":
-                    # del self.past
-                    self.past = None
-                    # self.reload()
-                    return
-                
-                input_texts = sent_tokenize(input_text)
-                # input_texts_labels = [None]*len(input_texts)
-                input_texts_labels, _ = self.global_profile.regex_label(self.model_clf,
-                                                                        input_texts, 
-                                                                        which_task="B")
-                self.model_clf.set_past(sent=input_text, 
-                                        which_task="B")
-                
-                self.global_profile.update(sents=input_texts, sent_labels=input_texts_labels, who=self.domain.USR) #self.usr_profile.update(input_text, self.last_sys_labels)
-                self.last_sent = input_text
-                self.turn_i += 1
-                user = self.tokenizer.encode("B:" + input_text)
-                prev_input = user + self.eos
-                prev_input = torch.LongTensor(prev_input).unsqueeze(0).to(self.device2)
+        with torch.no_grad():
+            if self.past is None:
+                sys_sent, [sents_success, sents_failed], have_enough_candidates = self.sys_respond_and_update(mode=mode)
+                turn_responses = ["sys: "+sys_sent]
+            else:
+                # user-side
+                if mode != cfg.self_play_mode:
+                    assert input_text is not None
+                    if input_text == "quit":
+                        # del self.past
+                        self.past = None
+                        # self.reload()
+                        return
+                    
+                    input_texts = sent_tokenize_modified(input_text)
+                    # input_texts_labels = [None]*len(input_texts)
+                    input_texts_labels, _ = self.global_profile.regex_label(self.model_clf,
+                                                                            input_texts, 
+                                                                            which_task="B")
+                    self.model_clf.set_past(sent=input_text, 
+                                            which_task="B")
+                    
+                    self.global_profile.update(sents=input_texts, sent_labels=input_texts_labels, who=self.domain.USR) #self.usr_profile.update(input_text, self.last_sys_labels)
+                    self.last_sent = input_text
+                    self.turn_i += 1
+                    user = self.tokenizer.encode("B:" + input_text)
+                    prev_input = user + self.eos
+                    prev_input = torch.LongTensor(prev_input).unsqueeze(0).to(self.device2)
 
-                if self.past is not None and self.model_B.device != self.past[0].device:
-                    past = [p.to(self.model_B.device) for p in self.past]
-                    self.past = past
+                    if self.past is not None and self.model_B.device != self.past[0].device:
+                        past = [p.to(self.model_B.device) for p in self.past]
+                        self.past = past
 
-                _, self.past, self.b_hidden_states = self.model_B(prev_input, past=self.past)
+                    _, self.past, self.b_hidden_states = self.model_B(prev_input, past=self.past)
 
 
 
-            elif mode == cfg.self_play_mode:
-                input_text = self.generate_user_utt_self_play()
+                elif mode == cfg.self_play_mode:
+                    input_text, input_texts_labels = self.generate_user_utt_self_play()
 
-                if "bye" in input_text.lower() or "have a great day" in input_text.lower() \
-                    or "have a great night" in input_text.lower() \
-                    or self.turn_i >= 10:
+                    if "closing" in input_texts_labels or self.turn_i >= 10:#\
+                        # "bye" in input_text.lower() or "have a great day" in input_text.lower() \
+                        # or "have a great night" in input_text.lower() \
+                        #self.turn_i >= 10:
+                        print(f"user: {input_text}\n$$$$$$$$")
+                        self.past = None
+                        return
+                        # return "ARDM MEMORY RESTARTS!"
+
                     print(f"user: {input_text}\n$$$$$$$$")
-                    self.past = None
-                    return
-                    # return "ARDM MEMORY RESTARTS!"
-
-                print(f"user: {input_text}\n$$$$$$$$")
-            # system-side
-            sys_sent, [sents_success, sents_failed], have_enough_candidates = self.sys_respond_and_update(mode=mode)
-            turn_responses = ["usr: "+input_text,
-                              "sys: "+sys_sent]
-        
-        self.logs['global_profiles'].append(self.global_profile.get_profiles())
-        self.logs['responses'].append(turn_responses)
-        return sys_sent, [sents_success, sents_failed], have_enough_candidates
+                # system-side
+                sys_sent, [sents_success, sents_failed], have_enough_candidates = self.sys_respond_and_update(mode=mode)
+                turn_responses = ["usr: "+input_text,
+                                "sys: "+sys_sent]
+            
+            self.logs['global_profiles'].append(self.global_profile.get_profiles())
+            self.logs['responses'].append(turn_responses)
+            return sys_sent, [sents_success, sents_failed], have_enough_candidates, input_text
 
     def generate_user_utt_self_play(self):
         input_text, self.past, self.b_hidden_states = self.sample_one_sent(past=self.past, model=self.model_B, prefix="B:")
         # 
         # input("pause")
 
-        input_texts = sent_tokenize(input_text)
+        input_texts = sent_tokenize_modified(input_text)
         input_texts_labels, _ = self.global_profile.regex_label(self.model_clf,
                                                                 input_texts, 
                                                                 which_task="B")
@@ -253,7 +263,7 @@ class PersuasiveBot:
         prev_input = torch.LongTensor(self.eos).unsqueeze(0).to(self.device2)
         _, self.past, self.b_hidden_states = self.model_B(prev_input, past=self.past)
 
-        return input_text
+        return input_text, input_texts_labels
 
     def sample_one_sent(self, past, model, prefix="A:"):
         prev_input = self.tokenizer.encode(prefix)
@@ -271,15 +281,20 @@ class PersuasiveBot:
             import pdb
             # pdb.set_trace()
             for i in range(self.max_sequence_len):
+                # try:
+                # pdb.set_trace()
                 logits, past, hidden_states = model(prev_input, past=past)
+                
                 logits = logits[:, -1, :] / self.temperature
                 logits = top_filtering(logits, top_k=500, top_p=0.9)
                 # prev_input = logits.argmax(-1).unsqueeze(1)
                 probs = F.softmax(logits, -1)
-            
+                
+                
                 prev_input = torch.multinomial(probs, num_samples=1)
                 prev_word = prev_input.item()
-                
+                # except:
+                #     pdb.set_trace()  
 
                 if prev_word == 628:
                     break
@@ -357,7 +372,7 @@ class PersuasiveBot:
         return past, hidden_states
 
     def reload(self):
-        # torch.cuda.empty_cache()
+        torch.cuda.empty_cache()
         self.model_clf.reload()
         self.past = None
         self.b_hidden_states = None
@@ -518,23 +533,32 @@ class PersuasiveBot:
             if cfg.candidate_select_strategy == cfg.RANDOM_SELECT:
                 return random.sample(range(len(sent_candidate_conflict_scores)), k=1)[0], [1/len(sent_candidate_conflict_scores)]*len(sent_candidate_conflict_scores)
             else:
-                one_minus_score = 1 - np.array(sent_candidate_conflict_scores)
-                normalized_score = one_minus_score/(one_minus_score.sum())
-
-                if cfg.candidate_select_strategy in [cfg.REPETITION_RATIO, cfg.IMITATION_LEARNING_SELECTION]:
-                    # if cfg.debug:
-                    #     print("~~~~~~~~in select_candidates~~~~~~~~~")
-                    #     print("normalized_score: {}".format(normlized_score))
-                    #     print("original_score: {}".format(sent_candidate_conflict_scores))
-                    #     print("~"*20)
-                    return np.random.choice(range(len(sent_candidate_conflict_scores)), size=1, 
-                                        replace=False, p=normalized_score)[0], normalized_score
-                elif cfg.candidate_select_strategy == cfg.FIRST_OF_CANDIDATES:
-                    return 0, normalized_score
+                if all([s==1 for s in sent_candidate_conflict_scores]):
+                    # pdb.set_trace()
+                    return random.sample(range(len(sent_candidate_conflict_scores)), k=1)[0], [1/len(sent_candidate_conflict_scores)]*len(sent_candidate_conflict_scores)
                 else:
-                    raise ValueError(f"{cfg.candidate_select_strategy} is not supported in select_index()")
+                    one_minus_score = 1 - np.array(sent_candidate_conflict_scores)
+                    normalized_score = one_minus_score/(one_minus_score.sum())
 
-        selected_by_func = select_index()
+                    if cfg.candidate_select_strategy in [cfg.REPETITION_RATIO, cfg.IMITATION_LEARNING_SELECTION]:
+                        # if cfg.debug:
+                        #     print("~~~~~~~~in select_candidates~~~~~~~~~")
+                        #     print("normalized_score: {}".format(normlized_score))
+                        #     print("original_score: {}".format(sent_candidate_conflict_scores))
+                        #     print("~"*20)
+                        try:
+                            return np.random.choice(range(len(sent_candidate_conflict_scores)), size=1, 
+                                                replace=False, p=normalized_score)[0], normalized_score
+                        except:
+                            pdb.set_trace()
+                    elif cfg.candidate_select_strategy == cfg.FIRST_OF_CANDIDATES:
+                        return 0, normalized_score
+                    else:
+                        raise ValueError(f"{cfg.candidate_select_strategy} is not supported in select_index()")
+        try:
+            selected_by_func = select_index()
+        except:
+            pdb.set_trace()
         sents, sent_acts, past, scores = self.apply_human_rule(sent_candidates, sent_act_candidates, past_candidates,
                                                                 selected_by_func)    
 
@@ -556,7 +580,7 @@ class PersuasiveBot:
             for i, rule_result in enumerate(rule_results):
                 if rule_result is True:
                     break
-            selected_i, scores = i, 0
+            selected_i, scores = i, [0]
             sents, sent_acts, past = sent_candidates[selected_i], sent_act_candidates[selected_i], past_candidates[selected_i]
         else:
             if all(v is None for v in rule_results):
@@ -689,7 +713,7 @@ class PersuasiveBot:
                 # # past_test_2, hidden_states_test_2 = self.sample_one_sent_test_2(past=self.past, model=self.model_A, sent=sent)
                 # if self.turn_i in [0, 5] and _ in [0, 9]:
                 #     pdb.set_trace()
-                sents = sent_tokenize(sent)
+                sents = sent_tokenize_modified(sent)
                 
                 # use regex to re-label
                 sent_acts, _ = self.global_profile.regex_label(self.model_clf,
@@ -723,7 +747,7 @@ class PersuasiveBot:
             if cfg.debug:
                 print("no enough candidates! randomly generate the next one!")
             sent, past, hidden_states = self.sample_one_sent(past=self.past, model=self.model_A)
-            sents = sent_tokenize(sent)
+            sents = sent_tokenize_modified(sent)
 
             sent_acts, _ = self.global_profile.regex_label(self.model_clf,
                                                            sents, 
@@ -775,7 +799,7 @@ class PersuasiveBot:
                 _, past, hidden_state = self.model_A(prev_input, past=self.past)
 
                 sent = human_selected_ids
-                sents = sent_tokenize(sent)
+                sents = sent_tokenize_modified(sent)
                 sent_acts, _ = self.global_profile.regex_label(self.model_clf,
                                                                sents, 
                                                                which_task="A")
@@ -820,6 +844,9 @@ class PersuasiveBot:
         
 
         # update
+        # past = deepcopy(past)
+        del past_candidates
+        torch.cuda.empty_cache()
         if mode != cfg.supervised_mode:
             self.global_profile.update(sents=sents, sent_labels=sent_acts, who=self.domain.SYS) #self.last_sys_labels = self.sys_profile.update(sys_texts=sents, sys_labels=sent_acts)
 
@@ -1072,45 +1099,52 @@ if __name__ == "__main__":
     
 
     bot = PersuasiveBot()
-    pdb.set_trace()
+    # pdb.set_trace()
     # bot.reload()
     user_text = ""
     # signal.signal(signal.SIGINT, signal.default_int_handler)
 
-    MAX_DIALOGS = 2
+    MAX_DIALOGS = 5
+    TOTAL_TURNS = 0
+    TOTAL_SUCCESS_CANDIDATES = 0
     dial_i = 0
-    while dial_i < MAX_DIALOGS:
-        try:
-            if bot.past is not None:
-                if cfg.mode != cfg.self_play_mode:
-                    user_text  = input("user: ")
+    try:
+        while dial_i < MAX_DIALOGS:
+            try:
+                if bot.past is not None:
+                    if cfg.mode != cfg.self_play_mode:
+                        user_text  = input("user: ")
+                    else:
+                        user_text = None
                 else:
-                    user_text = None
-            else:
-                dial_i += 1
-                print("\n\n\n")
-                print("INIT MEMORY!")
+                    dial_i += 1
+                    print("\n\n\n")
+                    print("INIT MEMORY!")
+                    bot.save()
+                    bot.reload()
+                
+
+                result = bot.chat(input_text=user_text, mode=cfg.mode)
+                if result is not None:
+                    TOTAL_TURNS += 1
+                    response, [sents_success, sents_failed], have_enough_candidates, usr_input_text = result
+                    TOTAL_SUCCESS_CANDIDATES += len(sents_success)
+                if cfg.candidate_select_strategy != cfg.HUMAN_SELECTION:
+                    if cfg.verbose:
+                        bot.global_profile.print()
+                
+                # if response == "ARDM MEMORY RESTARTS!":
+                #     print("ARDM MEMORY RESTARTS!")
+                # else:
+                if result is not None:
+                    print("Turn {}".format(bot.turn_i))
+                    print("system: ", response)
+                print("$$$$$$$$$$$$$$$$$$$$$")
+
+            except KeyboardInterrupt:
                 bot.save()
-                bot.reload()
-            
+                sys.exit()
 
-            result = bot.chat(input_text=user_text, mode=cfg.mode)
-            if result is not None:
-                response, [sents_success, sents_failed], have_enough_candidates = result
-            if cfg.candidate_select_strategy != cfg.HUMAN_SELECTION:
-                if cfg.verbose:
-                    bot.global_profile.print()
-            
-            # if response == "ARDM MEMORY RESTARTS!":
-            #     print("ARDM MEMORY RESTARTS!")
-            # else:
-            if result is not None:
-                print("Turn {}".format(bot.turn_i))
-                print("system: ", response)
-            print("$$$$$$$$$$$$$$$$$$$$$")
-
-        except KeyboardInterrupt:
-            bot.save()
-            sys.exit()
-
-        
+    except:
+        pdb.set_trace()
+    print(f"finally {TOTAL_SUCCESS_CANDIDATES}, {TOTAL_TURNS}")
