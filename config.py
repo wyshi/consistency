@@ -1,27 +1,25 @@
-model_to_eval_dir = "Checkpoint/13_steps_2.609090909090909_reward_model_A_kl_13.05.pth"#"Checkpoint/2_steps_1.9528999999999996_reward_model_A.pth"#"/home/wyshi/persuasion/consistency/ARDM/persuasion/persuasion_medium_3.th"
+# evaluatoini
+model_to_eval_dir = "Checkpoint/43_steps_2.6611570247933884_reward_model_A_kl_9.37.pth"#"Checkpoint/2_steps_1.9528999999999996_reward_model_A.pth"#"/home/wyshi/persuasion/consistency/ARDM/persuasion/persuasion_medium_3.th"
 
+# clf parameters, fixed
 model_clf_dir = "Checkpoint_act_clf/epoch7_multitask_TF_best_acc_0.7944444444444444_f1_0.7861271676300577_A_acc_0.687741935483871_f1_0.6602596916886914_B_acc_0.6437699680511182_f1_0.6186370327752058.pth"#"Checkpoint_act_clf/multitask_TF_best_acc_0.7777777777777778_f1_0.776536312849162_A_acc_0.6954838709677419_f1_0.6707423935799665_B_acc_0.6166134185303515_f1_0.5898033645875225.pth"
 model_clf_device1 = "cuda:0"
 model_clf_device2 = "cuda:0"
 
-
-
-model_A_device = "cuda:2"
-model_A_device_list = ["cuda:1", 'cuda:2', 'cuda:3', 'cuda:4', 'cuda:5', "cuda:6"]
+model_A_device = "cuda:1"
+# model_A_device_list = ["cuda:1", 'cuda:2', 'cuda:3', 'cuda:4', 'cuda:5', "cuda:6"]
+model_A_device_list = ["cuda:1", 'cuda:2']
 split_into_A = len(model_A_device_list)
 
-model_B_device = "cuda:6"
-model_B_device_list = ['cuda:6', 'cuda:5', 'cuda:4', 'cuda:3', "cuda:2", "cuda:1"]
+model_B_device = "cuda:3"
+# model_B_device_list = ['cuda:6', 'cuda:5', 'cuda:4', 'cuda:3', "cuda:2", "cuda:1"]
+model_B_device_list = ['cuda:3', 'cuda:4']
 split_into_B = len(model_B_device_list)
 
 model_C_device = "cuda:0"
 model_C_device_list = ['cuda:0']
 split_into_C = len(model_C_device_list)
 split_into_C = len(model_C_device_list)
-
-# model_GPT_device = ""
-# model_GPT2_device = 
-# split_into_gpt2 = 2
 
 
 rl_finetune = True

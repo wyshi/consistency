@@ -6,7 +6,10 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3,4,5,6,7"
 
 from time import time
 import logging
-logging.basicConfig(filename='ppo7.log', level=logging.INFO)
+from os import listdir
+log_dir = max([int(f[3]) for f in listdir(".") if f.startswith("ppo") and f.endswith(".log")]) + 1
+log_dir = f"ppo{log_dir}.log"
+logging.basicConfig(filename='ppo8.log', level=logging.INFO)
 # logging.basicConfig(filename='hello2.log', level=logging.INFO)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -24,7 +27,7 @@ import torch.optim as optim
 import torch.multiprocessing as mp
 
 from torch.nn.parallel import DistributedDataParallel as DDP
-
+from torch.nn import KLDivLoss
 
 def setup(rank, world_size):
     os.environ['MASTER_ADDR'] = 'localhost'
@@ -69,7 +72,7 @@ import pdb
 
 #from transformers import WarmupLinearSchedule
 from apex.optimizers import FusedLAMB, FusedAdam
-from transformers import AdamW
+from transformers import AdamW, get_linear_schedule_with_warmup
 # from torchfly.transformers import UnifiedTokenizer, GPT2SimpleLM
 from torchfly.modules.losses import SequenceFocalLoss, SequenceCrossEntropyLoss
 # from torchfly.decode import top_filtering
@@ -82,7 +85,7 @@ from torchfly.modules.losses import SequenceFocalLoss, SequenceCrossEntropyLoss
 class PpoParams:
     ppo_epoch = 2
     num_dialogs_to_sample = 1 # number of dialog in one batch
-    mini_batchsize = 16#8
+    mini_batchsize = 32#8
     batchsize = mini_batchsize*2#128 
     self_play_prob = 0.0
 
@@ -344,11 +347,15 @@ class ReplayBuffer:
     def add(self, samples):
         self.buffer.extend(samples)
 
-    def mean(self):
-        original_rewards = [item[-2] for item in self.buffer]
-        return np.mean(original_rewards)
+    def mean(self, calculate_original=True):
+        if calculate_original:
+            original_rewards = [item[-2] for item in self.buffer]
+            return np.mean(original_rewards)
+        else:
+            normalized_rewards = [item[-3] for item in self.buffer]
+            return np.mean(normalized_rewards)
 
-    def std(self):
+    def std(self, calculate_original=True):
         original_rewards = [item[-2] for item in self.buffer]
         return np.std(original_rewards)
 
@@ -490,6 +497,8 @@ class Actor(PersuasiveBot):
                             dial_inputs.append(torch.LongTensor(item).unsqueeze(0).to(self.device2))
 
                     print(f"len: {len(role_ids)}")
+                    NUM_SUCCESS_SENTS = 0
+                    NUM_TURNS = 0
                     for role_id, dial_turn_inputs, dial_sent in zip(role_ids, dial_inputs, dial_sents):
                         print(f"turn #: {self.turn_i}\n\n\n")
                         # pdb.set_trace()
@@ -501,6 +510,9 @@ class Actor(PersuasiveBot):
                                 user_text = ""
                             response, [sents_success, sents_failed], have_enough_candidates, usr_input_text = self.chat(input_text=user_text, mode=mode)
                             ground_truth = dial_sent
+                            # logging
+                            NUM_SUCCESS_SENTS += len(sents_success)
+                            NUM_TURNS += 1
                             try:
                                 assert not ground_truth.startswith("A:")
                             except:
@@ -539,6 +551,9 @@ class Actor(PersuasiveBot):
 
                             # update contexts
                             logging.info(f"sys: {ground_truth}")
+                            logging.info(f"success candidates: {sents_success}")
+                            logging.info(f"failed candidates: {sents_failed}")
+                            logging.info(f"----------------------")
                             self.contexts.append("A:"+ground_truth)
 
                         else:
@@ -549,11 +564,14 @@ class Actor(PersuasiveBot):
                             except:
                                 pdb.set_trace()
                             self.contexts.append("B:"+user_text)
+                            logging.info(f"----------------------")
                             print(f"user: {user_text}")
                             logging.info(f"user: {user_text}")
                             # logits, past = model_B(dial_turn_inputs, past=past)
                             # all_logits.append(logits)
 
+                    print(f"avg success sent: {NUM_SUCCESS_SENTS/NUM_TURNS}")
+                    logger.info(f"avg success sent: {NUM_SUCCESS_SENTS/NUM_TURNS}")
                     # finish tail
                     if role_id == 1: # the last sent is user
                         # throw away the last user sentence
@@ -633,6 +651,7 @@ class Trainer:
 
         self.GPT2 = GPT2_model
 
+        self.kl_loss = KLDivLoss(reduction="sum")
         self.trained_steps = 0
         # self.reward_func = CustomRewardFunc(tokenizer)
         
@@ -689,10 +708,23 @@ class Trainer:
         self.replay_buffer.add(zip(all_contexts, all_sents, all_encoded_sents, final_rewards, all_rewards, all_context_ids))
         
         # logging
-        logger.info(f"replay buffer mean: {self.replay_buffer.mean()}, {self.replay_buffer.std()}")
+        logger.info(f"replay buffer mean: {self.replay_buffer.mean(calculate_original=False)}, {self.replay_buffer.std(calculate_original=False)}")
+        logger.info(f"replay buffer mean: {self.replay_buffer.mean(calculate_original=False)}, {self.replay_buffer.std(calculate_original=False)}")
         logger.info("Collecting Samples finished!")
         
         return all_rewards
+
+    # def kl_divergence(self, logits1, logits2):
+    #     pdb.set_trace()
+    #     probs = F.softmax(logits1, 2)
+    #     start = time.time()
+    #     kl = torch.where(probs == 0, torch.LongTensor(0).to(probs.device), probs * (F.log_softmax(logits1, 2) - F.log_softmax(logits2, 2))).mean()
+    #     end1 = time.time()
+    #     kl = (F.softmax(logits1, 2) * (F.log_softmax(logits1, 2) - F.log_softmax(logits2, 2))).mean()
+    #     end2 = time.time()
+    #     print(f"{end1-start}")
+    #     print(f"{end2-end1}")
+    #     return kl
 
     def calculate_old_logprobs(self, buffer_contexts, buffer_context_ids, buffer_sents, buffer_encoded_sents):
         assert self.model_A.device is self.device1
@@ -701,8 +733,8 @@ class Trainer:
         start = time.time()
         buffer_old_logprobs = [None] * len(buffer_sents)
         buffer_old_logprobs_gpt2 = [None] * len(buffer_sents)
-        buffer_old_seq_logprobs = [None] * len(buffer_sents)
-        buffer_old_seq_logprobs_gpt2 = [None] * len(buffer_sents)
+        buffer_old_logits = [None] * len(buffer_sents)
+        buffer_old_logits_gpt2 = [None] * len(buffer_sents)
         indices = np.arange(len(buffer_sents))
         context_map = {}
 
@@ -744,36 +776,35 @@ class Trainer:
                 mask = mask[:, 1:].contiguous()
 
                 sequences_logprobs = - criterion(logits, target, mask)
-                if self.use_approx_kl:
-                    old_logprobs = sequences_logprobs.sum(1)
+                old_logprobs = sequences_logprobs.sum(1)
                 
                 #gpt2 logprobs
                 sequences_logprobs_gpt2 = - criterion(logits_gpt2, target, mask)
-                if self.use_approx_kl:
-                    old_logprobs_gpt2 = sequences_logprobs_gpt2.sum(1)
+                old_logprobs_gpt2 = sequences_logprobs_gpt2.sum(1)
 
                 # store
+                # pdb.set_trace()
                 old_logprobs = old_logprobs.tolist()
                 old_logprobs_gpt2 = old_logprobs_gpt2.tolist()
                 if not self.use_approx_kl:
-                    sequences_logprobs = sequences_logprobs.tolist()
-                    sequences_logprobs_gpt2 = sequences_logprobs_gpt2.tolist()
+                    # sequences_logprobs = sequences_logprobs.tolist()
+                    # sequences_logprobs_gpt2 = sequences_logprobs_gpt2.tolist()
+                    logits = logits.cpu()
+                    logits_gpt2 = logits_gpt2.cpu() # save gpu space
+                # pdb.set_trace()
                 for i, j in enumerate(context_map[context_id]['sent_ids']):
                     buffer_old_logprobs[j] = old_logprobs[i]
                     buffer_old_logprobs_gpt2[j] = old_logprobs_gpt2[i]
                     if not self.use_approx_kl:
-                        buffer_old_seq_logprobs[j] = sequences_logprobs[i]
-                        buffer_old_seq_logprobs_gpt2[j] = sequences_logprobs_gpt2[i]
+                        buffer_old_logits[j] = logits[i]
+                        buffer_old_logits_gpt2[j] = logits_gpt2[i]
         end = time.time()
         speed = (end - start) / len(buffer_sents)
 
         print(f"calculate_old_logprobs: {speed} per turn")
         logger.info(f"calculate_old_logprobs: {speed} per turn")
         # pdb.set_trace()
-        if self.use_approx_kl:
-            return buffer_old_logprobs, buffer_old_logprobs_gpt2#, buffer_old_seq_logprobs, buffer_old_seq_logprobs_gpt2
-        else:
-            return buffer_old_logprobs, buffer_old_logprobs_gpt2, buffer_old_seq_logprobs, buffer_old_seq_logprobs_gpt2
+        return buffer_old_logprobs, buffer_old_logprobs_gpt2, buffer_old_logits, buffer_old_logits_gpt2
 
 
     def calculate_old_logprobs_GPT2(self, buffer_sents, buffer_sequences):
@@ -844,12 +875,15 @@ class Trainer:
             self.trained_steps += 1
             start = time.time()
             
-            all_rewards = trainer.collect_generations(total_size=PpoParams.num_dialogs_to_sample)
-            
-            self.model_A.train()
-            self.model_B.train()
-            buffer_contexts, buffer_sents, buffer_encoded_sents, buffer_rewards, buffer_no_normalized_rewards, buffer_context_ids = zip(*trainer.replay_buffer)
-            buffer_old_logprobs, buffer_old_logprobs_gpt2 = self.calculate_old_logprobs(buffer_contexts, buffer_context_ids, buffer_sents, buffer_encoded_sents)
+            if not DEBUG:
+                all_rewards = trainer.collect_generations(total_size=PpoParams.num_dialogs_to_sample)
+            else:
+                all_rewards = [r[-2] for r in self.replay_buffer]
+
+            # self.model_A.train()
+            # self.model_B.train()
+            buffer_contexts, buffer_sents, buffer_encoded_sents, buffer_rewards, buffer_no_normalized_rewards, buffer_context_ids = zip(*self.replay_buffer)
+            buffer_old_logprobs, buffer_old_logprobs_gpt2, buffer_old_logits, buffer_old_logits_gpt2 = self.calculate_old_logprobs(buffer_contexts, buffer_context_ids, buffer_sents, buffer_encoded_sents)
             # these are lists of floats
             # buffer_old_logprobs_gpt2 = self.calculate_old_logprobs_GPT2(buffer_sents, buffer_encoded_sents)
             # pdb.set_trace()
@@ -858,7 +892,8 @@ class Trainer:
             for ppo_epoch in tqdm(range(PpoParams.ppo_epoch)):
                 indices = np.arange(len(buffer_rewards))
                 np.random.shuffle(indices)
-
+                
+                optimizer.zero_grad()
                 for i in range(PpoParams.batchsize // PpoParams.mini_batchsize):
                     sampled_indices = indices[i * PpoParams.mini_batchsize : (i + 1) * PpoParams.mini_batchsize]
                     if len(sampled_indices) == 0:
@@ -869,7 +904,8 @@ class Trainer:
                     sampled_old_logprobs = [buffer_old_logprobs[j] for j in sampled_indices]
                     sampled_old_logprobs_gpt2 = [buffer_old_logprobs_gpt2[j] for j in sampled_indices]
                     sampled_rewards = [buffer_rewards[j] for j in sampled_indices]
-
+                    sampled_old_logits = [buffer_old_logits[j] for j in sampled_indices]
+                    sampled_old_logits_gpt2 = [buffer_old_logits_gpt2[j] for j in sampled_indices]
                     # make batches
                     # logits_list = []
                     # target_list = []
@@ -877,15 +913,19 @@ class Trainer:
                     # torch.cuda.empty_cache()
                     # pdb.set_trace()
 
-                    sequence_logprob_list = []
+                    # sequence_logprob_list = []
                     try:
                         batch_encoded_sents = make_batch_sequences(sampled_encoded_sents, padding_value=PAD_TOKEN)
                     except:
                         pdb.set_trace()
                     
-                    for i, (contexts, reward) in enumerate(zip(sampled_contexts, sampled_rewards)):
+                    optimizer.zero_grad()
+                    # logging purpose:
+                    approx_kl_list, accurate_kl_list, approx_kl_gpt2_list, accurate_kl_gpt2_list, policy_loss_list = [], [], [], [], []
+                    for i, (contexts, encoded_sent, reward, old_logprob, old_logprob_gpt2, old_logits, old_logits_gpt2) in enumerate(zip(sampled_contexts, sampled_encoded_sents, sampled_rewards, sampled_old_logprobs, sampled_old_logprobs_gpt2, sampled_old_logits, sampled_old_logits_gpt2)):
                         past = self.make_past(contexts)
-                        encoded_sent = batch_encoded_sents[i, :].unsqueeze(0)
+                        # encoded_sent = batch_encoded_sents[i, :].unsqueeze(0)
+                        encoded_sent = torch.LongTensor(encoded_sent).unsqueeze(0)
                         # pdb.set_trace()
                         # encoded_sent = make_batch_sequences([encoded_sent], padding_value=PAD_TOKEN)
                         # old_logprob = torch.FloatTensor([old_logprob])
@@ -908,9 +948,21 @@ class Trainer:
                         mask = mask[:, 1:].contiguous()
 
                         sequences_logprob = - criterion(logits, target, mask)
-                        sequence_logprob_list.append(sequences_logprob)
-                        
-                        
+                        # sequence_logprob_list.append(sequences_logprob)
+                        # if np.isnan(logits.item()):
+                        #     pdb.set_trace()
+
+                        loss, cur_approx_kl, cur_accurate_kl, cur_approx_kl_gpt2, cur_accurate_kl_gpt2, cur_policy_loss = self.calculate_loss(sequences_logprob, old_logprob, old_logprob_gpt2, reward, 
+                                                   logits, old_logits, old_logits_gpt2, normalize_over_length=True)
+                        # pdb.set_trace()
+                        loss.backward()     
+                        # pdb.set_trace()                   
+                        # logging
+                        approx_kl_list.append(cur_approx_kl)
+                        accurate_kl_list.append(cur_accurate_kl)
+                        approx_kl_gpt2_list.append(cur_approx_kl_gpt2)
+                        accurate_kl_gpt2_list.append(cur_accurate_kl_gpt2)
+                        policy_loss_list.append(cur_policy_loss)
                         # loss = policy_loss + (sequences_logprob, kl)
                         # loss.backward()
                         # optimizer
@@ -922,14 +974,10 @@ class Trainer:
                     # torch.cuda.empty_cache()
                     torch.nn.utils.clip_grad_norm_(self.model_A.parameters(), 0.5)
                     optimizer.step()
+                    scheduler.step()
                     optimizer.zero_grad()
 
-
-                    # pdb.set_trace()
-                    # logits = torch.cat(logits_list)
-                    # target = torch.cat(target_list)
-                    # mask = torch.cat(mask_list)
-    
+                    """    
                     #(minibatch_size, 1)
                     old_logprobs = torch.FloatTensor(sampled_old_logprobs).to(self.device1)
                     old_logprobs_gpt2 = torch.FloatTensor(sampled_old_logprobs_gpt2).to(self.device1)
@@ -1004,6 +1052,7 @@ class Trainer:
                     optimizer.step()
                     
                     # scheduler.step()
+                    """
 
             del past
             torch.cuda.empty_cache() 
@@ -1019,12 +1068,128 @@ class Trainer:
             logger.info(f"max memory A: {torch.cuda.max_memory_allocated(model_A.device)}")
             print(f"max memory B: {torch.cuda.max_memory_allocated(model_B.device)}")
             logger.info(f"max memory B: {torch.cuda.max_memory_allocated(model_B.device)}")
-            torch.save((self.model_A.state_dict(), self.model_B.state_dict()), f"Checkpoint/{self.trained_steps+PREVIOUS_STEPS}_steps_{np.mean(all_rewards)}_reward_model_A_kl_{round(approx_kl_gpt2.mean().item(), 2)}.pth")
+            if self.use_approx_kl:
+                model_name = f"Checkpoint/{self.trained_steps+PREVIOUS_STEPS}_steps_{mean_reward}_reward_model_A_kl_{round(np.mean(approx_kl_gpt2_list), 2)}.pth"
+            else:
+                model_name = f"Checkpoint/{self.trained_steps+PREVIOUS_STEPS}_steps_{mean_reward}_reward_model_A_kl_{round(np.mean(accurate_kl_gpt2_list), 2)}.pth"
+            torch.save((self.model_A.state_dict(), self.model_B.state_dict()), model_name)
             torch.save(self.replay_buffer, f"Checkpoint/replay_buffer.pth")
+
+    def calculate_loss(self, sequences_logprob, old_logprob, old_logprob_gpt2, reward,
+                       logits, old_logits, old_logits_gpt2, normalize_over_length):
+        #(1, 1)
+        # pdb.set_trace()
+        outputs = []
+        old_logprob = torch.FloatTensor([old_logprob]).to(self.device1)
+        old_logprob_gpt2 = torch.FloatTensor([old_logprob_gpt2]).to(self.device1)
+        reward = torch.FloatTensor([reward]).to(self.device1)
+        if not self.use_approx_kl:
+            old_logits = old_logits[:logits.shape[1]].unsqueeze(0).to(logits.device)
+            old_logits_gpt2 = old_logits_gpt2[:logits.shape[1]].unsqueeze(0).to(logits.device)
+
+        # calc advantages
+        advantage = reward
+        advantage = advantage.clamp(-2, 2)
+        # clip(advantages, 2, -2)
+
+        # # pdb.set_trace()
+        # # (minibatch, logprob)
+        # sequences_logprobs = torch.cat(sequence_logprob_list)#- criterion(logits, target, mask)
+        # # del sequence_logprob_list
+
+        if USE_ENTROPY:
+            # here we need to calculate for the each token in the sequence
+            entropy = - (sequences_logprob.exp() * sequences_logprob).sum(1)
+            # print(f"entropy: {entropy}")
+            logger.info(f"entropy: {entropy}")
+            # entropy = entropy.clamp_min(min_entropy)
+        
+        logprob = sequences_logprob.sum(1) #@@ normalize by length
+        if normalize_over_length:
+            # pdb.set_trace()
+            sequence_length = sequences_logprob.shape[1]
+            logprob = logprob/sequence_length
+            old_logprob = old_logprob/sequence_length
+            old_logprob_gpt2 = old_logprob/sequence_length
+
+        # shape: (batch)
+        ratio = (logprob - old_logprob).exp()
+        print(f"ratio 1: {ratio.item()}")
+        logger.info(f"ratio 1: {ratio.item()}")
+        # with torch.no_grad():
+        #     ratio2 = (((logprob - old_logprob)*sequence_length).exp()/sequence_length).item()
+        #     print(f"ratio 2: {ratio2}")
+        # shape: (batch)
+        policy_loss1 = - advantage * ratio
+        # shape: (batch)
+        policy_loss2 = - advantage * ratio.clamp(1.0 - clip_range, 1.0 + clip_range)
+        # shape: (batch)
+        policy_loss = torch.max(policy_loss1, policy_loss2)
+
+        # recording variables. no gradient!
+        with torch.no_grad():
+            clipfrac = ((ratio - 1.0).abs() > clip_range).float().mean()
+            approx_kl = (logprob - old_logprob).pow(2).mean()
+            if not self.use_approx_kl:
+                accurate_kl = self.kl_loss(F.log_softmax(old_logits, 2), F.softmax(logits, 2))
+                # accurate_kl = self.kl_divergence(logits, old_logits)
+            # kl = sequences_logprob * (logprobs - old_logprobs).mean()#.pow(2).mean()
+            # kl(p, q) = p*log(p/q) = p(logp-log q)
+            # np.where(p != 0, p * np.log(p / q), 0)
+
+        # calculate KL with original gpt2
+        if not USE_ENTROPY:
+            
+            if not self.use_approx_kl:
+                with torch.no_grad():
+                    approx_kl_gpt2 = (logprob - old_logprob_gpt2).pow(2)
+                # accurate_kl_gpt2 = self.kl_divergence(logits, old_logits_gpt2)
+                accurate_kl_gpt2 = self.kl_loss(F.log_softmax(old_logits_gpt2, 2), F.softmax(logits, 2))
+                # accurate_kl_gpt2 = (F.softmax(logits) * (F.log_softmax(logits) - F.log_softmax(old_logits_gpt2))).mean()
+            else:
+                approx_kl_gpt2 = (logprob - old_logprob_gpt2).pow(2)
+            # np.where(p != 0, p * np.log(p / q), 0)
+        
+        # print the final clipfrac and approxl
+        print(f"Approx KL {approx_kl.item()}, Clip Frac {clipfrac.item()}")
+        logger.info(f"Approx KL {approx_kl.item()}, Clip Frac {clipfrac.item()}")
+        print(f"approx_kl_gpt2 {approx_kl_gpt2.mean().item()}")
+        logger.info(f"approx_kl_gpt2 {approx_kl_gpt2.mean().item()}")
+        if not self.use_approx_kl:
+            print(f"accurate KL {accurate_kl.item()}")
+            logger.info(f"accurate KL {accurate_kl.item()}")
+            print(f"accurate KL GPT2 {accurate_kl_gpt2.item()}")
+            logger.info(f"accurate KL GPT2 {accurate_kl_gpt2.item()}")
+        if np.isnan(approx_kl.item()):
+            pdb.set_trace()
+
+        # get the final loss
+        # loss = policy_loss.mean() - entropy_coef * entropy.mean()
+        if self.use_approx_kl:
+            loss = policy_loss.mean() + kl_gpt2_coef * approx_kl_gpt2.mean()
+        else:
+            loss = policy_loss.mean() + kl_gpt2_coef * accurate_kl_gpt2.mean()
+        logger.info(f"policy_loss {policy_loss.mean().item()}")
+        if policy_loss.mean().item() > 1e20:
+            pdb.set_trace()
+        if USE_ENTROPY:
+            logger.info(f"entropy {entropy.mean().item()}")
+        else:
+            logger.info(f"approx_kl_gpt2 {approx_kl_gpt2.mean().item()}")
+        logger.info(f"loss {loss.item()}")
+
+        if not self.use_approx_kl:
+            return loss, approx_kl.item(), accurate_kl.item(), approx_kl_gpt2.mean().item(), accurate_kl_gpt2.item(), policy_loss.mean().item()
+        else:
+            return loss, approx_kl.item(), None, approx_kl_gpt2.mean().item(), None, policy_loss.mean().item()
 
 if __name__ == "__main__":
     NEW_MODEL_A_DIR = None#"Checkpoint/7_steps_2.3_reward_model_A_kl_47.13.pth"#None#"Checkpoint/9_steps_1.3272727272727274_reward_model_A.pth"#None#"Checkpoint/7_steps_1.984710743801653_reward_model_A.pth"#None#"Checkpoint/30_steps_2.0_reward_model_A.pth"#None#"Checkpoint/9_steps_-0.03278688524590164_reward_model_A.pth"#None#"Checkpoint/1_steps_1.12_reward_model_A.pth"#None#"Checkpoint/20_steps_0.049586776859504134_reward_model_A.pth"
-    REPLAY_BUFFER_DIR = None#"Checkpoint/replay_buffer.pth"#None#"Checkpoint/replay_buffer.pth"#None#"Checkpoint/replay_buffer.pth"#None#"Checkpoint/replay_buffer.pth"#"Checkpoint/replay_buffer.pth"#None#"Checkpoint/replay_buffer.pth"
+    REPLAY_BUFFER_DIR = None#"Checkpoint/replay_buffer_in_exception.pth"#None#"Checkpoint/replay_buffer_in_exception.pth"#None#"Checkpoint/replay_buffer.pth"#None#"Checkpoint/replay_buffer.pth"#None#"Checkpoint/replay_buffer.pth"#None#"Checkpoint/replay_buffer.pth"#"Checkpoint/replay_buffer.pth"#None#"Checkpoint/replay_buffer.pth"
+    DEBUG = False
+    USE_APPROX_KL = False
+    PREVIOUS_STEPS = 0
+    TOTAL_STEPS = 50
 
     if REPLAY_BUFFER_DIR is not None:
         replay_buffer_temp = torch.load(REPLAY_BUFFER_DIR)
@@ -1061,7 +1226,7 @@ if __name__ == "__main__":
     USE_ENTROPY = False
     clip_range = 0.2
     entropy_coef = 1e-2
-    kl_gpt2_coef = 1e-3
+    kl_gpt2_coef = 1e-2
     min_entropy = 10.0 # depends on the task
     criterion = SequenceCrossEntropyLoss()
 
@@ -1082,29 +1247,28 @@ if __name__ == "__main__":
         {'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}
         ]
 
-    PREVIOUS_STEPS = 7
-    TOTAL_STEPS = 50
+
     num_train_optimization_steps = PpoParams.ppo_epoch * (PpoParams.batchsize // PpoParams.mini_batchsize) * TOTAL_STEPS
 
-    # from pytorch_pretrained_bert import OpenAIAdam
-    from fairseq.optim.adafactor import Adafactor
+    from pytorch_pretrained_bert import OpenAIAdam    
     # optimizer = OpenAIAdam(optimizer_grouped_parameters,
     #                     lr=2e-5,
     #                     warmup=0.1,
     #                     max_grad_norm=1.0,
     #                     weight_decay=0.01,
     #                     t_total=num_train_optimization_steps)
-    optimizer = Adafactor(optimizer_grouped_parameters,
-                          lr=2e-5,
-                          clip_threshold=1,
-                          )
+    # from fairseq.optim.adafactor import Adafactor
+    # optimizer = Adafactor(optimizer_grouped_parameters,
+    #                       lr=2e-5,
+    #                       clip_threshold=1,
+    #                       )
     # from transformers import get_linear_schedule_with_warmup
-    # optimizer = AdamW(optimizer_grouped_parameters,
-    #                 lr=3e-5,
-    #                 eps=1e-06)
-    # scheduler = get_linear_schedule_with_warmup(optimizer,
-    #                                  warmup_steps=100,
-    #                                  num_training_steps=num_train_optimization_steps)
+    optimizer = AdamW(optimizer_grouped_parameters,
+                    lr=3e-5,
+                    eps=1e-06)
+    scheduler = get_linear_schedule_with_warmup(optimizer,
+                                     num_warmup_steps=100,
+                                     num_training_steps=num_train_optimization_steps)
     # optimizer = FusedAdam(optimizer_grouped_parameters, 
     #                     lr=1e-6,
     #                     eps=1e-06,
@@ -1119,13 +1283,13 @@ if __name__ == "__main__":
     IN_TRAINING = True
 
     trainer = Trainer(actor=actor, model_A=model_A, model_B=model_B, device1=DEVICE1, device2=DEVICE2,
-                      GPT2_model=GPT2_model, use_approx_kl=True)
+                      GPT2_model=GPT2_model, use_approx_kl=USE_APPROX_KL)
 
     if IN_TRAINING:
         try:
             trainer.train_steps(total_steps=TOTAL_STEPS)
-            print(torch.cuda.memory_summary(device=model_A.device, abbreviated=False))
-            print(torch.cuda.memory_summary(device=model_B.device, abbreviated=False))
+            # print(torch.cuda.memory_summary(device=model_A.device, abbreviated=False))
+            # print(torch.cuda.memory_summary(device=model_B.device, abbreviated=False))
 
         except:
             torch.save((trainer.model_A.state_dict(), trainer.model_B.state_dict()), f"Checkpoint/in_exception_{trainer.trained_steps}_steps_reward_model_A.pth")

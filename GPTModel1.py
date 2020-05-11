@@ -16,7 +16,7 @@ def move_to_device(past, target):
             target_device = next(target.named_parameters())[1].device
         
         if past is not None:
-            if type(past) is list:
+            if type(past) is list or type(past) is tuple:
                 if past[0].device != target_device:
                     past = [p.to(target_device) for p in past]
             else:
