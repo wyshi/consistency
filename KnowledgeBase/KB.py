@@ -41,9 +41,10 @@ class Domain(object):
 
 
 class HumanRule(object):
-    def __init__(self, chatbot):
+    def __init__(self, chatbot, with_rule):
         self.chatbot = chatbot
         self.sys_template = SystemTemplate()
+        self.with_rule = with_rule
 
     def enforce(self, sents, sent_acts, past):
         """
@@ -52,7 +53,7 @@ class HumanRule(object):
                int: one candidate selected
                str: no candidate selected, should append the returned sentence to the end
         """
-        if cfg.rl_finetune:
+        if not self.with_rule:
             return None
         if cfg.verbose:
             print("\n\n\n--------- rule enforce --------------")

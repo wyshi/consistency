@@ -31,20 +31,13 @@ import pdb
 
 
 class GlobalProfile(object):
-    def __init__(self, domain):
+    def __init__(self, domain, model_config):
         self.domain = domain
+        self.model_config = model_config
         # self.act_clf_model = act_clf_model
         self.sentiment_analyzer = SentimentIntensityAnalyzer()
         self.sent_embedding_model = SentenceTransformer('bert-base-nli-mean-tokens', 
                                                         device=torch.device("cuda:1"))#('roberta-large-nli-stsb-mean-tokens')
-
-        # if torch.cuda.device_count() > 1:
-        #     embedding_device = torch.device("cuda")
-        #     print("Let's use", torch.cuda.device_count(), "GPUs!")
-        #     # dim = 0 [30, xxx] -> [10, ...], [10, ...], [10, ...] on 3 GPUs
-        #     self.sent_embedding_model = nn.DataParallel(self.sent_embedding_model)
-        #     self.sent_embedding_model.to(embedding_device)
-
 
         self.sys_world = SysWorld(domain=self.domain, name="system_world")
         self.usr_world = UsrWorld(domain=self.domain, name="user_world")
@@ -615,33 +608,48 @@ class GlobalProfile(object):
         return profile
 
     def check_conflict(self, sents, sent_acts):
-        # 1. repetition
-        # pdb.set_trace()
-        fail_reason = None
-        rep_status_with_sys, rep_amount_with_sys, edited_sents, edited_sent_acts = self.sys_world.check_conflict(sents, sent_acts)
-        if self.last_sents is None:
-            rep_condition = (rep_status_with_sys in [cfg.PASS])    
-            rep_amount = rep_amount_with_sys               
-        else:
-            rep_status_with_usr, rep_amount_with_usr, edited_sents, edited_sent_acts = self.usr_world.check_conflict(edited_sents, edited_sent_acts)                    
-            rep_condition = (rep_status_with_sys in [cfg.PASS]) and (rep_status_with_usr in [cfg.PASS])
-            rep_amount = max(rep_amount_with_usr, rep_amount_with_sys)
-
-        # 2. inconsistency
-        if rep_condition:
-            # if it's not a repetition, then we need to check for consistency
-            consis_status = self.check_consistency(edited_sents, edited_sent_acts)
+        if self.model_config.with_repetition_module:
+            # 1. repetition
             # pdb.set_trace()
-            consis_condition = consis_status in [cfg.PASS]
+            fail_reason = None
+            rep_status_with_sys, rep_amount_with_sys, edited_sents, edited_sent_acts = self.sys_world.check_conflict(sents, sent_acts)
+            if self.last_sents is None:
+                rep_condition = (rep_status_with_sys in [cfg.PASS])    
+                rep_amount = rep_amount_with_sys               
+            else:
+                rep_status_with_usr, rep_amount_with_usr, edited_sents, edited_sent_acts = self.usr_world.check_conflict(edited_sents, edited_sent_acts)                    
+                rep_condition = (rep_status_with_sys in [cfg.PASS]) and (rep_status_with_usr in [cfg.PASS])
+                rep_amount = max(rep_amount_with_usr, rep_amount_with_sys)
+        else:
+            rep_condition = True
+            rep_amount = 0
+            edited_sents = sents
+            edited_sent_acts =  sent_acts
+            rep_status_with_sys = "without_repetition_module"
+            rep_status_with_usr = "without_repetition_module"
 
-            rep_consis_condition = rep_condition and consis_condition
-            fail_reason = consis_status
+        if self.model_config.with_consistency_module:
+            # 2. inconsistency
+            if rep_condition:
+                # if it's not a repetition, then we need to check for consistency
+                consis_status = self.check_consistency(edited_sents, edited_sent_acts)
+                # pdb.set_trace()
+                consis_condition = consis_status in [cfg.PASS]
+
+                rep_consis_condition = rep_condition and consis_condition
+                if rep_consis_condition:
+                    fail_reason = consis_status
+                else:
+                    fail_reason = "<inconsistenty> <pass repetition>"
+            else:
+                rep_consis_condition = rep_condition
+                if self.last_sents is None:
+                    fail_reason = "<repetition> {} with sys, none with usr".format(rep_status_with_sys)
+                else:
+                    fail_reason = "<repetition> {} with sys, {} with usr".format(rep_status_with_sys, rep_status_with_usr)
         else:
             rep_consis_condition = rep_condition
-            if self.last_sents is None:
-                fail_reason = "{} with sys, none with usr".format(rep_status_with_sys)
-            else:
-                fail_reason = "{} with sys, {} with usr".format(rep_status_with_sys, rep_status_with_usr)
+            fail_reason = "without consistency module"
             
         return rep_consis_condition, rep_amount, edited_sents, edited_sent_acts, fail_reason
 

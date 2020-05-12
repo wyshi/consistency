@@ -43,6 +43,9 @@ import logging
 
 from copy import deepcopy
 
+# logger = logging.getLogger(__name__)
+# logger.setLevel(logging.DEBUG)
+
 def sent_tokenize_modified(sent):
     sents = sent_tokenize(sent)
     if sents == []:
@@ -89,7 +92,20 @@ class ModelClassifierConfig:
     device2 = torch.device(cfg.model_clf_device2)
 
 class PersuasiveBot:
-    def __init__(self, model_A=None, model_B=None, tokenizer=None, device1=None, device2=None):
+    def __init__(self, model_config, 
+                 model_A=None, model_B=None, tokenizer=None, device1=None, device2=None):
+        logging.basicConfig(filename=model_config.log_file,level=logging.DEBUG)
+
+        self.with_rule = model_config.with_rule
+        self.candidate_select_strategy = model_config.candidate_select_strategy
+        self.model_config = model_config
+        self.with_baseline =  model_config.with_baseline
+        self.with_repetition_module = model_config.with_repetition_module
+        self.with_consistency_module = model_config.with_consistency_module
+        self.with_sentence_clf = model_config.with_sentence_clf
+        self.with_RL_finetune_model = model_config.with_RL_finetune_model
+
+        
         if tokenizer is None:
             self.tokenizer = GPT2Tokenizer.from_pretrained("gpt2")#torch.load(tokenizer_dir)
         else:
@@ -115,10 +131,10 @@ class PersuasiveBot:
         self.human_demonstrations = []
 
         self.domain = Domain(cfg.domain)
-        self.global_profile = GlobalProfile(domain=self.domain)
+        self.global_profile = GlobalProfile(domain=self.domain, model_config=self.model_config)
         # self.usr_profile = UsrProfile()
         # self.sys_profile = SysProfile()
-        self.human_rule = HumanRule(self)
+        self.human_rule = HumanRule(self, with_rule=self.with_rule)
 
         # self.logger = logger
         print("inited")
@@ -372,6 +388,7 @@ class PersuasiveBot:
         return past, hidden_states
 
     def reload(self):
+        self.save()
         torch.cuda.empty_cache()
         self.model_clf.reload()
         self.past = None
@@ -530,7 +547,7 @@ class PersuasiveBot:
     def select_candidates(self, sent_candidates, sent_candidate_conflict_scores, sent_act_candidates, past_candidates):
         
         def select_index():
-            if cfg.candidate_select_strategy == cfg.RANDOM_SELECT:
+            if self.candidate_select_strategy == cfg.RANDOM_SELECT:
                 return random.sample(range(len(sent_candidate_conflict_scores)), k=1)[0], [1/len(sent_candidate_conflict_scores)]*len(sent_candidate_conflict_scores)
             else:
                 if all([s==1 for s in sent_candidate_conflict_scores]):
@@ -540,7 +557,7 @@ class PersuasiveBot:
                     one_minus_score = 1 - np.array(sent_candidate_conflict_scores)
                     normalized_score = one_minus_score/(one_minus_score.sum())
 
-                    if cfg.candidate_select_strategy in [cfg.REPETITION_RATIO, cfg.IMITATION_LEARNING_SELECTION]:
+                    if self.candidate_select_strategy in [cfg.REPETITION_RATIO, cfg.IMITATION_LEARNING_SELECTION]:
                         # if cfg.debug:
                         #     print("~~~~~~~~in select_candidates~~~~~~~~~")
                         #     print("normalized_score: {}".format(normlized_score))
@@ -551,10 +568,10 @@ class PersuasiveBot:
                                                 replace=False, p=normalized_score)[0], normalized_score
                         except:
                             pdb.set_trace()
-                    elif cfg.candidate_select_strategy == cfg.FIRST_OF_CANDIDATES:
+                    elif self.candidate_select_strategy == cfg.FIRST_OF_CANDIDATES:
                         return 0, normalized_score
                     else:
-                        raise ValueError(f"{cfg.candidate_select_strategy} is not supported in select_index()")
+                        raise ValueError(f"{self.candidate_select_strategy} is not supported in select_index()")
         try:
             selected_by_func = select_index()
         except:
@@ -709,39 +726,28 @@ class PersuasiveBot:
             num_rounds += 1
             for _ in range(cfg.NUM_CANDIDATES):
                 sent, past, hidden_states = self.sample_one_sent(past=self.past, model=self.model_A)                
-                # past_test, hidden_states_test = self.sample_one_sent_test(past=self.past, model=self.model_A, sent=sent)
-                # # past_test_2, hidden_states_test_2 = self.sample_one_sent_test_2(past=self.past, model=self.model_A, sent=sent)
-                # if self.turn_i in [0, 5] and _ in [0, 9]:
-                #     pdb.set_trace()
-                sents = sent_tokenize_modified(sent)
-                
-                # use regex to re-label
-                sent_acts, _ = self.global_profile.regex_label(self.model_clf,
-                                                               sents, 
-                                                               which_task="A")
-                                                               
 
-                # check conflict condition
-                # conflict_status_with_sys, conflict_amount_with_sys, edited_sents, edited_sent_acts = self.sys_profile.check_conflict(sents, sent_acts)
-                # if past_is_None:
-                #     conflict_condition = (conflict_status_with_sys in [cfg.PASS])                    
-                # else:
-                #     conflict_status_with_usr, conflict_amount_with_usr, edited_sents, edited_sent_acts = self.usr_profile.check_conflict(edited_sents, edited_sent_acts)                    
-                #     conflict_condition = (conflict_status_with_sys in [cfg.PASS]) and (conflict_status_with_usr in [cfg.PASS])
+                if self.model_config.with_repetition_module:
+                    sents = sent_tokenize_modified(sent)
+                    
+                    # use regex to re-label
+                    sent_acts, _ = self.global_profile.regex_label(self.model_clf,
+                                                                sents, 
+                                                                which_task="A")
+                                                                
+                    conflict_condition, conflict_amount, edited_sents, edited_sent_acts, fail_reason = self.global_profile.check_conflict(sents, sent_acts)  
 
-                conflict_condition, conflict_amount, edited_sents, edited_sent_acts, fail_reason = self.global_profile.check_conflict(sents, sent_acts)  
+                    if conflict_condition:   
+                        sent_candidates.append(sents)
+                        edited_sent_candidates.append(edited_sents)
+                        sent_candidate_conflict_scores.append(conflict_amount)
+                        sent_act_candidates.append(edited_sent_acts)
+                        past_candidates.append(past)
+                        hidden_states_candidates.append(hidden_states)
+                    else:
+                        failed_candidates.append([sents, sent_acts, fail_reason, past, hidden_states])
 
-                if conflict_condition:   
-                    sent_candidates.append(sents)
-                    edited_sent_candidates.append(edited_sents)
-                    sent_candidate_conflict_scores.append(conflict_amount)
-                    sent_act_candidates.append(edited_sent_acts)
-                    past_candidates.append(past)
-                    hidden_states_candidates.append(hidden_states)
-                else:
-                    failed_candidates.append([sents, sent_acts, fail_reason, past, hidden_states])
-
-            have_enough_candidates = (len(past_candidates) > 0)
+                have_enough_candidates = (len(past_candidates) > 0)
         if (not have_enough_candidates):
             # as long as it's not a contradiction, randomly pick one 
             if cfg.debug:
@@ -764,7 +770,7 @@ class PersuasiveBot:
 
         # check consistency and pick one candidate
         self.cnt += 1
-        if cfg.candidate_select_strategy == cfg.HUMAN_SELECTION:
+        if self.candidate_select_strategy == cfg.HUMAN_SELECTION:
             sent_candidates, edited_sent_candidates, sent_act_candidates, past_candidates,\
             failed_candidates = self.edit_with_human_rule(sent_candidates, edited_sent_candidates, sent_act_candidates, past_candidates,\
                              failed_candidates)            
@@ -808,7 +814,7 @@ class PersuasiveBot:
                                             failed_candidates, human_selected_ids=[], human_added_candidates=[[sents, sent_acts, past, hidden_state]])
                 
             
-        elif cfg.candidate_select_strategy == cfg.IMITATION_LEARNING_SELECTION:
+        elif self.candidate_select_strategy == cfg.IMITATION_LEARNING_SELECTION:
             sent_candidates, edited_sent_candidates, sent_act_candidates, past_candidates,\
             failed_candidates = self.edit_with_human_rule(sent_candidates, edited_sent_candidates, sent_act_candidates, past_candidates,\
                              failed_candidates)            
@@ -840,7 +846,8 @@ class PersuasiveBot:
             sents_success, sents_failed = self.print_candidates(sent_candidates, edited_sent_candidates, sent_act_candidates, scores, failed_candidates)
         
         # check conflict within the sents
-        sents, sent_acts = self.check_conflict_within_selected_sents(sents, sent_acts)
+        if self.model_config.with_repetition_module:
+            sents, sent_acts = self.check_conflict_within_selected_sents(sents, sent_acts)
         
 
         # update
@@ -1095,8 +1102,56 @@ class PersuasiveBot:
         return sents_success, sents_failed
 
 if __name__ == "__main__":
-    logging.basicConfig(filename=cfg.log_file,level=logging.DEBUG)
-    
+    EVAL_MODEL_A_DIR = "/home/wyshi/persuasion/consistency/ARDM/persuasion/persuasion_medium_3.th"
+    DEVICE1 = torch.device("cuda:5")
+    DEVICE1_list = ["cuda:5"]
+    SPLIT_INTO1= 1
+
+    DEVICE2 = torch.device("cuda:6")
+    DEVICE2_list = ["cuda:6"]
+    SPLIT_INTO2= 1
+
+    class CurrentModelConfig:
+        with_rule = True
+        log_file = 'logs/amt_baseline_test.log'
+        
+        with_baseline =  True
+        with_repetition_module = False
+        with_consistency_module = False
+        with_sentence_clf = False
+        with_RL_finetune_model = False
+
+        if not with_repetition_module and with_consistency_module:
+            candidate_select_strategy = cfg.RANDOM_SELECT
+        elif not with_repetition_module and not with_consistency_module:
+            candidate_select_strategy = cfg.RANDOM_SELECT
+        elif with_repetition_module and not with_consistency_module:
+            candidate_select_strategy = cfg.REPETITION_RATIO
+        elif with_repetition_module and with_consistency_module:
+            candidate_select_strategy = cfg.REPETITION_RATIO
+
+        if with_sentence_clf:
+            candidate_select_strategy = cfg.IMITATION_LEARNING_SELECTION
+
+    def load_model_for_AMT(EVAL_MODEL_A_DIR):
+        TOKENIZER = GPT2Tokenizer.from_pretrained("gpt2")#torch.load(tokenizer_dir)
+
+        # val_dataloader = get_val_dataloader(TOKENIZER)
+        model_A, model_B = load_model(cfg=cfg, device1=DEVICE1, device2=DEVICE2, 
+                                    split_into1=SPLIT_INTO1, split_into2=SPLIT_INTO2,
+                                    dropout=0, device_list1=DEVICE1_list, device_list2=DEVICE2_list,
+                                    model_A_dir=EVAL_MODEL_A_DIR, use_old_model_B=False)
+
+        model_A.eval()
+        model_B.eval()
+
+        return model_A, model_B, TOKENIZER, DEVICE1, DEVICE2
+
+    model_A, model_B, TOKENIZER, DEVICE1, DEVICE2 = load_model_for_AMT(EVAL_MODEL_A_DIR)
+
+    bot = PersuasiveBot(model_config=CurrentModelConfig, 
+                        model_A=model_A, model_B=model_B, tokenizer=TOKENIZER, 
+                        device1=DEVICE1, device2=DEVICE2)
 
     bot = PersuasiveBot()
     # pdb.set_trace()
@@ -1129,7 +1184,7 @@ if __name__ == "__main__":
                     TOTAL_TURNS += 1
                     response, [sents_success, sents_failed], have_enough_candidates, usr_input_text = result
                     TOTAL_SUCCESS_CANDIDATES += len(sents_success)
-                if cfg.candidate_select_strategy != cfg.HUMAN_SELECTION:
+                if self.candidate_select_strategy != cfg.HUMAN_SELECTION:
                     if cfg.verbose:
                         bot.global_profile.print()
                 

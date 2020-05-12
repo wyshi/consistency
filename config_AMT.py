@@ -1,19 +1,13 @@
-RANDOM_SELECT = "random_select"
-REPETITION_RATIO = "repetition_ratio"
-FIRST_OF_CANDIDATES = "first_of_candidates"
-HUMAN_SELECTION = "human_selection"
-IMITATION_LEARNING_SELECTION = "imitation_learning_selection"
+#AMT condition
+BASELINE_MODULE_AMT =  True
+REPETITION_MODULE_AMT = False
+CONSISTENCY_MODULE_AMT = False
+CLF_MODULE_AMT = False
+RL_MODULE_AMT = False
 
-#======================================
-# PPO relevant argument!
-# rl_finetune = True
-# candidate_select_strategy = REPETITION_RATIO
-
-# evaluation.py only
+# evaluation
 model_to_eval_dir = "Checkpoint/43_steps_2.6611570247933884_reward_model_A_kl_9.37.pth"#"Checkpoint/2_steps_1.9528999999999996_reward_model_A.pth"#"/home/wyshi/persuasion/consistency/ARDM/persuasion/persuasion_medium_3.th"
 
-
-##======= below are fixed ==========================
 # clf parameters, fixed
 model_clf_dir = "Checkpoint_act_clf/epoch7_multitask_TF_best_acc_0.7944444444444444_f1_0.7861271676300577_A_acc_0.687741935483871_f1_0.6602596916886914_B_acc_0.6437699680511182_f1_0.6186370327752058.pth"#"Checkpoint_act_clf/multitask_TF_best_acc_0.7777777777777778_f1_0.776536312849162_A_acc_0.6954838709677419_f1_0.6707423935799665_B_acc_0.6166134185303515_f1_0.5898033645875225.pth"
 model_clf_device1 = "cuda:0"
@@ -35,7 +29,7 @@ split_into_C = len(model_C_device_list)
 split_into_C = len(model_C_device_list)
 
 
-
+rl_finetune = True
 
 self_play_mode = "self_play_mode"
 supervised_mode = "supervised_mode"
@@ -56,6 +50,13 @@ print_candidates = True
 repetition_threshold = 0.5
 similarity_threshold = 0.707
 
+# select_candidates_strategy
+RANDOM_SELECT = "random_select"
+REPETITION_RATIO = "repetition_ratio"
+FIRST_OF_CANDIDATES = "first_of_candidates"
+HUMAN_SELECTION = "human_selection"
+IMITATION_LEARNING_SELECTION = "imitation_learning_selection"
+candidate_select_strategy = REPETITION_RATIO#IMITATION_LEARNING_SELECTION#HUMAN_SELECTION#FIRST_OF_CANDIDATES#HUMAN_SELECTION
 
 # num of candidates to select from
 NUM_CANDIDATES = 10
@@ -78,10 +79,10 @@ domain = "persuasion"
 
 
 if use_old_model:
-    # log_file = 'logs/old_model/example.log'
+    log_file = 'logs/old_model/example.log'
     demonstration_csv = "demonstration/old_model/demonstration.csv"
     demonstration_pkl = "demonstration/old_model/demonstration.pkl"
 else:
-    # log_file = 'logs/new_model/example.log'
+    log_file = 'logs/new_model/example.log'
     demonstration_csv = "demonstration/new_model/demonstration.csv"
     demonstration_pkl = "demonstration/new_model/demonstration.pkl"

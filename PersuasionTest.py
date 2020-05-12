@@ -4,8 +4,8 @@
 # In[1]:
 
 
-# import os
-# os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 
 # In[2]:

@@ -9,7 +9,7 @@ import logging
 from os import listdir
 log_dir = max([int(f[3]) for f in listdir(".") if f.startswith("ppo") and f.endswith(".log")]) + 1
 log_dir = f"ppo{log_dir}.log"
-logging.basicConfig(filename='ppo8.log', level=logging.INFO)
+logging.basicConfig(filename=log_dir, level=logging.INFO)
 # logging.basicConfig(filename='hello2.log', level=logging.INFO)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -439,8 +439,9 @@ class CustomRewardFunc:
 class Actor(PersuasiveBot):
     """Text Generation
     """
-    def __init__(self, model_A, model_B, tokenizer, device1, device2, dialog_i):
-        super().__init__(model_A=model_A, model_B=model_B, tokenizer=tokenizer, device1=device1, device2=device2)
+    def __init__(self, model_config, model_A, model_B, tokenizer, device1, device2, dialog_i):
+        super().__init__(model_config=model_config,
+                         model_A=model_A, model_B=model_B, tokenizer=tokenizer, device1=device1, device2=device2)
         
         train_data = torch.load("DataProcess/train_dialogs.pkl")
         val_data = torch.load("DataProcess/val_dialogs.pkl")
@@ -1231,7 +1232,29 @@ if __name__ == "__main__":
     criterion = SequenceCrossEntropyLoss()
 
 
-    actor = Actor(model_A=model_A, model_B=model_B, tokenizer=tokenizer, 
+    class CurrentModelConfig:
+        with_rule = False
+        log_file = f'logs/{log_dir}'
+        
+        with_baseline =  True
+        with_repetition_module = True
+        with_consistency_module = True
+        with_sentence_clf = False
+        with_RL_finetune_model = True
+
+        if not with_repetition_module and with_consistency_module:
+            candidate_select_strategy = cfg.RANDOM_SELECT
+        elif not with_repetition_module and not with_consistency_module:
+            candidate_select_strategy = cfg.RANDOM_SELECT
+        elif with_repetition_module and not with_consistency_module:
+            candidate_select_strategy = cfg.REPETITION_RATIO
+        elif with_repetition_module and with_consistency_module:
+            candidate_select_strategy = cfg.REPETITION_RATIO
+
+        if with_sentence_clf:
+            candidate_select_strategy = cfg.IMITATION_LEARNING_SELECTION
+
+    actor = Actor(CurrentModelConfig, model_A=model_A, model_B=model_B, tokenizer=tokenizer, 
                   device1=DEVICE1, device2=DEVICE2, dialog_i=PREV_DIALOGS)
 
     # pdb.set_trace()

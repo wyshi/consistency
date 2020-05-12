@@ -21,30 +21,56 @@ import config as cfg
 import sys
 from torchfly.modules.losses import SequenceFocalLoss, SequenceCrossEntropyLoss
 
-TOKENIZER = GPT2Tokenizer.from_pretrained("gpt2")#torch.load(tokenizer_dir)
 EVAL_MODEL_A_DIR = "/home/wyshi/persuasion/consistency/ARDM/persuasion/persuasion_medium_3.th"
+DEVICE1 = torch.device("cuda:5")
+DEVICE1_list = ["cuda:5"]
+SPLIT_INTO1= 1
 
-DEVICE1 = torch.device(cfg.model_A_device)
-DEVICE1_list = cfg.model_A_device_list
-SPLIT_INTO1= cfg.split_into_A
+DEVICE2 = torch.device("cuda:6")
+DEVICE2_list = ["cuda:6"]
+SPLIT_INTO2= 1
 
-DEVICE2 = torch.device(cfg.model_B_device)
-DEVICE2_list = cfg.model_B_device_list
-SPLIT_INTO2= cfg.split_into_B
-# val_dataloader = get_val_dataloader(TOKENIZER)
+class CurrentModelConfig:
+    with_rule = True
+    log_file = 'logs/amt_baseline_test.log'
+    
+    with_baseline =  True
+    with_repetition_module = False
+    with_consistency_module = False
+    with_sentence_clf = False
+    with_RL_finetune_model = False
 
+    if not with_repetition_module and with_consistency_module:
+        candidate_select_strategy = cfg.RANDOM_SELECT
+    elif not with_repetition_module and not with_consistency_module:
+        candidate_select_strategy = cfg.RANDOM_SELECT
+    elif with_repetition_module and not with_consistency_module:
+        candidate_select_strategy = cfg.REPETITION_RATIO
+    elif with_repetition_module and with_consistency_module:
+        candidate_select_strategy = cfg.REPETITION_RATIO
 
-model_A, model_B = load_model(cfg=cfg, device1=DEVICE1, device2=DEVICE2, split_into1=SPLIT_INTO1, split_into2=SPLIT_INTO2,
-                             dropout=0, device_list1=DEVICE1_list, device_list2=DEVICE2_list,
+    if with_sentence_clf:
+        candidate_select_strategy = cfg.IMITATION_LEARNING_SELECTION
+
+def load_model_for_AMT(EVAL_MODEL_A_DIR):
+    TOKENIZER = GPT2Tokenizer.from_pretrained("gpt2")#torch.load(tokenizer_dir)
+
+    # val_dataloader = get_val_dataloader(TOKENIZER)
+    model_A, model_B = load_model(cfg=cfg, device1=DEVICE1, device2=DEVICE2, 
+                                split_into1=SPLIT_INTO1, split_into2=SPLIT_INTO2,
+                                dropout=0, device_list1=DEVICE1_list, device_list2=DEVICE2_list,
                                 model_A_dir=EVAL_MODEL_A_DIR, use_old_model_B=False)
 
-model_A.eval()
-model_B.eval()
+    model_A.eval()
+    model_B.eval()
 
-cfg.rl_finetune = False
-cfg.candidate_select_strategy = cfg.IMITATION_LEARNING_SELECTION
-model = PersuasiveBot(model_A=model_A, model_B=model_B, tokenizer=TOKENIZER, 
-                    device1=DEVICE1, device2=DEVICE2)
+    return model_A, model_B, TOKENIZER, DEVICE1, DEVICE2
+
+model_A, model_B, TOKENIZER, DEVICE1, DEVICE2 = load_model_for_AMT(EVAL_MODEL_A_DIR)
+
+model = PersuasiveBot(model_config=CurrentModelConfig, 
+                      model_A=model_A, model_B=model_B, tokenizer=TOKENIZER, 
+                      device1=DEVICE1, device2=DEVICE2)
 
 
 
@@ -75,7 +101,7 @@ def getResponse():
 
     # [output_text, sys_da_output, sys_se_output, usr_da_output, usr_se_outpu] = model.chat(input_text, sid)
     return jsonify({"response": response, 
-                    "exitbutton_or_not": exitbutton_or_not,              
+                    # "exitbutton_or_not": exitbutton_or_not,              
                     "sents_success": sents_success, 
                     "sents_failed": sents_failed, 
                     "have_enough_candidates": have_enough_candidates, 
