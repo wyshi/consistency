@@ -9,6 +9,7 @@ from AgentProfile.core import SystemAct
 from KnowledgeBase import KB
 from KnowledgeBase.KB import Domain
 import pdb
+import time
 
 from nltk.tokenize import sent_tokenize
 from copy import deepcopy
@@ -21,6 +22,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 import torch
 import torch.nn as nn
 import pdb
+import logging
 
 # HOW_ARE_YOU = 'how-are-you'
 # HEARD_OF_THE_ORG = 'heard-of-the-org'
@@ -640,7 +642,7 @@ class GlobalProfile(object):
                 if rep_consis_condition:
                     fail_reason = consis_status
                 else:
-                    fail_reason = "<inconsistenty> <pass repetition>"
+                    fail_reason = "<inconsistenty>"
             else:
                 rep_consis_condition = rep_condition
                 if self.last_sents is None:
@@ -648,8 +650,16 @@ class GlobalProfile(object):
                 else:
                     fail_reason = "<repetition> {} with sys, {} with usr".format(rep_status_with_sys, rep_status_with_usr)
         else:
+            # rep_consis_condition = rep_condition
+            # fail_reason = "without consistency module"
             rep_consis_condition = rep_condition
-            fail_reason = "without consistency module"
+            if rep_condition:
+                fail_reason = "pass repetition, without consistency module"
+            else:
+                if self.last_sents is None:
+                    fail_reason = "<repetition> {} with sys, none with usr".format(rep_status_with_sys)
+                else:
+                    fail_reason = "<repetition> {} with sys, {} with usr".format(rep_status_with_sys, rep_status_with_usr)
             
         return rep_consis_condition, rep_amount, edited_sents, edited_sent_acts, fail_reason
 
@@ -757,8 +767,11 @@ class GlobalProfile(object):
 
             return label
 
+        start = time.time()
         labels = [regex_label_for_one_utt(utt, predicted_label) for utt, predicted_label in zip(sys_texts, predicted_labels)]
-        # print(f"predicted: {labels}")
+        end = time.time()
+        print(f"regex_label takes {end-start}")
+        logging.info(f"regex_label takes {end-start}")
         return labels, past
 
 
@@ -906,7 +919,7 @@ class UsrWorld(IndividualWorld):
         # print(sys_text)
         # print(sys_label)
         if sys_label in act_to_attributes:
-            if self.usr_profile[act_to_attributes[sys_label]] != self.domain.INIT:
+            if self.usr_profile[act_to_attributes[sys_label]] != self.domain.INIT: ### change here
                 return True
             else:
                 return False

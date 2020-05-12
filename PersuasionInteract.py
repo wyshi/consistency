@@ -95,6 +95,9 @@ class PersuasiveBot:
     def __init__(self, model_config, 
                  model_A=None, model_B=None, tokenizer=None, device1=None, device2=None):
         logging.basicConfig(filename=model_config.log_file,level=logging.DEBUG)
+        logger = logging.getLogger(__name__)
+        logger.setLevel(logging.DEBUG)
+        self.logger = logger
 
         self.with_rule = model_config.with_rule
         self.candidate_select_strategy = model_config.candidate_select_strategy
@@ -413,13 +416,17 @@ class PersuasiveBot:
         print("reloaded\n\n")
 
     def print_candidates(self, candidates, edited_candidates, sent_act_candidates, scores=None, failed_candidates=None):
+        import pdb
+        # pdb.set_trace()
         log_this_turn = []
+        failed_log_this_turn = []
         sents_success, sents_failed = [], []
         if cfg.print_candidates:
             print("=== candidates, len={} ===".format(len(candidates)))
         log_this_turn.append("=== candidates, len={} ===".format(len(candidates)))
         
         if type(scores[0]) is not bool:
+            # score is float
             for c, edited_c, act, s in zip(candidates, edited_candidates, sent_act_candidates, scores):
                 c = " ".join(c)
                 edited_c = " ".join(edited_c)
@@ -446,14 +453,20 @@ class PersuasiveBot:
 
             if failed_candidates:
                 i = 0
-                for sent, act, reason, past, hidden_states in failed_candidates:
+                for sent, act, reason, _, hidden_states in failed_candidates:
                     sent = " ".join(sent)
                     sents_failed.append(sent)
                     if cfg.print_candidates:
                         print("----------------- failed candidates: reason: {}  ---------------------------".format(reason))
                         print("{}".format(sent))
+                    failed_log_this_turn.append("----------------- failed candidates: reason: {}  ---------------------------".format(reason))
+                    failed_log_this_turn.append("{}".format(sent))
                     i += 1
+                self.logs['failed_candidates'].append(failed_log_this_turn)
+            else:
+                self.logs['failed_candidates'].append(failed_log_this_turn)
         else:
+            # score is T/F
             scores, failed_scores = scores[:len(edited_candidates)], scores[len(edited_candidates):]
             for c, edited_c, act, s in zip(candidates, edited_candidates, sent_act_candidates, scores):
                 c = " ".join(c)
@@ -504,9 +517,14 @@ class PersuasiveBot:
                             print("{}".format(sent))
                         i += 1
                         sents_failed.append(sent)
+                        failed_log_this_turn.append(to_print)
+                        failed_log_this_turn.append("{}".format(sent))
                 except:
                     import pdb
                     pdb.set_trace()
+                self.logs['failed_candidates'].append(failed_log_this_turn)            
+            else:
+                self.logs['failed_candidates'].append(failed_log_this_turn)
 
         return sents_success, sents_failed
 
@@ -717,6 +735,8 @@ class PersuasiveBot:
 
     def sys_respond_and_update(self, mode):
         # start A's utterance
+        import pdb
+        pdb.set_trace()
         past_is_None = (self.past is None)
         sent_candidates, edited_sent_candidates, sent_candidate_conflict_scores, sent_act_candidates, past_candidates, hidden_states_candidates = [], [], [], [], [], []
         have_enough_candidates = False
@@ -725,29 +745,35 @@ class PersuasiveBot:
         while not have_enough_candidates and num_rounds < int(cfg.MAX_NUM_CANDIDATES/cfg.NUM_CANDIDATES):
             num_rounds += 1
             for _ in range(cfg.NUM_CANDIDATES):
+                # pdb.set_trace()
                 sent, past, hidden_states = self.sample_one_sent(past=self.past, model=self.model_A)                
 
-                if self.model_config.with_repetition_module:
-                    sents = sent_tokenize_modified(sent)
-                    
-                    # use regex to re-label
-                    sent_acts, _ = self.global_profile.regex_label(self.model_clf,
-                                                                sents, 
-                                                                which_task="A")
-                                                                
+                sents = sent_tokenize_modified(sent)
+                # use regex to re-label
+                sent_acts, _ = self.global_profile.regex_label(self.model_clf,
+                                                            sents, 
+                                                            which_task="A")
+
+                if self.model_config.with_repetition_module:                                                                
                     conflict_condition, conflict_amount, edited_sents, edited_sent_acts, fail_reason = self.global_profile.check_conflict(sents, sent_acts)  
+                else:
+                    conflict_condition = True
+                    edited_sents = sents
+                    conflict_amount = 0
+                    edited_sent_acts = sent_acts
+                    fail_reason = "None, because no repetition module"
+                    # past = past
 
-                    if conflict_condition:   
-                        sent_candidates.append(sents)
-                        edited_sent_candidates.append(edited_sents)
-                        sent_candidate_conflict_scores.append(conflict_amount)
-                        sent_act_candidates.append(edited_sent_acts)
-                        past_candidates.append(past)
-                        hidden_states_candidates.append(hidden_states)
-                    else:
-                        failed_candidates.append([sents, sent_acts, fail_reason, past, hidden_states])
-
-                have_enough_candidates = (len(past_candidates) > 0)
+                if conflict_condition:   
+                    sent_candidates.append(sents)
+                    edited_sent_candidates.append(edited_sents)
+                    sent_candidate_conflict_scores.append(conflict_amount)
+                    sent_act_candidates.append(edited_sent_acts)
+                    past_candidates.append(past)
+                    hidden_states_candidates.append(hidden_states)
+                else:
+                    failed_candidates.append([sents, sent_acts, fail_reason, past, hidden_states])
+            have_enough_candidates = (len(past_candidates) > 0)
         if (not have_enough_candidates):
             # as long as it's not a contradiction, randomly pick one 
             if cfg.debug:
@@ -766,8 +792,8 @@ class PersuasiveBot:
             hidden_states_candidates.append(hidden_states)
 
 
-        self.logs['failed_candidates'].append(failed_candidates)
-
+        # self.logs['failed_candidates'].append(failed_candidates)
+        # pdb.set_trace()
         # check consistency and pick one candidate
         self.cnt += 1
         if self.candidate_select_strategy == cfg.HUMAN_SELECTION:
@@ -950,39 +976,58 @@ class PersuasiveBot:
 
     def save(self):
         # print("\n")
-        logging.debug("\n")
-        logging.debug("*************************** new dialog ****************************************")
+        import pdb
+        # pdb.set_trace()
+        if len(self.logs['responses']) == 0:
+            return
+        self.logger.info("\n")
+        self.logger.info("*************************** new dialog ****************************************")
+        # TOTAL_FAIL = 0
+        TOTAL_SUCCESS = 0
+        TOTAL_INCONSISTENT_FAIL = 0
+        TOTAL_REPETITION_FAIL = 0
         for turn_i in range(len(self.logs['responses'])):
             for k in ['responses', 'candidates', 'failed_candidates', 'global_profiles']:
                 # print("{}\n".format(k))
                 # print("-"*100)
-                logging.debug("{}\n".format(k))
+                self.logger.info("{}".format(k))
+                if k == "responses":
+                    self.logger.info("============= response starts ==============")
                 if k in ['responses', 'candidates', 'failed_candidates']:
                     try:
                         if k == "failed_candidates":
+                            if len(self.logs[k]) > 0:
+                                for a in self.logs[k][turn_i]:
+                                    self.logger.info(a)
+                                    if "<inconsistenty>" in a:
+                                        TOTAL_INCONSISTENT_FAIL += 1
+                                    if "<repetition>" in a:
+                                        TOTAL_REPETITION_FAIL += 1
+                        if len(self.logs[k]) > 0:
                             for a in self.logs[k][turn_i]:
-                                sents, sent_acts, fail_reason, past, hidden_states = a
-                                logging.debug("------------failed_candidates: {} - reason: {}-----------".format(sent_acts, fail_reason))
-                                logging.debug(sents)
-                        for a in self.logs[k][turn_i]:
-                            # print(a)
-                            logging.debug(a)
+                                if a.startswith("=== candidates, len="):
+                                    TOTAL_SUCCESS += int(a.split("len=")[1].split("===")[0])
+                                self.logger.info(a)
                     except:
                         pdb.set_trace()
+                    if k == "responses":
+                        self.logger.info("========= response ends ==============")
+                    self.logger.info("\n")
                 else:
                     for world in self.logs[k][turn_i]:                        
                         for profile in self.logs[k][turn_i][world]:
                             # print("*******{}: {}*******".format(world, profile))
-                            logging.debug("*******{}: {}*******".format(world, profile))
+                            self.logger.debug("*******{}: {}*******".format(world, profile))
                             for key, value in self.logs[k][turn_i][world][profile].items():
                                 # print("{}: {}".format(key, value))
-                                logging.debug("{}: {}".format(key, value))
+                                self.logger.debug("{}: {}".format(key, value))
                             # print("")
-                            logging.debug("")
+                            self.logger.debug("")
             # print("\n")
-            logging.debug("\n")
-        
-        logging.debug("*************************** dialog end ****************************************")
+            self.logger.info("---------- turn ends ---------------------------------\n")
+        self.logger.info(f"total success: {TOTAL_SUCCESS}, turn #: {len(self.logs['responses'])}")
+        self.logger.info(f"total repetition: {TOTAL_REPETITION_FAIL}, total inconsistency: {TOTAL_INCONSISTENT_FAIL}")
+        self.logger.info("*************************** dialog end ****************************************")
         
     def log_human_demonstration(self, sent_candidates, edited_sent_candidates, sent_act_candidates, past_candidates, hidden_states_candidates,
                                       failed_candidates, human_selected_ids,
@@ -1102,6 +1147,8 @@ class PersuasiveBot:
         return sents_success, sents_failed
 
 if __name__ == "__main__":
+    from PPO import load_model
+
     EVAL_MODEL_A_DIR = "/home/wyshi/persuasion/consistency/ARDM/persuasion/persuasion_medium_3.th"
     DEVICE1 = torch.device("cuda:5")
     DEVICE1_list = ["cuda:5"]
@@ -1116,7 +1163,7 @@ if __name__ == "__main__":
         log_file = 'logs/amt_baseline_test.log'
         
         with_baseline =  True
-        with_repetition_module = False
+        with_repetition_module = True
         with_consistency_module = False
         with_sentence_clf = False
         with_RL_finetune_model = False
@@ -1152,54 +1199,56 @@ if __name__ == "__main__":
     bot = PersuasiveBot(model_config=CurrentModelConfig, 
                         model_A=model_A, model_B=model_B, tokenizer=TOKENIZER, 
                         device1=DEVICE1, device2=DEVICE2)
+    MODE = cfg.interactive_mode
 
-    bot = PersuasiveBot()
+    # bot = PersuasiveBot()
     # pdb.set_trace()
     # bot.reload()
     user_text = ""
     # signal.signal(signal.SIGINT, signal.default_int_handler)
 
+    
     MAX_DIALOGS = 5
     TOTAL_TURNS = 0
     TOTAL_SUCCESS_CANDIDATES = 0
     dial_i = 0
-    try:
-        while dial_i < MAX_DIALOGS:
-            try:
-                if bot.past is not None:
-                    if cfg.mode != cfg.self_play_mode:
-                        user_text  = input("user: ")
-                    else:
-                        user_text = None
+    # try:
+    while dial_i < MAX_DIALOGS:
+        try:
+            if bot.past is not None:
+                if cfg.mode != cfg.self_play_mode:
+                    user_text  = input("user: ")
                 else:
-                    dial_i += 1
-                    print("\n\n\n")
-                    print("INIT MEMORY!")
-                    bot.save()
-                    bot.reload()
-                
+                    user_text = None
+            else:
+                dial_i += 1
+                print("\n\n\n")
+                print("INIT MEMORY!")
+                # bot.save()
+                bot.reload()
+            
 
-                result = bot.chat(input_text=user_text, mode=cfg.mode)
-                if result is not None:
-                    TOTAL_TURNS += 1
-                    response, [sents_success, sents_failed], have_enough_candidates, usr_input_text = result
-                    TOTAL_SUCCESS_CANDIDATES += len(sents_success)
-                if self.candidate_select_strategy != cfg.HUMAN_SELECTION:
-                    if cfg.verbose:
-                        bot.global_profile.print()
-                
-                # if response == "ARDM MEMORY RESTARTS!":
-                #     print("ARDM MEMORY RESTARTS!")
-                # else:
-                if result is not None:
-                    print("Turn {}".format(bot.turn_i))
-                    print("system: ", response)
-                print("$$$$$$$$$$$$$$$$$$$$$")
+            result = bot.chat(input_text=user_text, mode=MODE)
+            if result is not None:
+                TOTAL_TURNS += 1
+                response, [sents_success, sents_failed], have_enough_candidates, usr_input_text = result
+                TOTAL_SUCCESS_CANDIDATES += len(sents_success)
+            if bot.candidate_select_strategy != cfg.HUMAN_SELECTION:
+                if cfg.verbose:
+                    bot.global_profile.print()
+            
+            # if response == "ARDM MEMORY RESTARTS!":
+            #     print("ARDM MEMORY RESTARTS!")
+            # else:
+            if result is not None:
+                print("Turn {}".format(bot.turn_i))
+                print("system: ", response)
+            print("$$$$$$$$$$$$$$$$$$$$$")
 
-            except KeyboardInterrupt:
-                bot.save()
-                sys.exit()
+        except KeyboardInterrupt:
+            bot.save()
+            sys.exit()
 
-    except:
-        pdb.set_trace()
+    # except:
+    #     pdb.set_trace()
     print(f"finally {TOTAL_SUCCESS_CANDIDATES}, {TOTAL_TURNS}")

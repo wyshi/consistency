@@ -62,7 +62,7 @@ class HumanRule(object):
             enforced_acts = [SystemAct.propose_donation_inquiry, SystemAct.PROVIDE_DONATION_PROCEDURE]
             enforced_templates = self.sys_template.get_template(enforced_acts)
             import pdb
-            pdb.set_trace()
+            # pdb.set_trace()
             if (self.chatbot.global_profile.usr_world.usr_profile[self.chatbot.domain.WANT_TO_DONATE] == self.chatbot.domain.INIT)\
                 or (SystemAct.propose_donation_inquiry not in self.chatbot.global_profile.sys_world.sent_profile.keys()):
             # if SystemAct.propose_donation_inquiry not in self.chatbot.global_profile.sys_world.sent_profile.keys():

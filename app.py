@@ -20,6 +20,7 @@ from PersuasionInteract import PersuasiveBot
 import config as cfg
 import sys
 from torchfly.modules.losses import SequenceFocalLoss, SequenceCrossEntropyLoss
+import logging
 
 EVAL_MODEL_A_DIR = "/home/wyshi/persuasion/consistency/ARDM/persuasion/persuasion_medium_3.th"
 DEVICE1 = torch.device("cuda:5")
@@ -32,7 +33,7 @@ SPLIT_INTO2= 1
 
 class CurrentModelConfig:
     with_rule = True
-    log_file = 'logs/amt_baseline_test.log'
+    log_file = 'logs/amt_baseline_test_app.log'
     
     with_baseline =  True
     with_repetition_module = False
@@ -82,17 +83,26 @@ def end_condition(usr_input):
 
     return False
 
+@app.route("/user_stop", methods=['POST'])
+def userStop():
+    model.reload()
+    return jsonify({"reload_success": True})
 
-@app.route("/missa", methods=['POST'])
+@app.route("/persuasion_bot", methods=['POST'])
 def getResponse():
+    exitbutton_appear = False
     sid = request.json.get('sid')
     input_text = request.json.get('input_text')
     print(sid)
 
-    # added by me
-    # user_text = ""
-    MODE = cfg.interactive_mode
+    # exit button condition
+    if model.turn_i >= 9 or ("closing" in model.global_profile.sys_world.sent_profile.keys()):
+        exitbutton_appear = True
 
+
+    MODE = cfg.interactive_mode
+    if input_text == "<start>":
+        input_text = None
     result = model.chat(input_text=input_text, mode=MODE, sid=sid)
     if result is not None:
         response, [sents_success, sents_failed], have_enough_candidates, usr_input_text = result
@@ -101,11 +111,12 @@ def getResponse():
 
     # [output_text, sys_da_output, sys_se_output, usr_da_output, usr_se_outpu] = model.chat(input_text, sid)
     return jsonify({"response": response, 
-                    # "exitbutton_or_not": exitbutton_or_not,              
-                    "sents_success": sents_success, 
-                    "sents_failed": sents_failed, 
-                    "have_enough_candidates": have_enough_candidates, 
-                    "usr_input_text": usr_input_text})
+                    "exitbutton_appear": exitbutton_appear
+                    })#,     #T/F only          
+                    # "sents_success": sents_success, 
+                    # "sents_failed": sents_failed, 
+                    # "have_enough_candidates": have_enough_candidates, 
+                    # "usr_input_text": usr_input_text})
     #return jsonify(ed_result)
 
 if __name__ == "__main__":

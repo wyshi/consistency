@@ -7,12 +7,6 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3,4,5,6,7"
 from time import time
 import logging
 from os import listdir
-log_dir = max([int(f[3]) for f in listdir(".") if f.startswith("ppo") and f.endswith(".log")]) + 1
-log_dir = f"ppo{log_dir}.log"
-logging.basicConfig(filename=log_dir, level=logging.INFO)
-# logging.basicConfig(filename='hello2.log', level=logging.INFO)
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 import pdb
 # pdb.set_trace()
 from tqdm import tqdm
@@ -1185,6 +1179,13 @@ class Trainer:
             return loss, approx_kl.item(), None, approx_kl_gpt2.mean().item(), None, policy_loss.mean().item()
 
 if __name__ == "__main__":
+    log_dir = max([int(f[3]) for f in listdir(".") if f.startswith("ppo") and f.endswith(".log")]) + 1
+    log_dir = f"ppo{log_dir}.log"
+    logging.basicConfig(filename=log_dir, level=logging.INFO)
+    # logging.basicConfig(filename='hello2.log', level=logging.INFO)
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
+
     NEW_MODEL_A_DIR = None#"Checkpoint/7_steps_2.3_reward_model_A_kl_47.13.pth"#None#"Checkpoint/9_steps_1.3272727272727274_reward_model_A.pth"#None#"Checkpoint/7_steps_1.984710743801653_reward_model_A.pth"#None#"Checkpoint/30_steps_2.0_reward_model_A.pth"#None#"Checkpoint/9_steps_-0.03278688524590164_reward_model_A.pth"#None#"Checkpoint/1_steps_1.12_reward_model_A.pth"#None#"Checkpoint/20_steps_0.049586776859504134_reward_model_A.pth"
     REPLAY_BUFFER_DIR = None#"Checkpoint/replay_buffer_in_exception.pth"#None#"Checkpoint/replay_buffer_in_exception.pth"#None#"Checkpoint/replay_buffer.pth"#None#"Checkpoint/replay_buffer.pth"#None#"Checkpoint/replay_buffer.pth"#None#"Checkpoint/replay_buffer.pth"#"Checkpoint/replay_buffer.pth"#None#"Checkpoint/replay_buffer.pth"
     DEBUG = False

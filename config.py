@@ -76,7 +76,7 @@ SYSTEM_CORRECTION = "system_correction"
 domain = "persuasion"
 
 
-
+repetition_log_file = "logs/repetitions.log"
 if use_old_model:
     # log_file = 'logs/old_model/example.log'
     demonstration_csv = "demonstration/old_model/demonstration.csv"

@@ -15,7 +15,7 @@ import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 import logging
 
-logging.basicConfig(filename=cfg.log_file,level=logging.DEBUG)
+# logging.basicConfig(filename=cfg.repetition_log_file,level=logging.DEBUG)
 
 # Create tokenizer and stemmer
 from nltk import word_tokenize
@@ -63,9 +63,9 @@ def is_repetition_with_context(sent, context_list, threshold=0.5):
                 print("|context: {}|\n|candidate: {}|".format(c_sent, sent))
                 print("---------------------------------------------\n\n\n")
 
-            logging.debug("\n\n\n--- repetition occurs between these sents: ratio {} ---".format(ratio))
+            logging.debug("--- repetition occurs between these sents: ratio {} ---".format(ratio))
             logging.debug("|context: {}|\n|candidate: {}|".format(c_sent, sent))
-            logging.debug("---------------------------------------------\n\n\n")
+            logging.debug("---------------------------------------------")
             return True, max_ratio
     return False, max_ratio
 
