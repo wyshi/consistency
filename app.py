@@ -53,6 +53,12 @@ class CurrentModelConfig:
     if with_sentence_clf:
         candidate_select_strategy = cfg.IMITATION_LEARNING_SELECTION
 
+    if with_baseline and (not with_repetition_module) and (not with_consistency_module) and (not with_sentence_clf)\
+        and (not with_RL_finetune_model):
+        NUM_CANDIDATES = 1
+    else:
+        NUM_CANDIDATES = cfg.NUM_CANDIDATES
+
 def load_model_for_AMT(EVAL_MODEL_A_DIR):
     TOKENIZER = GPT2Tokenizer.from_pretrained("gpt2")#torch.load(tokenizer_dir)
 
@@ -73,8 +79,10 @@ model = PersuasiveBot(model_config=CurrentModelConfig,
                       model_A=model_A, model_B=model_B, tokenizer=TOKENIZER, 
                       device1=DEVICE1, device2=DEVICE2)
 
-
-
+import time
+import datetime
+TIME = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
+logging.info(f"!!!!!--------- AMT test: datetime {TIME}----------")
 app = Flask(__name__)
 # model = HuggingfaceModel("./runs/1000pretrained")
 model.reload()

@@ -742,9 +742,9 @@ class PersuasiveBot:
         have_enough_candidates = False
         num_rounds = 0
         failed_candidates = []
-        while not have_enough_candidates and num_rounds < int(cfg.MAX_NUM_CANDIDATES/cfg.NUM_CANDIDATES):
+        while not have_enough_candidates and num_rounds < int(cfg.MAX_NUM_CANDIDATES/self.model_config.NUM_CANDIDATES):
             num_rounds += 1
-            for _ in range(cfg.NUM_CANDIDATES):
+            for _ in range(self.model_config.NUM_CANDIDATES):
                 # pdb.set_trace()
                 sent, past, hidden_states = self.sample_one_sent(past=self.past, model=self.model_A)                
 
@@ -1179,6 +1179,12 @@ if __name__ == "__main__":
 
         if with_sentence_clf:
             candidate_select_strategy = cfg.IMITATION_LEARNING_SELECTION
+
+        if with_baseline and (not with_repetition_module) and (not with_consistency_module) and (not with_sentence_clf)\
+            and (not with_RL_finetune_model):
+            NUM_CANDIDATES = 1
+        else:
+            NUM_CANDIDATES = cfg.NUM_CANDIDATES
 
     def load_model_for_AMT(EVAL_MODEL_A_DIR):
         TOKENIZER = GPT2Tokenizer.from_pretrained("gpt2")#torch.load(tokenizer_dir)

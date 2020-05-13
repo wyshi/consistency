@@ -1255,6 +1255,12 @@ if __name__ == "__main__":
         if with_sentence_clf:
             candidate_select_strategy = cfg.IMITATION_LEARNING_SELECTION
 
+        if with_baseline and (not with_repetition_module) and (not with_consistency_module) and (not with_sentence_clf)\
+            and (not with_RL_finetune_model):
+            NUM_CANDIDATES = 1
+        else:
+            NUM_CANDIDATES = cfg.NUM_CANDIDATES
+
     actor = Actor(CurrentModelConfig, model_A=model_A, model_B=model_B, tokenizer=tokenizer, 
                   device1=DEVICE1, device2=DEVICE2, dialog_i=PREV_DIALOGS)
 

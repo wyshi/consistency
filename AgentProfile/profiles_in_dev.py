@@ -5,7 +5,7 @@ sys.path.append("../")
 import config as cfg
 from utils import is_repetition_with_context
 import itertools
-from AgentProfile.core import SystemAct
+from AgentProfile.core import SystemAct, UserAct
 from KnowledgeBase import KB
 from KnowledgeBase.KB import Domain
 import pdb
@@ -39,7 +39,7 @@ class GlobalProfile(object):
         # self.act_clf_model = act_clf_model
         self.sentiment_analyzer = SentimentIntensityAnalyzer()
         self.sent_embedding_model = SentenceTransformer('bert-base-nli-mean-tokens', 
-                                                        device=torch.device("cuda:1"))#('roberta-large-nli-stsb-mean-tokens')
+                                                        device=torch.device(cfg.sent_embedding_model_device))#('roberta-large-nli-stsb-mean-tokens')
 
         self.sys_world = SysWorld(domain=self.domain, name="system_world")
         self.usr_world = UsrWorld(domain=self.domain, name="user_world")
@@ -54,9 +54,9 @@ class GlobalProfile(object):
     # def __getitem__(self, key):
     #     return self.profiles[key.lower()]
 
-    def extract_info(self, sents, who):
+    def extract_info(self, sents, who, sent_acts):
 
-        qa_dict_usr, qa_dict_sys = self.contain_answers(sents, who)
+        qa_dict_usr, qa_dict_sys = self.contain_answers(sents, who, sent_acts)
         
         return qa_dict_usr, qa_dict_sys
 
@@ -75,13 +75,13 @@ class GlobalProfile(object):
 
 
 
-    def contain_answers(self, sents, who):
+    def contain_answers(self, sents, who, sent_acts):
         qa_dict = {
                     self.domain.USR:{},
                     self.domain.SYS:{}
                   }
         for q in self.domain.attributes:
-            answers = self.answer_question(sents, q, who)
+            answers = self.answer_question(sents, q, who, sent_acts)
             
             if answers['usr']:
                 qa_dict[self.domain.USR].update({q: answers['usr']})
@@ -105,7 +105,7 @@ class GlobalProfile(object):
                 qa_dict[self.domain.SYS].update(self.answers_extracted_from_last_sent[self.domain.USR])
         return qa_dict[self.domain.USR], qa_dict[self.domain.SYS]
 
-    def answer_question(self, sents, q, who):
+    def answer_question(self, sents, q, who, sent_acts):
         """answer the question q based on the current input sents from who.
         return
         answers = {}
@@ -119,22 +119,22 @@ class GlobalProfile(object):
         sent = sent.lower()
 
         if q == self.domain.HOW_ARE_YOU:
-            answers = self.answer_HOW_ARE_YOU(sent, who, last_sent)
+            answers = self.answer_HOW_ARE_YOU(sent, who, last_sent, sent_acts)
 
         elif q == self.domain.HEARD_OF_THE_ORG:    
-            answers = self.answer_HEARD_OF_THE_ORG(sent, who, last_sent)
+            answers = self.answer_HEARD_OF_THE_ORG(sent, who, last_sent, sent_acts)
 
         elif q == self.domain.HAVE_KIDS:
-            answers = self.answer_HAVE_KIDS(sent, who, last_sent)
+            answers = self.answer_HAVE_KIDS(sent, who, last_sent, sent_acts)
 
         elif q == self.domain.DONATED_BEFORE:
-            answers = self.answer_DONATED_BEFORE(sent, who, last_sent)
+            answers = self.answer_DONATED_BEFORE(sent, who, last_sent, sent_acts)
 
         elif q == self.domain.WANT_TO_DONATE:
-            answers = self.answer_WANT_TO_DONATE(sent, who, last_sent)
+            answers = self.answer_WANT_TO_DONATE(sent, who, last_sent, sent_acts)
 
         elif q == self.domain.DONATION_AMOUNT:
-            answers = self.answer_DONATION_AMOUNT(sent, who, last_sent)
+            answers = self.answer_DONATION_AMOUNT(sent, who, last_sent, sent_acts)
 
         else:
             raise ValueError("question {} not supported".format(q))
@@ -149,11 +149,11 @@ class GlobalProfile(object):
             
         return answers
 
-    def answer_HOW_ARE_YOU(self, sent, who, last_sent):
+    def answer_HOW_ARE_YOU(self, sent, who, last_sent, sent_acts):
         # self.domain.ATT_TO_QUESTION[self.domain.HOW_ARE_YOU]
         answers = {'usr': None,
                    'sys': None}
-        if last_sent and re.search(self.greeting_re, last_sent): 
+        if last_sent and (re.search(self.greeting_re, last_sent) or ()): 
             # asked
             if re.search(r"((you are)|(you're)) doing ((great)|(well)|(good))", sent):
                 if who == self.domain.USR:
@@ -179,7 +179,7 @@ class GlobalProfile(object):
                     answers['sys'] = "good"
         return answers
 
-    def answer_HEARD_OF_THE_ORG(self, sent, who, last_sent):
+    def answer_HEARD_OF_THE_ORG(self, sent, who, last_sent, sent_acts):
         answers = {'usr': None,
                    'sys': None}
         if last_sent and SystemAct.organization_related_inquiry in self.history_label[-1]:
@@ -251,9 +251,14 @@ class GlobalProfile(object):
                 if "i've heard of them as well" in sent:
                     answers['usr'] = self.domain.YES
 
+        if who == self.domain.SYS:
+            if SystemAct.PROVIDE_ORG_FACTS in sent_acts:
+                # as long as the system talks about the org facts, the the user has heard of it.
+                answers['usr'] = self.domain.YES
+
         return answers
 
-    def answer_HAVE_KIDS(self, sent, who, last_sent):
+    def answer_HAVE_KIDS(self, sent, who, last_sent, sent_acts):
         answers = {'usr': None,
                    'sys': None}
         num_kids_re = "(([-+]?[0-9]+)|(one)|(two)|(three)|(four)|(five)|(six)|(seven)|(eight)|(nine)|(zero))"
@@ -324,7 +329,7 @@ class GlobalProfile(object):
                 
         return answers
 
-    def answer_DONATED_BEFORE(self, sent, who, last_sent):
+    def answer_DONATED_BEFORE(self, sent, who, last_sent, sent_acts):
         answers = {'usr': None,
                    'sys': None}
         if last_sent and SystemAct.donation_related_inquiry in self.history_label[-1]:
@@ -397,7 +402,7 @@ class GlobalProfile(object):
 
         return answers
 
-    def answer_WANT_TO_DONATE(self, sent, who, last_sent):
+    def answer_WANT_TO_DONATE(self, sent, who, last_sent, sent_acts):
         answers = {'usr': None,
                    'sys': None}
         if last_sent and SystemAct.propose_donation_inquiry in self.history_label[-1]:
@@ -480,7 +485,7 @@ class GlobalProfile(object):
 
         return answers
 
-    def answer_DONATION_AMOUNT(self, sent, who, last_sent):
+    def answer_DONATION_AMOUNT(self, sent, who, last_sent, sent_acts):
         answers = {'usr': None,
                    'sys': None}
         num_in_sent = toNumReg(sent)
@@ -568,13 +573,15 @@ class GlobalProfile(object):
         self.answers_extracted_from_last_sent = None
 
     def update(self, sents, sent_labels, who):
-        to_update_dic_usr, to_update_dic_sys = self.extract_info(sents, who=who)
+        to_update_dic_usr, to_update_dic_sys = self.extract_info(sents, who=who, sent_acts=sent_labels)
 
         if who == self.domain.USR:
             self.usr_world.update(to_update_dic_usr=to_update_dic_usr, 
                                   to_update_dic_sys=to_update_dic_sys,
                                   usr_texts=sents, 
-                                  last_sys_labels=self.history_label[-1])
+                                  usr_labels=sent_labels,
+                                  last_sys_labels=self.history_label[-1],
+                                  last_sys_sents=self.history[-1])
             # sync up with the partner, for potential conditional generation
             self.sys_world.syncup(self.usr_world.usr_profile)
 
@@ -582,7 +589,9 @@ class GlobalProfile(object):
             self.sys_world.update(to_update_dic_usr=to_update_dic_usr, 
                                   to_update_dic_sys=to_update_dic_sys,
                                   sys_texts=sents, 
-                                  sys_labels=sent_labels)
+                                  sys_labels=sent_labels,
+                                  last_usr_labels=self.history_label[-1],
+                                  last_usr_sents=self.history[-1])
             # sync up with the partner, for potential conditional generation
             self.usr_world.syncup(self.sys_world.sys_profile)
 
@@ -619,7 +628,9 @@ class GlobalProfile(object):
                 rep_condition = (rep_status_with_sys in [cfg.PASS])    
                 rep_amount = rep_amount_with_sys               
             else:
-                rep_status_with_usr, rep_amount_with_usr, edited_sents, edited_sent_acts = self.usr_world.check_conflict(edited_sents, edited_sent_acts)                    
+                is_repetition_with_sys = not (rep_status_with_sys in [cfg.PASS]) 
+                rep_status_with_usr, rep_amount_with_usr, edited_sents, edited_sent_acts = self.usr_world.check_conflict(edited_sents, edited_sent_acts,
+                                                                                                                        is_repetition_with_sys=is_repetition_with_sys)                    
                 rep_condition = (rep_status_with_sys in [cfg.PASS]) and (rep_status_with_usr in [cfg.PASS])
                 rep_amount = max(rep_amount_with_usr, rep_amount_with_sys)
         else:
@@ -665,7 +676,7 @@ class GlobalProfile(object):
 
     def check_consistency(self, sents, sent_acts):
         
-        to_update_dic_usr, to_update_dic_sys = self.extract_info(sents, who=self.domain.SYS)
+        to_update_dic_usr, to_update_dic_sys = self.extract_info(sents, who=self.domain.SYS, sent_acts=sent_acts)
         consis_status = cfg.PASS
         for att, answer in to_update_dic_usr.items():
             # if the system says something that's different from the user profile before
@@ -704,7 +715,6 @@ class GlobalProfile(object):
                 
                 if self.sents_are_similar(sent, ['do you have children', 
                                                  'do you have kids',
-                                                 'are you a parent',
                                                  'are you a parent']):#"have" in sent and (("kid" in sent) or ("children" in sent)):
                     label = SystemAct.kids_related_inquiry
 
@@ -713,7 +723,7 @@ class GlobalProfile(object):
                                                  'are you involved with any charity']):
                     label = SystemAct.donation_related_inquiry
 
-                elif self.sents_are_similar(sent, ['have you heard of save the children before', 
+                elif self.sents_are_similar(sent, [#'have you heard of save the children before', 
                                                  'have you heard of save the children',
                                                  'are you aware of save the children',
                                                  'are you familiar with save the children']):
@@ -783,11 +793,13 @@ class IndividualWorld(object):
         self.usr_profile = {att: self.domain.INIT for att in self.domain.attributes}
 
         self.sent_profile = {}
+        self.act_sent_pair = []
 
     def refresh(self): 
         self.sys_profile = {att: self.domain.INIT for att in self.domain.attributes}
         self.usr_profile = {att: self.domain.INIT for att in self.domain.attributes}
         self.sent_profile = {}
+        self.act_sent_pair = []
     
     # def __call__(self):
     #     return self.profile
@@ -803,7 +815,10 @@ class IndividualWorld(object):
         print("******* sent profile *******")
         for k, v in self.sent_profile.items():
             print("{}: {}".format(k, v))
-        print("*********************")
+        print("******** act sent pair *************")
+        for turn in self.act_sent_pair:
+            print(f"{turn[0]}: {turn[1]}")
+        print("*******************************")
 
     def keys(self, who):
         if who == self.domain.SYS:
@@ -827,8 +842,9 @@ class IndividualWorld(object):
 class UsrWorld(IndividualWorld):
     def __init__(self, domain, name="user_world"):
         super().__init__(domain, name)
+        self.act_sent_pair = []
 
-    def update(self, to_update_dic_usr, to_update_dic_sys, usr_texts, last_sys_labels):
+    def update(self, to_update_dic_usr, to_update_dic_sys, usr_texts, usr_labels, last_sys_labels, last_sys_sents):
         # update using the user inputs
         self.usr_profile.update(to_update_dic_usr)
         self.sys_profile.update(to_update_dic_sys)
@@ -839,13 +855,15 @@ class UsrWorld(IndividualWorld):
                 self.sent_profile[last_sys_label].append(usr_text)
             else:
                 self.sent_profile[last_sys_label] = [usr_text]
+            
+        self.act_sent_pair.append(list(zip(usr_labels, usr_texts)))
     
-    def check_conflict(self, sys_texts, sys_labels):
+    def check_conflict(self, sys_texts, sys_labels, is_repetition_with_sys):
         # check system candidates' confict with the system profiles
         # e.g. user: i want to donate a dollar
         #      sys: how much will you donate?
         def check_conflict_for_one_utt(sys_text, sys_label):
-            is_repetition, repetition_ratio = is_repetition_with_context(sys_text, 
+            is_repetition_with_user, repetition_ratio = is_repetition_with_context(sys_text, 
                                                                         itertools.chain(*self.sent_profile.values()), 
                                                                         threshold=cfg.repetition_threshold)
 
@@ -853,7 +871,7 @@ class UsrWorld(IndividualWorld):
                 # e.g. sys: have you heard of save the children?
                 #      usr: i have heard of it
                 #      sys: do you know about save the children?
-                if self.is_inquiry_answered(sys_text, sys_label):
+                if self.is_inquiry_answered(sys_text, sys_label, is_repetition_with_sys):
                     # 1.1 real repetition, 
                     # this is repetition inquiry
                     if cfg.verbose:
@@ -863,7 +881,7 @@ class UsrWorld(IndividualWorld):
                     # 1.2 fake repetition,
                     # where the user never replies the inquiry
                     return cfg.PASS, repetition_ratio
-            elif is_repetition:
+            elif is_repetition_with_user:
                 # if cfg.debug:
                 #     print("exact repetition with user utterance encountered in user_profile check! {}: {}".format(sys_label, sys_text))
                 
@@ -902,7 +920,7 @@ class UsrWorld(IndividualWorld):
                 return cfg.PASS, repetition_ratio, edited_sents, edited_sent_acts
   
 
-    def is_inquiry_answered(self, sys_text, sys_label):
+    def is_inquiry_answered(self, sys_text, sys_label, is_repetition_inquiry):
         # temporary!!!
         act_to_attributes = {SystemAct.kids_related_inquiry: self.domain.HAVE_KIDS,
                              SystemAct.donation_related_inquiry: self.domain.DONATED_BEFORE,
@@ -919,32 +937,46 @@ class UsrWorld(IndividualWorld):
         # print(sys_text)
         # print(sys_label)
         if sys_label in act_to_attributes:
-            if self.usr_profile[act_to_attributes[sys_label]] != self.domain.INIT: ### change here
-                return True
+            if sys_label != SystemAct.organization_related_inquiry:
+                if self.usr_profile[act_to_attributes[sys_label]] != self.domain.INIT: ### change here
+                    return True
+                else:
+                    return False
             else:
-                return False
+                if self.usr_profile[act_to_attributes[SystemAct.organization_related_inquiry]] in [self.domain.YES, self.domain.NO]: ### change here
+                    return True
+                else:
+                    return False
         else:        
             if sys_label not in self.sent_profile:
                 return False
             usr_responses_to_inqury = self.sent_profile[sys_label] #todo, temporarily, should use all user context to find if the answer is already there
                                                             # should be self.is_qa_pair(sys_text, sys_label, self.profile.values())
-            return self.is_qa_pair(sys_text, sys_label, usr_responses_to_inqury)
+            return self.is_qa_pair(sys_text, sys_label, usr_responses_to_inqury, is_repetition_inquiry)
 
-    def is_qa_pair(self, sys_text, sys_label, usr_response_list):
+    def is_qa_pair(self, sys_text, sys_label, usr_response_list, is_repetition_inquiry):
         # if we cannot extract the answer to the sys_text from the usr_response_list, then it's not answered.
         #===QA=== improvements comes in 
-        if sys_label in [SystemAct.kids_related_inquiry, 
-                         SystemAct.donation_related_inquiry, 
-                         SystemAct.organization_related_inquiry, 
-                         SystemAct.propose_donation_inquiry]:
-            for usr_response in usr_response_list:
-                if ("yes" in usr_response) or ("no" in usr_response) or ("not" in usr_response):
-                    return True
-            return False
-        elif sys_label in [SystemAct.other_inquiry]:
+        # if sys_label in [SystemAct.kids_related_inquiry, 
+        #                  SystemAct.donation_related_inquiry, 
+        #                  SystemAct.organization_related_inquiry, 
+        #                  SystemAct.propose_donation_inquiry]:
+        #     for usr_response in usr_response_list:
+        #         if ("yes" in usr_response) or ("no" in usr_response) or ("not" in usr_response):
+        #             return True
+        #     return False
+        # if sys_label in [SystemAct.other_inquiry] and is_repetition_inquiry:
+        #     return True
+        # elif sys_label in [SystemAct.other_inquiry] and (not is_repetition_inquiry):
+        #     return False
+        # else:
+        #     return True
+        assert sys_label in [SystemAct.other_inquiry]
+        if is_repetition_inquiry:
+            # inquiries with similar wording have been asked
             return True
         else:
-            return True
+            return False
 
     def syncup(self, profile_to_sync, whose=None):
         if whose is None:
@@ -963,7 +995,7 @@ class SysWorld(IndividualWorld):
         self.sys_profile[self.domain.HEARD_OF_THE_ORG] = self.domain.YES
         self.sys_profile[self.domain.WANT_TO_DONATE] = self.domain.YES
 
-    def update(self, to_update_dic_usr, to_update_dic_sys, sys_texts, sys_labels):
+    def update(self, to_update_dic_usr, to_update_dic_sys, sys_texts, sys_labels, last_usr_labels, last_usr_sents):
         # update using the system inputs
         # label = self.regex_label(sys_text, context, turn_i)
         self.usr_profile.update(to_update_dic_usr)
@@ -998,7 +1030,7 @@ class SysWorld(IndividualWorld):
                     # 2. statement                    
                     if is_repetition:
                         # 2.1 fake repetition
-                        if self.is_qa_pair():
+                        if self.is_qa_pair(sys_text=sys_text, sys_label=sys_label):
                             # elif (usr_label, sys_label) in cfg.QA_PAIR_WITH_UNIQUE_ANSWER_DB: 
                             #     # case 2: potentially be fake repetitions 
                             #     # (when user asks, system repeats similar answers)
@@ -1009,7 +1041,8 @@ class SysWorld(IndividualWorld):
                         # 2.2 real repetition
                         else:
                             if cfg.verbose:
-                                print("{} encountered! {}: {}".format(cfg.REPETITION, sys_label, sys_text))
+                                print("{} encountered in sys_check statements! don't form qa_pair {}: {}".format(cfg.REPETITION, sys_label, sys_text))
+                                logging.info("{} encountered in sys_check statements! don't form qa_pair {}: {}".format(cfg.REPETITION, sys_label, sys_text))
                             return cfg.REPETITION, repetition_ratio
 
                     else:
@@ -1055,21 +1088,26 @@ class SysWorld(IndividualWorld):
         # if we cannot extract the answer to the sys_text from the usr_response_list, then it's not answered.
         #===QA=== improvements comes in 
         #todo
-        return False
-        
-        if sys_label in [SystemAct.kids_related_inquiry, 
-                         SystemAct.donation_related_inquiry, 
-                         SystemAct.organization_related_inquiry, 
-                         SystemAct.propose_donation_inquiry]:
-            for usr_response in usr_response_list:
-                if ("yes" in usr_response) or ("no" in usr_response) or ("not" in usr_response):
+        last_user_label_is_inquiry = any(["inquiry" in l for l in self.last_labels])
+        if last_user_label_is_inquiry:
+            if UserAct.donation_procedure_inquiry in self.last_labels:
+                if SystemAct.PROVIDE_DONATION_PROCEDURE in sys_label:
                     return True
-            return False
-        elif sys_label in [SystemAct.other_inquiry]:
-            return True
+                else:
+                    return False
+            else:
+                return False
+            # organization_info_inquiry = "organization-info-inquiry"
+            # donation_procedure_inquiry = "donation-procedure-inquiry"
+            # persuader_intention_inquiry = "persuader-intention-inquiry"
+            # kids_related_inquiry = SharedDialogAct.kids_related_inquiry
+            # donation_related_inquiry = SharedDialogAct.donation_related_inquiry    
+            # other_inquiry = SharedDialogAct.other_inquiry    
+            # greeting_inquiry = SharedDialogAct.greeting_inquiry
+            # greeting_answer = SharedDialogAct.greeting_answer
         else:
-            return True
-
+            return False
+        
     def refresh(self):
         super().refresh()
         self.sys_profile[self.domain.HEARD_OF_THE_ORG] = self.domain.YES
