@@ -25,7 +25,7 @@ while True:
                         'http://0.0.0.0:8089/persuasion_bot',
                         headers=headers,
                         data=json.dumps(data),
-                        timeout=15)
+                        timeout=60)
     except requests.exceptions.RequestException as e:
         # catastrophic error. bail.
         print(e)
