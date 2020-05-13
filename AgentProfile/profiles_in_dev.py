@@ -39,7 +39,7 @@ class GlobalProfile(object):
         # self.act_clf_model = act_clf_model
         self.sentiment_analyzer = SentimentIntensityAnalyzer()
         self.sent_embedding_model = SentenceTransformer('bert-base-nli-mean-tokens', 
-                                                        device=torch.device("cuda:1"))#('roberta-large-nli-stsb-mean-tokens')
+                                                        device=torch.device(cfg.sent_embedding_model_device))#('roberta-large-nli-stsb-mean-tokens')
 
         self.sys_world = SysWorld(domain=self.domain, name="system_world")
         self.usr_world = UsrWorld(domain=self.domain, name="user_world")
