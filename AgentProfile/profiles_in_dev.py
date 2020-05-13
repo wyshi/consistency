@@ -49,7 +49,7 @@ class GlobalProfile(object):
         self.last_labels = None
         self.answers_extracted_from_last_sent = None
 
-        self.greeting_re = re.compile(r"((how are you)|(how're you)|(how you doing)|(how about you))", re.IGNORECASE)
+        self.greeting_re = re.compile(r"((how are you)|(how're you)|(how you doing))", re.IGNORECASE)
         
     # def __getitem__(self, key):
     #     return self.profiles[key.lower()]
@@ -153,14 +153,16 @@ class GlobalProfile(object):
         # self.domain.ATT_TO_QUESTION[self.domain.HOW_ARE_YOU]
         answers = {'usr': None,
                    'sys': None}
-        if last_sent and (re.search(self.greeting_re, last_sent) or ()): 
+        if last_sent and (re.search(self.greeting_re, last_sent) or (SystemAct.greeting_inquiry in self.last_labels) \
+                          or (UserAct.greeting_inquiry in self.last_labels)): 
             # asked
             if re.search(r"((you are)|(you're)) doing ((great)|(well)|(good))", sent):
                 if who == self.domain.USR:
                     answers['sys'] = "good"
                 elif who == self.domain.SYS:
                     answers['usr'] = "good"
-            elif re.search(r"((doing )| )((good)|(well)|(alright)|(ok)|(great))", sent):
+            elif re.search(r"((doing )| )((good)|(well)|(alright)|(ok)|(great))", sent) \
+                or (UserAct.greeting_answer in sent_acts) or (SystemAct.greeting_answer in sent_acts):
                 if who == self.domain.USR:
                     answers['usr'] = "good"
                 elif who == self.domain.SYS:
@@ -172,7 +174,8 @@ class GlobalProfile(object):
                     answers['sys'] = "good"
                 elif who == self.domain.SYS:
                     answers['usr'] = "good"
-            elif re.search(r"((doing )| )((good)|(well)|(alright)|(ok))", sent):
+            elif re.search(r"((doing )| )((good)|(well)|(alright)|(ok))", sent) \
+                or (UserAct.greeting_answer in sent_acts) or (SystemAct.greeting_answer in sent_acts):
                 if who == self.domain.USR:
                     answers['usr'] = "good"
                 elif who == self.domain.SYS:
@@ -282,7 +285,7 @@ class GlobalProfile(object):
                         answers['usr'] = self.domain.NOT_SURE
 
                 # 1.1.2) asked-user speak-about system
-                if re.search(r"((you've)|(you have))", sent, re.IGNORECASE) and "kids" in sent:
+                if re.search(r"((you've)|(you have))", sent, re.IGNORECASE) and "kid" in sent:
                     answers['sys'] = self.domain.YES
 
             elif who == self.domain.SYS:
@@ -302,7 +305,7 @@ class GlobalProfile(object):
                         answers['sys'] = self.domain.NOT_SURE
             
                 # 1.2.2) asked-system speak-about user
-                if re.search(r"((you've)|(you have))", sent, re.IGNORECASE) and "kids" in sent:
+                if re.search(r"((you've)|(you have))", sent, re.IGNORECASE) and "kid" in sent:
                     answers['usr'] = self.domain.YES
 
         else:
@@ -703,7 +706,7 @@ class GlobalProfile(object):
 
         predicted_labels, past = model_clf.predict(separate_sents=sys_texts, 
                                                     which_task=which_task)
-        def regex_label_for_one_utt(utt, predicted_label):
+        def regex_label_for_one_utt(utt, predicted_label, which_task=which_task):
             # try:
             #     predicted_label = self.pred_model.predict(text=utt, his=context, turn=turn_i)
             # except:
@@ -711,74 +714,141 @@ class GlobalProfile(object):
             #     pdb.set_trace()
             
             sent = utt.lower()
-            if predicted_label in ["task-related-inquiry", "personal-related-inquiry"]:#, "have-you-heard-of-the-org"]:
-                
-                if self.sents_are_similar(sent, ['do you have children', 
-                                                 'do you have kids',
-                                                 'are you a parent']):#"have" in sent and (("kid" in sent) or ("children" in sent)):
-                    label = SystemAct.kids_related_inquiry
+            if "A" in which_task:
+                if predicted_label in ["task-related-inquiry", "personal-related-inquiry"]:#, "have-you-heard-of-the-org"]:
+                    
+                    if self.sents_are_similar(sent, ['do you have children', 
+                                                    'do you have kids',
+                                                    'are you a parent']):#"have" in sent and (("kid" in sent) or ("children" in sent)):
+                        label = SystemAct.kids_related_inquiry
 
-                elif self.sents_are_similar(sent, ['have you donated before', 
-                                                 'do you donate to charities',
-                                                 'are you involved with any charity']):
-                    label = SystemAct.donation_related_inquiry
+                    elif self.sents_are_similar(sent, ['have you donated before', 
+                                                    'do you donate to charities',
+                                                    'are you involved with any charity']):
+                        label = SystemAct.donation_related_inquiry
 
-                elif self.sents_are_similar(sent, [#'have you heard of save the children before', 
-                                                 'have you heard of save the children',
-                                                 'are you aware of save the children',
-                                                 'are you familiar with save the children']):
+                    elif self.sents_are_similar(sent, [#'have you heard of save the children before', 
+                                                    'have you heard of save the children',
+                                                    'are you aware of save the children',
+                                                    'are you familiar with save the children']):
+                        label = SystemAct.organization_related_inquiry
+
+                    # elif "save the children" in sent:
+                    #     #todo: "Would you be interested in donating to Save the Children today?"
+                    #     label = "organization-related-inquiry"
+
+                    elif self.sents_are_similar(sent, ['how are you', 
+                                                    'how are you doing today',
+                                                    'how are you doing',
+                                                    'how about you']):
+                        label = SystemAct.greeting_inquiry
+
+                    
+                    else:
+                        label = SystemAct.other_inquiry
+
+                elif predicted_label in ["greeting"]:
+                    if "?" in sent or re.search(self.greeting_re, utt):
+                        label = SystemAct.greeting_inquiry
+                    else:
+                        label = SystemAct.greeting_answer
+
+                elif predicted_label in ["source-related-inquiry"]:
                     label = SystemAct.organization_related_inquiry
 
-                # elif "save the children" in sent:
-                #     #todo: "Would you be interested in donating to Save the Children today?"
-                #     label = "organization-related-inquiry"
+                elif predicted_label in ["proposition-of-donation", "ask-donation-amount"]:
+                    label = SystemAct.propose_donation_inquiry 
 
-                elif self.sents_are_similar(sent, ['how are you', 
-                                                 'how are you doing today',
-                                                 'how are you doing',
-                                                 'how about you']):
+                elif "ask" in predicted_label: 
+                    label = predicted_label + "-inquiry"
+
+                elif re.search(self.greeting_re, utt):
                     label = SystemAct.greeting_inquiry
+                ##====== above are all inquiries =======
 
-                
+                elif predicted_label in ['credibility-appeal', 'donation-information']:#['provide-org-facts', 'provide-donation-procedure']:
+                    label = predicted_label
+
                 else:
-                    label = SystemAct.other_inquiry
-
-            elif predicted_label in ["greeting"]:
-                if "?" in sent:
-                    label = SystemAct.greeting_inquiry
-                else:
-                    label = SystemAct.greeting_answer
-
-            elif predicted_label in ["source-related-inquiry"]:
-                label = SystemAct.organization_related_inquiry
-
-            elif predicted_label in ["proposition-of-donation", "ask-donation-amount"]:
-                label = SystemAct.propose_donation_inquiry 
-
-            elif "ask" in predicted_label: 
-                label = predicted_label + "-inquiry"
-
-            elif re.search(self.greeting_re, utt):
-                label = SystemAct.greeting_inquiry
-            ##====== above are all inquiries =======
-
-            elif predicted_label in ['credibility-appeal', 'donation-information']:#['provide-org-facts', 'provide-donation-procedure']:
-                label = predicted_label
-
+                    if self.sents_are_similar(sent, ['would you like to make a donation to Save the Children?', 
+                                                    'I was just wondering if you would be willing to donate a portion of your task payment to Save the Children',
+                                                    'Would you be willing to donate a portion of your payment',
+                                                    'how much do you like to donate to the charity now',
+                                                    'if you would like to consider a small portion of your payment']):
+                        label = SystemAct.propose_donation_inquiry
+                    else:
+                        label = predicted_label
             else:
-                if self.sents_are_similar(sent, ['would you like to make a donation to Save the Children?', 
-                                                 'I was just wondering if you would be willing to donate a portion of your task payment to Save the Children',
-                                                 'Would you be willing to donate a portion of your payment',
-                                                 'how much do you like to donate to the charity now',
-                                                 'if you would like to consider a small portion of your payment']):
-                    label = SystemAct.propose_donation_inquiry
+                if predicted_label in ["task-related-inquiry", "personal-related-inquiry"]:#, "have-you-heard-of-the-org"]:
+                    
+                    if self.sents_are_similar(sent, ['do you have children', 
+                                                    'do you have kids',
+                                                    'are you a parent']):#"have" in sent and (("kid" in sent) or ("children" in sent)):
+                        label = UserAct.kids_related_inquiry
 
-                label = predicted_label
+                    elif self.sents_are_similar(sent, ['have you donated before', 
+                                                    'do you donate to charities',
+                                                    'are you involved with any charity']):
+                        label = UserAct.donation_related_inquiry
+
+                    elif self.sents_are_similar(sent, [#'have you heard of save the children before', 
+                                                    'how do i donate',
+                                                    'how can i donate',
+                                                    'how can i make a donation']):
+                        label = UserAct.donation_procedure_inquiry
+
+                    # elif "save the children" in sent:
+                    #     #todo: "Would you be interested in donating to Save the Children today?"
+                    #     label = "organization-related-inquiry"
+
+                    elif self.sents_are_similar(sent, ['how are you', 
+                                                    'how are you doing today',
+                                                    'how are you doing',
+                                                    'how about you']):
+                        label = UserAct.greeting_inquiry
+
+                    else:
+                        label = UserAct.other_inquiry
+
+                elif predicted_label in ["greeting"]:
+                    if "?" in sent or re.search(self.greeting_re, utt):
+                        label = UserAct.greeting_inquiry
+                    else:
+                        label = UserAct.greeting_answer
+
+                elif predicted_label in [UserAct.ASK_ORG_INFO]:
+                    label = UserAct.organization_info_inquiry
+
+                elif predicted_label in [UserAct.ASK_DONATION_PROCEDURE]:
+                    label = UserAct.donation_procedure_inquiry 
+
+                elif predicted_label in [UserAct.ASK_DONATION_INTENTION]:
+                    label = UserAct.persuader_intention_inquiry
+
+                elif "ask" in predicted_label: 
+                    label = predicted_label + "-inquiry"
+
+                elif re.search(self.greeting_re, utt):
+                    label = UserAct.greeting_inquiry
+                ##====== above are all inquiries =======
+
+                # elif predicted_label in ['credibility-appeal', 'donation-information']:#['provide-org-facts', 'provide-donation-procedure']:
+                #     label = predicted_label
+
+                else:
+                    # if self.sents_are_similar(sent, ['would you like to make a donation to Save the Children?', 
+                    #                                 'I was just wondering if you would be willing to donate a portion of your task payment to Save the Children',
+                    #                                 'Would you be willing to donate a portion of your payment',
+                    #                                 'how much do you like to donate to the charity now',
+                    #                                 'if you would like to consider a small portion of your payment']):
+                    #     label = SystemAct.propose_donation_inquiry
+
+                    label = predicted_label
 
             return label
 
         start = time.time()
-        labels = [regex_label_for_one_utt(utt, predicted_label) for utt, predicted_label in zip(sys_texts, predicted_labels)]
+        labels = [regex_label_for_one_utt(utt, predicted_label, which_task) for utt, predicted_label in zip(sys_texts, predicted_labels)]
         end = time.time()
         print(f"regex_label takes {end-start}")
         logging.info(f"regex_label takes {end-start}")
@@ -794,12 +864,16 @@ class IndividualWorld(object):
 
         self.sent_profile = {}
         self.act_sent_pair = []
+        self.last_sents = None
+        self.last_labels = None
 
     def refresh(self): 
         self.sys_profile = {att: self.domain.INIT for att in self.domain.attributes}
         self.usr_profile = {att: self.domain.INIT for att in self.domain.attributes}
         self.sent_profile = {}
         self.act_sent_pair = []
+        self.last_sents = None
+        self.last_labels = None
     
     # def __call__(self):
     #     return self.profile
@@ -846,6 +920,9 @@ class UsrWorld(IndividualWorld):
 
     def update(self, to_update_dic_usr, to_update_dic_sys, usr_texts, usr_labels, last_sys_labels, last_sys_sents):
         # update using the user inputs
+        self.last_sents = last_sys_sents
+        self.last_labels = last_sys_labels
+
         self.usr_profile.update(to_update_dic_usr)
         self.sys_profile.update(to_update_dic_sys)
 
@@ -998,6 +1075,9 @@ class SysWorld(IndividualWorld):
     def update(self, to_update_dic_usr, to_update_dic_sys, sys_texts, sys_labels, last_usr_labels, last_usr_sents):
         # update using the system inputs
         # label = self.regex_label(sys_text, context, turn_i)
+        self.last_sents = last_usr_sents
+        self.last_labels = last_usr_labels
+
         self.usr_profile.update(to_update_dic_usr)
         self.sys_profile.update(to_update_dic_sys)
 
@@ -1092,6 +1172,11 @@ class SysWorld(IndividualWorld):
         if last_user_label_is_inquiry:
             if UserAct.donation_procedure_inquiry in self.last_labels:
                 if SystemAct.PROVIDE_DONATION_PROCEDURE in sys_label:
+                    return True
+                else:
+                    return False
+            elif UserAct.greeting_inquiry in self.last_labels:
+                if SystemAct.greeting_answer in sys_label:
                     return True
                 else:
                     return False

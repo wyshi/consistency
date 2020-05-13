@@ -736,7 +736,7 @@ class PersuasiveBot:
     def sys_respond_and_update(self, mode):
         # start A's utterance
         import pdb
-        pdb.set_trace()
+        # pdb.set_trace()
         past_is_None = (self.past is None)
         sent_candidates, edited_sent_candidates, sent_candidate_conflict_scores, sent_act_candidates, past_candidates, hidden_states_candidates = [], [], [], [], [], []
         have_enough_candidates = False

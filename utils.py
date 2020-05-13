@@ -45,7 +45,10 @@ def is_ci_token_stopword_set_match(a, b, threshold=0.5):
         print(a)
         print(b)
     # print(ratio)
-    return (ratio >= threshold), ratio
+    if len(tokens_a) > 2:
+        return (ratio >= threshold), ratio
+    else:
+        return False, ratio
 
 def is_repetition_with_context(sent, context_list, threshold=0.5):
     """
