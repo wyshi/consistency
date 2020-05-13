@@ -735,16 +735,16 @@ class PersuasiveBot:
 
     def sys_respond_and_update(self, mode):
         # start A's utterance
-        import pdb
-        pdb.set_trace()
+        # import pdb
+        # pdb.set_trace()
         past_is_None = (self.past is None)
         sent_candidates, edited_sent_candidates, sent_candidate_conflict_scores, sent_act_candidates, past_candidates, hidden_states_candidates = [], [], [], [], [], []
         have_enough_candidates = False
         num_rounds = 0
         failed_candidates = []
-        while not have_enough_candidates and num_rounds < int(cfg.MAX_NUM_CANDIDATES/cfg.NUM_CANDIDATES):
+        while not have_enough_candidates and num_rounds < int(cfg.MAX_NUM_CANDIDATES/self.model_config.NUM_CANDIDATES):
             num_rounds += 1
-            for _ in range(cfg.NUM_CANDIDATES):
+            for _ in range(self.model_config.NUM_CANDIDATES):
                 # pdb.set_trace()
                 sent, past, hidden_states = self.sample_one_sent(past=self.past, model=self.model_A)                
 
