@@ -91,6 +91,21 @@ def end_condition(usr_input):
 
     return False
 
+def delay_for_typing(RECEIVED_TIME, response):
+    response_len = len(response)
+    AVG_TIME_TO_TYPE = 195/60
+    TIME_TO_TYPE_RESPONSE = response_len/AVG_TIME_TO_TYPE
+
+    RESPONDED_TIME = time.time()
+
+    TIME_ALREADY_PASSED = RESPONDED_TIME - RECEIVED_TIME
+    
+    TIME_TO_SLEEP = TIME_TO_TYPE_RESPONSE - TIME_ALREADY_PASSED
+
+    if TIME_TO_SLEEP > 0:
+        TIME_TO_SLEEP = min(TIME_TO_SLEEP, 30)
+        time.sleep(TIME_TO_SLEEP)
+
 @app.route("/user_stop", methods=['POST'])
 def userStop():
     model.reload()
@@ -101,6 +116,7 @@ def getResponse():
     exitbutton_appear = False
     sid = request.json.get('sid')
     input_text = request.json.get('input_text')
+    RECEIVED_TIME = time.time()
     print(sid)
 
     # exit button condition
@@ -116,6 +132,7 @@ def getResponse():
         response, [sents_success, sents_failed], have_enough_candidates, usr_input_text = result
         # TOTAL_SUCCESS_CANDIDATES += len(sents_success)
 
+    delay_for_typing(RECEIVED_TIME, response)
 
     # [output_text, sys_da_output, sys_se_output, usr_da_output, usr_se_outpu] = model.chat(input_text, sid)
     return jsonify({"response": response, 
