@@ -625,22 +625,25 @@ class GlobalProfile(object):
         to_update_dic_usr, to_update_dic_sys = self.extract_info(sents, who=who, sent_acts=sent_labels)
 
         if who == self.domain.USR:
+            last_sys_labels_temp = self.history_label[-1] if len(self.history_label[-1]) else None
+            last_sys_sents_temp = self.history[-1] if len(self.history) else None
             self.usr_world.update(to_update_dic_usr=to_update_dic_usr, 
                                   to_update_dic_sys=to_update_dic_sys,
                                   usr_texts=sents, 
                                   usr_labels=sent_labels,
-                                  last_sys_labels=self.history_label[-1],
-                                  last_sys_sents=self.history[-1])
+                                  last_sys_labels=last_sys_labels_temp,
+                                  last_sys_sents=last_sys_sents_temp)
             # sync up with the partner, for potential conditional generation
             self.sys_world.syncup(self.usr_world.usr_profile)
 
         elif who == self.domain.SYS:
+            last_usr_labels_temp = self.history_label[-1] if len(self.history_label[-1]) else None
             self.sys_world.update(to_update_dic_usr=to_update_dic_usr, 
                                   to_update_dic_sys=to_update_dic_sys,
                                   sys_texts=sents, 
                                   sys_labels=sent_labels,
-                                  last_usr_labels=self.history_label[-1],
-                                  last_usr_sents=self.history[-1])
+                                  last_usr_labels=last_usr_labels_temp,
+                                  last_usr_sents=self.history[-1] if len(self.history) else None)
             # sync up with the partner, for potential conditional generation
             self.usr_world.syncup(self.sys_world.sys_profile)
 
@@ -938,7 +941,10 @@ class IndividualWorld(object):
         print("******** act sent pair *************")
         for turn in self.act_sent_pair:
             print(f"{turn[0]}: {turn[1]}")
-        print("*******************************")
+        print("************ last sent *******************")
+        print(f"last sents: {self.last_sents}")
+        print(f"last labels: {self.last_labels}")
+        print("************************************")
 
     def keys(self, who):
         if who == self.domain.SYS:

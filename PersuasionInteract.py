@@ -1160,12 +1160,12 @@ if __name__ == "__main__":
 
     class CurrentModelConfig:
         with_rule = True
-        log_file = 'logs/amt_baseline_test.log'
+        log_file = 'logs/amt_baseline_test_debug.log'
         
         with_baseline =  True
         with_repetition_module = True
-        with_consistency_module = False
-        with_sentence_clf = False
+        with_consistency_module = True
+        with_sentence_clf = True
         with_RL_finetune_model = False
 
         if not with_repetition_module and with_consistency_module:
@@ -1214,7 +1214,7 @@ if __name__ == "__main__":
     # signal.signal(signal.SIGINT, signal.default_int_handler)
 
     
-    MAX_DIALOGS = 5
+    MAX_DIALOGS = 100
     TOTAL_TURNS = 0
     TOTAL_SUCCESS_CANDIDATES = 0
     dial_i = 0

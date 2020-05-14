@@ -155,6 +155,10 @@ def getResponse():
         response, [sents_success, sents_failed], have_enough_candidates, usr_input_text = result
         # TOTAL_SUCCESS_CANDIDATES += len(sents_success)
 
+    # exit button condition
+    if ("closing" in model.global_profile.sys_world.sent_profile.keys()):
+        exitbutton_appear = True
+
     delay_for_typing(RECEIVED_TIME, response)
 
     # [output_text, sys_da_output, sys_se_output, usr_da_output, usr_se_outpu] = model.chat(input_text, sid)
