@@ -12,6 +12,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader, Dataset
 from torch.nn.utils.rnn import pad_sequence
+import pdb
 
 from transformers import GPT2LMHeadModel, GPT2Tokenizer, GPT2Config
 from GPTModel1 import GPT2LMHeadModel_modified
@@ -56,6 +57,7 @@ class CurrentModelConfig:
     if with_baseline and (not with_repetition_module) and (not with_consistency_module) and (not with_sentence_clf)\
         and (not with_RL_finetune_model):
         NUM_CANDIDATES = 1
+        with_rule = False
     else:
         NUM_CANDIDATES = cfg.NUM_CANDIDATES
     
@@ -95,6 +97,7 @@ logging.info(f"with_sentence_clf: {CurrentModelConfig.with_sentence_clf}")
 logging.info(f"with_RL_finetune_model: {CurrentModelConfig.with_RL_finetune_model}")
 logging.info(f"candidate_select_strategy: {CurrentModelConfig.candidate_select_strategy}")
 logging.info(f"NUM_CANDIDATES: {CurrentModelConfig.NUM_CANDIDATES}")
+logging.info(f"with_rule: {CurrentModelConfig.with_rule}")
 
 def end_condition(usr_input):
 
@@ -116,7 +119,8 @@ def delay_for_typing(RECEIVED_TIME, response):
     time_to_sleep_word = time_to_type_word - time_already_passed
 
     time_to_sleep = min(time_to_sleep_char, time_to_sleep_word)
-
+    # time_to_sleep -= 0.5
+    
     if time_to_sleep > 0:
         time_to_sleep = min(time_to_sleep, 30)
         print(f"sleep for {time_to_sleep}")
@@ -161,6 +165,24 @@ def getResponse():
     if ("closing" in model.global_profile.sys_world.sent_profile.keys()):
         exitbutton_appear = True
 
+    a = time.time()
+    if len(model.global_profile.history_label) >= 4 and not exitbutton_appear:
+        # pdb.set_trace()
+        usr_labels = model.global_profile.history_label[:-3]
+        print(model.global_profile.history_label)
+        logging.info(model.global_profile.history_label)
+        any_is_agree = any([("provide-donation-amount" in usr_label) for usr_label in usr_labels])
+        if any_is_agree:
+            exitbutton_appear = True
+
+    b = time.time()
+    print(f"time: {b-a}")
+    # if exitbutton_appear:
+    #     EXIT_FOR_THIS_DIALOG = True
+    
+    # if EXIT_FOR_THIS_DIALOG:
+    #     exitbutton_appear = True
+        
     # [output_text, sys_da_output, sys_se_output, usr_da_output, usr_se_outpu] = model.chat(input_text, sid)
     return jsonify({"response": response, 
                     "exitbutton_appear": exitbutton_appear
