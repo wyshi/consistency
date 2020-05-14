@@ -129,6 +129,7 @@ def getResponse():
     MODE = cfg.interactive_mode
     if input_text == "<start>":
         # a new dialog
+        model.reload()
         input_text = None
         TIME = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
         logging.info(f"!!!!!--------- AMT start test: datetime {TIME}----------")
