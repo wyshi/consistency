@@ -208,7 +208,7 @@ class PersuasiveBot:
                 # user-side
                 if mode != cfg.self_play_mode:
                     assert input_text is not None
-                    if input_text == "quit":
+                    if input_text == "<<quit>>":
                         # del self.past
                         self.past = None
                         # self.reload()
