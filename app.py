@@ -33,7 +33,7 @@ SPLIT_INTO2= 1
 
 class CurrentModelConfig:
     with_rule = True
-    log_file = 'logs/amt_baseline_test_app.log'
+    log_file = 'logs/amt_baseline_test_app_real.log'
     
     with_baseline =  True
     with_repetition_module = False
@@ -58,6 +58,8 @@ class CurrentModelConfig:
         NUM_CANDIDATES = 1
     else:
         NUM_CANDIDATES = cfg.NUM_CANDIDATES
+    
+
 
 def load_model_for_AMT(EVAL_MODEL_A_DIR):
     TOKENIZER = GPT2Tokenizer.from_pretrained("gpt2")#torch.load(tokenizer_dir)
@@ -86,25 +88,39 @@ logging.info(f"!!!!!--------- AMT test: datetime {TIME}----------")
 app = Flask(__name__)
 # model = HuggingfaceModel("./runs/1000pretrained")
 model.reload()
+logging.info(f"with_baseline: {CurrentModelConfig.with_baseline}")
+logging.info(f"with_repetition_module: {CurrentModelConfig.with_repetition_module}")
+logging.info(f"with_consistency_module: {CurrentModelConfig.with_consistency_module}")
+logging.info(f"with_sentence_clf: {CurrentModelConfig.with_sentence_clf}")
+logging.info(f"with_RL_finetune_model: {CurrentModelConfig.with_RL_finetune_model}")
+logging.info(f"candidate_select_strategy: {CurrentModelConfig.candidate_select_strategy}")
+logging.info(f"NUM_CANDIDATES: {CurrentModelConfig.NUM_CANDIDATES}")
 
 def end_condition(usr_input):
 
     return False
 
 def delay_for_typing(RECEIVED_TIME, response):
-    response_len = len(response)
-    AVG_TIME_TO_TYPE = 220/60
-    TIME_TO_TYPE_RESPONSE = response_len/AVG_TIME_TO_TYPE
+    response_char_len = len(response)
+    response_word_len = len(response.split())
+    AVG_TIME_TO_TYPE_CHAR = 225/60
+    AVE_TIME_TO_TYPE_WORD = 45/60
+    time_to_type_char = response_char_len/AVG_TIME_TO_TYPE_CHAR
+    time_to_type_word = response_word_len/AVE_TIME_TO_TYPE_WORD
 
     RESPONDED_TIME = time.time()
 
-    TIME_ALREADY_PASSED = RESPONDED_TIME - RECEIVED_TIME
+    time_already_passed = RESPONDED_TIME - RECEIVED_TIME
     
-    TIME_TO_SLEEP = TIME_TO_TYPE_RESPONSE - TIME_ALREADY_PASSED
+    time_to_sleep_char = time_to_type_char - time_already_passed
+    time_to_sleep_word = time_to_type_word - time_already_passed
 
-    if TIME_TO_SLEEP > 0:
-        TIME_TO_SLEEP = min(TIME_TO_SLEEP, 30)
-        time.sleep(TIME_TO_SLEEP)
+    time_to_sleep = min(time_to_sleep_char, time_to_sleep_word)
+
+    if time_to_sleep > 0:
+        time_to_sleep = min(time_to_sleep, 30)
+        print(f"sleep for {time_to_sleep}")
+        time.sleep(time_to_sleep)
 
 @app.route("/user_stop", methods=['POST'])
 def userStop():
