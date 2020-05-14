@@ -14,7 +14,7 @@ while True:
                 'input_text': usr_input
             }
     try:
-        if usr_input == "quit":
+        if usr_input == "<<quit>>":
             resp = requests.post(
                         'http://0.0.0.0:8089/user_stop',
                         headers=headers,
