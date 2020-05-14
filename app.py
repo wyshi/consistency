@@ -157,6 +157,10 @@ def getResponse():
 
     delay_for_typing(RECEIVED_TIME, response)
 
+    # exit button condition
+    if ("closing" in model.global_profile.sys_world.sent_profile.keys()):
+        exitbutton_appear = True
+
     # [output_text, sys_da_output, sys_se_output, usr_da_output, usr_se_outpu] = model.chat(input_text, sid)
     return jsonify({"response": response, 
                     "exitbutton_appear": exitbutton_appear
