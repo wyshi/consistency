@@ -93,7 +93,7 @@ def end_condition(usr_input):
 
 def delay_for_typing(RECEIVED_TIME, response):
     response_len = len(response)
-    AVG_TIME_TO_TYPE = 210/60
+    AVG_TIME_TO_TYPE = 220/60
     TIME_TO_TYPE_RESPONSE = response_len/AVG_TIME_TO_TYPE
 
     RESPONDED_TIME = time.time()
@@ -108,6 +108,8 @@ def delay_for_typing(RECEIVED_TIME, response):
 
 @app.route("/user_stop", methods=['POST'])
 def userStop():
+    TIME = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
+    logging.info(f"!!!!!--------- AMT end test: datetime {TIME}----------")
     model.reload()
     return jsonify({"reload_success": True})
 
@@ -126,7 +128,11 @@ def getResponse():
 
     MODE = cfg.interactive_mode
     if input_text == "<start>":
+        # a new dialog
         input_text = None
+        TIME = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
+        logging.info(f"!!!!!--------- AMT start test: datetime {TIME}----------")
+
     result = model.chat(input_text=input_text, mode=MODE, sid=sid)
     if result is not None:
         response, [sents_success, sents_failed], have_enough_candidates, usr_input_text = result
