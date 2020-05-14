@@ -83,34 +83,44 @@ def toNumReg(sent):
     regIntOrFloat=regInt+'|'+regFloat#float / int
 
     patternIntOrFloat=re.compile(regIntOrFloat)
-    if len(re.findall(patternIntOrFloat,sent)) ==0:
+    if len(re.findall(patternIntOrFloat,sent)) == 0:
         if "a dollar" in sent:
             return float(1)
-        elif "one " in sent:
-            return float(1)
-        elif "two " in sent:
-            return float(2)
-        elif "three " in sent:
-            return float(3)
-        elif "four " in sent:
-            return float(4)
-        elif "five " in sent:
-            return float(5)
-        elif "six " in sent:
-            return float(6)
-        elif "seven " in sent:
-            return float(7)
-        elif "eight " in sent:
-            return float(8)
-        elif "nine " in sent:
-            return float(9)
-        elif "zero " in sent:
-            return float(0)
         else:
-            return None
+            num = None
+            if "one " in sent:
+                num = float(1)
+            elif "two " in sent:
+                num = float(2)
+            elif "three " in sent:
+                num = float(3)
+            elif "four " in sent:
+                num = float(4)
+            elif "five " in sent:
+                num = float(5)
+            elif "six " in sent:
+                num = float(6)
+            elif "seven " in sent:
+                num = float(7)
+            elif "eight " in sent:
+                num = float(8)
+            elif "nine " in sent:
+                num = float(9)
+            elif "zero " in sent:
+                num = float(0)
+            elif "fifty " in sent:
+                num = float(50)
+            else:
+                num = None
+            if " cents" in sent or " cent" in sent:
+                if num is not None:
+                    num = 0.01 * num
+            else:
+                num = num
+            return num
     else:
         number = float(re.findall(patternIntOrFloat,sent)[0])
-        if "cents" in sent or "cent" in sent:
+        if " cents" in sent or " cent" in sent:
             number = 0.01 * number
 
         return number

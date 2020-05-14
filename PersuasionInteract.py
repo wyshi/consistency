@@ -208,7 +208,7 @@ class PersuasiveBot:
                 # user-side
                 if mode != cfg.self_play_mode:
                     assert input_text is not None
-                    if input_text == "quit":
+                    if input_text == "<<quit>>":
                         # del self.past
                         self.past = None
                         # self.reload()
@@ -737,7 +737,7 @@ class PersuasiveBot:
         # start A's utterance
         import pdb
         # pdb.set_trace()
-        past_is_None = (self.past is None)
+        # past_is_None = (self.past is None)
         sent_candidates, edited_sent_candidates, sent_candidate_conflict_scores, sent_act_candidates, past_candidates, hidden_states_candidates = [], [], [], [], [], []
         have_enough_candidates = False
         num_rounds = 0

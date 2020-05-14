@@ -532,7 +532,7 @@ class Actor(PersuasiveBot):
                             if self.past is not None and self.model_A.device != self.past[0].device:
                                 past = [p.to(self.model_A.device) for p in self.past]
                                 self.past = past
-                            _, self.past, hidrden_states = self.model_A(dial_turn_inputs, past=self.past)
+                            _, self.past, hidden_states = self.model_A(dial_turn_inputs, past=self.past)
                             self.model_clf.set_past(sent=ground_truth, 
                                                     which_task="A")
 
@@ -971,83 +971,6 @@ class Trainer:
                     optimizer.step()
                     scheduler.step()
                     optimizer.zero_grad()
-
-                    """    
-                    #(minibatch_size, 1)
-                    old_logprobs = torch.FloatTensor(sampled_old_logprobs).to(self.device1)
-                    old_logprobs_gpt2 = torch.FloatTensor(sampled_old_logprobs_gpt2).to(self.device1)
-                    sampled_rewards = torch.FloatTensor(sampled_rewards).to(self.device1)
-
-                    # calc advantages
-                    advantages = sampled_rewards
-                    advantages = advantages.clamp(-2, 2)
-                    # clip(advantages, 2, -2)
-
-                    # pdb.set_trace()
-                    # (minibatch, logprob)
-                    sequences_logprobs = torch.cat(sequence_logprob_list)#- criterion(logits, target, mask)
-                    # del sequence_logprob_list
-
-                    if USE_ENTROPY:
-                        # here we need to calculate for the each token in the sequence
-                        entropy = - (sequences_logprobs.exp() * sequences_logprobs).sum(1)
-                        # print(f"entropy: {entropy}")
-                        logger.info(f"entropy: {entropy}")
-                        # entropy = entropy.clamp_min(min_entropy)
-                    
-                    logprobs = sequences_logprobs.sum(1) #@@ normalize by length
-
-                    # shape: (batch)
-                    ratio = (logprobs - old_logprobs).exp()
-                    # shape: (batch)
-                    policy_loss1 = - advantages * ratio
-                    # shape: (batch)
-                    policy_loss2 = - advantages * ratio.clamp(1.0 - clip_range, 1.0 + clip_range)
-                    # shape: (batch)
-                    policy_loss = torch.max(policy_loss1, policy_loss2)
-
-                    # recording variables. no gradient!
-                    with torch.no_grad():
-                        clipfrac = ((ratio - 1.0).abs() > clip_range).float().mean()
-                        approx_kl = (logprobs - old_logprobs).pow(2).mean()
-                        # kl = sequences_logprob * (logprobs - old_logprobs).mean()#.pow(2).mean()
-                        # kl(p, q) = p*log(p/q) = p(logp-log q)
-                        # np.where(p != 0, p * np.log(p / q), 0)
-
-                    # calculate KL with original gpt2
-                    if not USE_ENTROPY:
-                        approx_kl_gpt2 = (logprobs - old_logprobs_gpt2).pow(2)
-                        # np.where(p != 0, p * np.log(p / q), 0)
-                    
-                    # print the final clipfrac and approxl
-                    print(f"Approx KL {approx_kl.item()}, Clip Frac {clipfrac.item()}")
-                    logger.info(f"Approx KL {approx_kl.item()}, Clip Frac {clipfrac.item()}")
-                    if np.isnan(approx_kl.item()):
-                        pdb.set_trace()
-
-                    # get the final loss
-                    # loss = policy_loss.mean() - entropy_coef * entropy.mean()
-                    loss = policy_loss.mean() + kl_gpt2_coef * approx_kl_gpt2.mean()
-                    logger.info(f"policy_loss {policy_loss.mean().item()}")
-                    if policy_loss.mean().item() > 1e20:
-                        pdb.set_trace()
-                    if USE_ENTROPY:
-                        logger.info(f"entropy {entropy.mean().item()}")
-                    else:
-                        logger.info(f"approx_kl_gpt2 {approx_kl_gpt2.mean().item()}")
-                    logger.info(f"loss {loss.item()}")
-
-                    # update the model
-                    optimizer.zero_grad()
-                    loss.backward()
-                    # must clip the gradient for stability
-                    # pdb.set_trace()
-                    torch.nn.utils.clip_grad_norm_(self.model_A.parameters(), 0.5)
-                    # pdb.set_trace() #assert not torch.isnan(grad).any()
-                    optimizer.step()
-                    
-                    # scheduler.step()
-                    """
 
             del past
             torch.cuda.empty_cache() 

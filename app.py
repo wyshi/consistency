@@ -93,7 +93,7 @@ def end_condition(usr_input):
 
 def delay_for_typing(RECEIVED_TIME, response):
     response_len = len(response)
-    AVG_TIME_TO_TYPE = 195/60
+    AVG_TIME_TO_TYPE = 210/60
     TIME_TO_TYPE_RESPONSE = response_len/AVG_TIME_TO_TYPE
 
     RESPONDED_TIME = time.time()

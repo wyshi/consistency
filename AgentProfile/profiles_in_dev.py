@@ -229,7 +229,8 @@ class GlobalProfile(object):
                      or "you know about" in sent:
                     answers['usr'] = self.domain.YES
 
-        else:
+        # else:
+        if True:
             # not asked
             if who == self.domain.USR:
                 # 2.1) asked-user speak
@@ -308,26 +309,27 @@ class GlobalProfile(object):
                 if re.search(r"((you've)|(you have))", sent, re.IGNORECASE) and "kid" in sent:
                     answers['usr'] = self.domain.YES
 
-        else:
+        # else:
+        if True:
             # not asked
             if who == self.domain.USR:
                 # 2.1) asked-user speak
                 # 2.1.1) asked-user speak-about self
-                if re.search(r"((i've)|(i have)) (([-+]?[0-9]+)|(one)|(two)|(three)|(four)|(five)|(six)|(seven)|(eight)|(nine)|(zero)) ((child)|(kid))", sent, re.IGNORECASE):
+                if re.search(r"(((i've)|(i have)) (([-+]?[1-9]+)|(one)|(two)|(three)|(four)|(five)|(six)|(seven)|(eight)|(nine)|(zero)) ((child)|(kid)))|(my ((kid)|(child)|(boy)|(girl)))", sent, re.IGNORECASE):
                     answers['usr'] = self.domain.YES
 
                 # 1.1.2) asked-user speak-about system
-                if re.search(r"((you've)|(you have)) (([-+]?[0-9]+)|(one)|(two)|(three)|(four)|(five)|(six)|(seven)|(eight)|(nine)|(zero)) ((child)|(kid))", sent, re.IGNORECASE):
+                if re.search(r"(((you've)|(you have)) (([-+]?[1-9]+)|(one)|(two)|(three)|(four)|(five)|(six)|(seven)|(eight)|(nine)|(zero)) ((child)|(kid)))|(your ((kid)|(child)|(boy)|(girl)))", sent, re.IGNORECASE):
                     answers['sys'] = self.domain.YES
 
             elif who == self.domain.SYS:
                 # 1.2) asked-system
                 # 1.2.1) asked-system speak-about self
-                if re.search(r"((i've)|(i have)) (([-+]?[0-9]+)|(one)|(two)|(three)|(four)|(five)|(six)|(seven)|(eight)|(nine)|(zero)) ((child)|(kid))", sent, re.IGNORECASE):
+                if re.search(r"(((i've)|(i have)) (([-+]?[0-9]+)|(one)|(two)|(three)|(four)|(five)|(six)|(seven)|(eight)|(nine)|(zero)) ((child)|(kid)))|(my ((kid)|(child)|(boy)|(girl)))", sent, re.IGNORECASE):
                     answers['sys'] = self.domain.YES
             
                 # 1.2.2) asked-system speak-about user
-                if re.search(r"((you've)|(you have)) (([-+]?[0-9]+)|(one)|(two)|(three)|(four)|(five)|(six)|(seven)|(eight)|(nine)|(zero)) ((child)|(kid))", sent, re.IGNORECASE):
+                if re.search(r"(((you've)|(you have)) (([-+]?[1-9]+)|(one)|(two)|(three)|(four)|(five)|(six)|(seven)|(eight)|(nine)|(zero)) ((child)|(kid)))|(your ((kid)|(child)|(boy)|(girl)))", sent, re.IGNORECASE):
                     answers['usr'] = self.domain.YES
                 
         return answers
@@ -408,21 +410,32 @@ class GlobalProfile(object):
     def answer_WANT_TO_DONATE(self, sent, who, last_sent, sent_acts):
         answers = {'usr': None,
                    'sys': None}
+        num_in_sent = toNumReg(sent)
+
         if last_sent and SystemAct.propose_donation_inquiry in self.history_label[-1]:
             # 1) asked
             score = self.sentiment_analyzer.polarity_scores(sent)
             if who == self.domain.USR:
                 # 1.1) asked-user speak
                 # 1.1.1) asked-user speak-about self
-                if "yes" in sent or "i would like to donate some money" in sent or "i can donate a bit" in sent\
-                    or "how much do you suggest" in sent:
-                    answers['usr'] = self.domain.YES
-                elif "prefer to donate time" in sent or "next time" in sent or "not today" in sent: 
+                if "yes" in sent or "i would like to donate" in sent or "i can donate a bit" in sent\
+                    or "how much do you suggest" in sent or \
+                    UserAct.AGREE_DONATION in sent_acts or \
+                    UserAct.PROVIDE_DONATION_AMOUNT in sent_acts:
+                    if num_in_sent and num_in_sent == 0:
+                        answers['usr'] = self.domain.NO
+                    else:
+                        answers['usr'] = self.domain.YES
+                elif "prefer to donate time" in sent or "next time" in sent or "not today" in sent or\
+                    UserAct.DISAGREE_DONATION in sent_acts: 
                     answers['usr'] = self.domain.NO
                 else:
                     if score['compound'] >= 0.05:
                         # positive
-                        answers['usr'] = self.domain.YES
+                        if num_in_sent and num_in_sent == 0:
+                            answers['usr'] = self.domain.NO
+                        else:
+                            answers['usr'] = self.domain.YES
                     elif score['compound'] <= -0.05:
                         answers['usr'] = self.domain.NO
                     else:
@@ -456,12 +469,19 @@ class GlobalProfile(object):
         else:
             # not asked
             if who == self.domain.USR:
-                if "i would like to donate some money" in sent or "i can donate a bit" in sent\
+                if "i would like to donate" in sent or "i can donate a bit" in sent\
                     or "how much do you suggest" in sent or "spare" in sent or "glad to help" in sent\
-                    or "i will donate" in sent:
-                    answers['usr'] = self.domain.YES
+                    or "i will donate" in sent or\
+                        UserAct.AGREE_DONATION in sent_acts or\
+                            UserAct.PROVIDE_DONATION_AMOUNT in sent_acts:
+                    if num_in_sent and num_in_sent == 0:
+                        answers['usr'] = self.domain.NO
+                    else:
+                        answers['usr'] = self.domain.YES
+                    # answers['usr'] = self.domain.YES
                 elif "prefer to donate time" in sent or "next time" in sent or "not today" in sent\
-                or "not interested" in sent or "don't want to" in sent: 
+                or "not interested" in sent or "don't want to donate" in sent or \
+                    UserAct.DISAGREE_DONATION in sent_acts: 
                     answers['usr'] = self.domain.NO
 
                 # 2.1.2) asked-user speak-about system
@@ -471,20 +491,28 @@ class GlobalProfile(object):
             elif who == self.domain.SYS:
                 # 1.2) asked-system
                 # 1.2.1) asked-system speak-about self
-                if "i would like to donate some money" in sent or "i can donate a bit" in sent\
-                    or "how much do you suggest" in sent:
-                    answers['sys'] = self.domain.YES
-                elif "prefer to donate time" in sent or "next time" in sent: 
-                    answers['sys'] = self.domain.NO
+                # if "i would like to donate some money" in sent or "i can donate a bit" in sent\
+                #     or "how much do you suggest" in sent:
+                #     answers['sys'] = self.domain.YES
+                # elif "prefer to donate time" in sent or "next time" in sent: 
+                #     answers['sys'] = self.domain.NO
             
                 # 1.2.2) asked-system speak-about user
                 if "thank you so much" in sent or "you are very kind" in sent \
                 or "you decided to donate" in sent or "you decide to donate" in sent or "thank you for your donation today" in sent or "you are willing to donate" in sent\
-                or "appreciate your donation" in sent or "appreciate your willingness to donate" in sent:
-                    answers['usr'] = self.domain.YES
+                or "appreciate your donation" in sent or "appreciate your willingness to donate" in sent or\
+                    SystemAct.THANK in sent_acts or SystemAct.CONFIRM_DONATION in sent_acts:
+                    if num_in_sent and num_in_sent == 0:
+                        answers['usr'] = self.domain.NO
+                    else:
+                        answers['usr'] = self.domain.YES
                 
-                elif "ould you like to donate some of your task payment" in sent:
+                elif "ould you like to donate some of your task payment" in sent or \
+                    SystemAct.propose_donation_inquiry in sent_acts:
                     answers['usr'] = self.domain.INIT
+                
+                elif SystemAct.ASK_NOT_DONATE_REASON in sent_acts:
+                    answers['usr'] = self.domain.NO
 
         return answers
 
@@ -500,13 +528,25 @@ class GlobalProfile(object):
                 # 1.1) asked-user speak
                 # 1.1.1) asked-user speak-about self
                 if "yes" in sent or "i would like to donate" in sent or "i can donate a bit" in sent\
-                    or "how much do you suggest" in sent:
+                    or "how much do you suggest" in sent or \
+                    UserAct.AGREE_DONATION in sent_acts or \
+                    UserAct.PROVIDE_DONATION_AMOUNT in sent_acts or score['compound'] >= 0.05:
                     if num_in_sent:
                         answers['usr'] = num_in_sent
                     else:
                         answers['usr'] = self.domain.NOT_SURE
-                elif "prefer to donate time" in sent or "next time" in sent: 
+                elif "prefer to donate time" in sent or "next time" in sent or "not today" in sent or\
+                    UserAct.DISAGREE_DONATION in sent_acts or\
+                        score['compound'] <= -0.05: 
                     answers['usr'] = 0
+                else:
+                    if score['compound'] >= 0.05:
+                        # positive
+                        answers['usr'] = self.domain.YES
+                    elif score['compound'] <= -0.05:
+                        answers['usr'] = self.domain.NO
+                    else:
+                        answers['usr'] = self.domain.NOT_SURE
 
                # 1.1.2) asked-user speak-about system
                 if "that's kind of you" in sent:
@@ -534,13 +574,18 @@ class GlobalProfile(object):
             if who == self.domain.USR:
                 # 1.1) asked-user speak
                 # 1.1.1) asked-user speak-about self
-                if "yes" in sent or "i would like to donate" in sent or "i can donate a bit" in sent\
-                    or "how much do you suggest" in sent:
+                if "i would like to donate" in sent or "i can donate a bit" in sent\
+                    or "how much do you suggest" in sent or "spare" in sent or "glad to help" in sent\
+                    or "i will donate" in sent or\
+                        UserAct.AGREE_DONATION in sent_acts or\
+                            UserAct.PROVIDE_DONATION_AMOUNT in sent_acts:
                     if num_in_sent:
                         answers['usr'] = num_in_sent
                     else:
                         answers['usr'] = self.domain.NOT_SURE
-                elif "prefer to donate time" in sent or "next time" in sent: 
+                elif "prefer to donate time" in sent or "next time" in sent or "not today" in sent\
+                or "not interested" in sent or "don't want to donate" in sent or \
+                    UserAct.DISAGREE_DONATION in sent_acts: 
                     answers['usr'] = 0
 
                # 1.1.2) asked-user speak-about system
@@ -557,12 +602,13 @@ class GlobalProfile(object):
                 elif "prefer to donate time" in sent or "next time" in sent: 
                     answers['sys'] = 0
             
-                # 1.2.2) asked-system speak-about user
-                if "thank you so much" in sent or "you are very kind" in sent:
-                    if num_in_sent:
-                        answers['usr'] = num_in_sent
-                    else:
-                        answers['usr'] = self.domain.NOT_SURE
+                # 1.2.2) asked-system speak-about user                
+                if "ould you like to donate some of your task payment" in sent or \
+                    SystemAct.propose_donation_inquiry in sent_acts:
+                    answers['usr'] = self.domain.INIT
+                
+                elif SystemAct.ASK_NOT_DONATE_REASON in sent_acts:
+                    answers['usr'] = 0
 
         return answers
 
