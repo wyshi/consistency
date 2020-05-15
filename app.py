@@ -32,13 +32,6 @@ logging.info(f"!!!!!--------- AMT test: datetime {TIME}----------")
 app = Flask(__name__)
 
 EVAL_MODEL_A_DIR = "/home/wyshi/persuasion/consistency/ARDM/persuasion/persuasion_medium_3.th"
-DEVICE1 = torch.device("cuda:5")
-DEVICE1_list = ["cuda:5"]
-SPLIT_INTO1= 1
-
-DEVICE2 = torch.device("cuda:6")
-DEVICE2_list = ["cuda:6"]
-SPLIT_INTO2= 1
 
 class CurrentModelConfig:
     with_rule = True
@@ -69,7 +62,7 @@ class CurrentModelConfig:
     else:
         NUM_CANDIDATES = cfg.NUM_CANDIDATES
     
-def load_model_for_AMT(EVAL_MODEL_A_DIR):
+def load_model_for_AMT(EVAL_MODEL_A_DIR, DEVICE1, DEVICE1_list, SPLIT_INTO1, DEVICE2, DEVICE2_list, SPLIT_INTO2):
     TOKENIZER = GPT2Tokenizer.from_pretrained("gpt2")#torch.load(tokenizer_dir)
 
     # val_dataloader = get_val_dataloader(TOKENIZER)
@@ -83,10 +76,28 @@ def load_model_for_AMT(EVAL_MODEL_A_DIR):
 
     return model_A, model_B, TOKENIZER, DEVICE1, DEVICE2
 
-def build_one_model():
+def build_one_model(MAX_USER):
     # keeps a copy of model
     a = time.time()
-    model_A, model_B, TOKENIZER, DEVICE1, DEVICE2 = load_model_for_AMT(EVAL_MODEL_A_DIR)
+    if MAX_USER <= 4:
+        DEVICE1 = torch.device("cuda:5")
+        DEVICE1_list = ["cuda:5"]
+        SPLIT_INTO1= 1
+
+        DEVICE2 = torch.device("cuda:6")
+        DEVICE2_list = ["cuda:6"]
+        SPLIT_INTO2= 1
+    else:
+        DEVICE1 = torch.device("cuda:2")
+        DEVICE1_list = ["cuda:2"]
+        SPLIT_INTO1= 1
+
+        DEVICE2 = torch.device("cuda:3")
+        DEVICE2_list = ["cuda:3"]
+        SPLIT_INTO2= 1
+
+    model_A, model_B, TOKENIZER, DEVICE1, DEVICE2 = load_model_for_AMT(EVAL_MODEL_A_DIR, 
+                                                                        DEVICE1, DEVICE1_list, SPLIT_INTO1, DEVICE2, DEVICE2_list, SPLIT_INTO2)
 
     model = PersuasiveBot(model_config=CurrentModelConfig, 
                         model_A=model_A, model_B=model_B, tokenizer=TOKENIZER, 
@@ -113,8 +124,8 @@ def end_condition(usr_input):
     return False
 
 MODEL_MAP = {}
-AVAILABEL_MODELS = [build_one_model() for _ in range(2)]
 MAX_USER = -1
+AVAILABEL_MODELS = [build_one_model(MAX_USER) for _ in range(2)]
 
 def delay_for_typing(RECEIVED_TIME, response):
     response_char_len = len(response)
@@ -143,14 +154,23 @@ def delay_for_typing(RECEIVED_TIME, response):
 def userStop():
     sid = request.json.get('sid')
     TIME = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
-    logging.info(f"!!!!!---------{sid} AMT end test: datetime {TIME}----------")
-    logging.info(f"{sid} history: {MODEL_MAP[sid].global_profile.history}")
-    print(f"{sid} history: {MODEL_MAP[sid].global_profile.history}")
     # garbage clean
     if sid in MODEL_MAP:
+        logging.info(f"AVAILABEL_MODELS in userStop before: {len(AVAILABEL_MODELS)}")
+        logging.info(f"MODEL_MAP in userStop before: {MODEL_MAP.keys()}")
+        print(f"AVAILABEL_MODELS in userStop before: {len(AVAILABEL_MODELS)}")
+        print(f"MODEL_MAP in userStop before: {MODEL_MAP.keys()}")
+
+        logging.info(f"!!!!!---------{sid} AMT end test: datetime {TIME}----------")
+        logging.info(f"{sid} history: {MODEL_MAP[sid].global_profile.history}")
+        print(f"{sid} history: {MODEL_MAP[sid].global_profile.history}")
         MODEL_MAP[sid].reload()
         model_for_reuse = MODEL_MAP.pop(sid)
         AVAILABEL_MODELS.append(model_for_reuse)
+        logging.info(f"AVAILABEL_MODELS in userStop: {len(AVAILABEL_MODELS)}")
+        logging.info(f"MODEL_MAP in userStop: {MODEL_MAP.keys()}")
+        print(f"AVAILABEL_MODELS in userStop: {len(AVAILABEL_MODELS)}")
+        print(f"MODEL_MAP in userStop: {MODEL_MAP.keys()}")
         assert sid not in MODEL_MAP
 
     return jsonify({"reload_success": True})
@@ -164,6 +184,11 @@ def getResponse():
 
     if sid not in MODEL_MAP:
         # when a new user comes in
+        logging.info(f"AVAILABEL_MODELS in getResponse before: {len(AVAILABEL_MODELS)}")
+        logging.info(f"MODEL_MAP in getResponse before: {MODEL_MAP.keys()}")
+        print(f"AVAILABEL_MODELS in getResponse before: {len(AVAILABEL_MODELS)}")
+        print(f"MODEL_MAP in getResponse before: {MODEL_MAP.keys()}")
+
         if len(AVAILABEL_MODELS) == 0:
             print(f"------------------ building model for {sid} --------------------")
             logging.info(f"--------------------- building model for {sid} -------------------")
@@ -173,7 +198,13 @@ def getResponse():
             print(f"------------------ reusing model for {sid} --------------------")
             logging.info(f"--------------------- reusing model for {sid} -------------------")
             MODEL_MAP[sid] = AVAILABEL_MODELS.pop(0)
-        pdb.set_trace()
+        # pdb.set_trace()
+        logging.info(f"AVAILABEL_MODELS in getResponse: {len(AVAILABEL_MODELS)}")
+        logging.info(f"MODEL_MAP in getResponse: {MODEL_MAP.keys()}")
+        print(f"AVAILABEL_MODELS in getResponse: {len(AVAILABEL_MODELS)}")
+        print(f"MODEL_MAP in getResponse: {MODEL_MAP.keys()}")
+        assert MODEL_MAP[sid].past is None
+        MODEL_MAP[sid].reload()
 
     # how many users are there concurrently
     global MAX_USER
@@ -199,7 +230,7 @@ def getResponse():
         response, [sents_success, sents_failed], have_enough_candidates, usr_input_text = result
         # TOTAL_SUCCESS_CANDIDATES += len(sents_success)
 
-    pdb.set_trace()
+    # pdb.set_trace()
     delay_for_typing(RECEIVED_TIME, response)
 
     # exit button condition
@@ -220,5 +251,5 @@ def getResponse():
                     })
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=8091)
+    app.run(host='0.0.0.0', port=8089)
     #socketio.run(app, host='0.0.0.0', port = 8087, use_reloader=False)

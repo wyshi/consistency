@@ -21,6 +21,9 @@ TorchFly/
 Train.ipynb
 __pycache__/
 albert/
+collected_data/
+AgentProfile/__pycache__/*.pyc
+KnowledgeBase/__pycache__/*.pyc
 apex/
 classifier/
 fairseq/

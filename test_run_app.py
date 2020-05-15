@@ -15,17 +15,21 @@ while True:
             }
     try:
         if usr_input == "<<quit>>":
+            data = {
+                        'sid': "AAATNT"
+                    }
             resp = requests.post(
-                        'http://0.0.0.0:8091/user_stop',
+                        'http://0.0.0.0:8089/user_stop',
                         headers=headers,
                         data=json.dumps(data),
-                        timeout=3600)
+                        timeout=15)
+            print(resp)
         else:
             resp = requests.post(
-                        'http://0.0.0.0:8091/persuasion_bot',
+                        'http://0.0.0.0:8089/persuasion_bot',
                         headers=headers,
                         data=json.dumps(data),
-                        timeout=3600)
+                        timeout=60)
     except requests.exceptions.RequestException as e:
         # catastrophic error. bail.
         print(e)
