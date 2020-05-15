@@ -10,7 +10,7 @@ headers = {
 while True:
     usr_input = input("user: ")
     data = {
-                'sid': "AAATNT",
+                'sid': "AAATNT_copy",
                 'input_text': usr_input
             }
     try:

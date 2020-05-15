@@ -13,6 +13,8 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader, Dataset
 from torch.nn.utils.rnn import pad_sequence
 import pdb
+import time
+import datetime
 
 from transformers import GPT2LMHeadModel, GPT2Tokenizer, GPT2Config
 from GPTModel1 import GPT2LMHeadModel_modified
@@ -22,6 +24,12 @@ import config as cfg
 import sys
 from torchfly.modules.losses import SequenceFocalLoss, SequenceCrossEntropyLoss
 import logging
+
+LOG_FILE = 'logs/amt_baseline_test_app_real_multi-thread-test.log'
+logging.basicConfig(filename=LOG_FILE,level=logging.DEBUG)
+TIME = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
+logging.info(f"!!!!!--------- AMT test: datetime {TIME}----------")
+app = Flask(__name__)
 
 EVAL_MODEL_A_DIR = "/home/wyshi/persuasion/consistency/ARDM/persuasion/persuasion_medium_3.th"
 DEVICE1 = torch.device("cuda:5")
@@ -34,7 +42,7 @@ SPLIT_INTO2= 1
 
 class CurrentModelConfig:
     with_rule = True
-    log_file = 'logs/amt_baseline_test_app_real.log'
+    log_file = LOG_FILE
     
     with_baseline =  True
     with_repetition_module = False
@@ -61,8 +69,6 @@ class CurrentModelConfig:
     else:
         NUM_CANDIDATES = cfg.NUM_CANDIDATES
     
-
-
 def load_model_for_AMT(EVAL_MODEL_A_DIR):
     TOKENIZER = GPT2Tokenizer.from_pretrained("gpt2")#torch.load(tokenizer_dir)
 
@@ -77,31 +83,38 @@ def load_model_for_AMT(EVAL_MODEL_A_DIR):
 
     return model_A, model_B, TOKENIZER, DEVICE1, DEVICE2
 
-model_A, model_B, TOKENIZER, DEVICE1, DEVICE2 = load_model_for_AMT(EVAL_MODEL_A_DIR)
+def build_one_model():
+    # keeps a copy of model
+    a = time.time()
+    model_A, model_B, TOKENIZER, DEVICE1, DEVICE2 = load_model_for_AMT(EVAL_MODEL_A_DIR)
 
-model = PersuasiveBot(model_config=CurrentModelConfig, 
-                      model_A=model_A, model_B=model_B, tokenizer=TOKENIZER, 
-                      device1=DEVICE1, device2=DEVICE2)
+    model = PersuasiveBot(model_config=CurrentModelConfig, 
+                        model_A=model_A, model_B=model_B, tokenizer=TOKENIZER, 
+                        device1=DEVICE1, device2=DEVICE2)
 
-import time
-import datetime
-TIME = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
-logging.info(f"!!!!!--------- AMT test: datetime {TIME}----------")
-app = Flask(__name__)
-# model = HuggingfaceModel("./runs/1000pretrained")
-model.reload()
-logging.info(f"with_baseline: {CurrentModelConfig.with_baseline}")
-logging.info(f"with_repetition_module: {CurrentModelConfig.with_repetition_module}")
-logging.info(f"with_consistency_module: {CurrentModelConfig.with_consistency_module}")
-logging.info(f"with_sentence_clf: {CurrentModelConfig.with_sentence_clf}")
-logging.info(f"with_RL_finetune_model: {CurrentModelConfig.with_RL_finetune_model}")
-logging.info(f"candidate_select_strategy: {CurrentModelConfig.candidate_select_strategy}")
-logging.info(f"NUM_CANDIDATES: {CurrentModelConfig.NUM_CANDIDATES}")
-logging.info(f"with_rule: {CurrentModelConfig.with_rule}")
+    # model = HuggingfaceModel("./runs/1000pretrained")
+    model.reload()
+    logging.info(f"with_baseline: {CurrentModelConfig.with_baseline}")
+    logging.info(f"with_repetition_module: {CurrentModelConfig.with_repetition_module}")
+    logging.info(f"with_consistency_module: {CurrentModelConfig.with_consistency_module}")
+    logging.info(f"with_sentence_clf: {CurrentModelConfig.with_sentence_clf}")
+    logging.info(f"with_RL_finetune_model: {CurrentModelConfig.with_RL_finetune_model}")
+    logging.info(f"candidate_select_strategy: {CurrentModelConfig.candidate_select_strategy}")
+    logging.info(f"NUM_CANDIDATES: {CurrentModelConfig.NUM_CANDIDATES}")
+    logging.info(f"with_rule: {CurrentModelConfig.with_rule}")
+    b = time.time()
+
+    logging.info(f"building one take {b-a} time")
+    print(f"building one take {b-a} time")
+    return model
 
 def end_condition(usr_input):
 
     return False
+
+MODEL_MAP = {}
+AVAILABEL_MODELS = [build_one_model() for _ in range(2)]
+MAX_USER = -1
 
 def delay_for_typing(RECEIVED_TIME, response):
     response_char_len = len(response)
@@ -128,9 +141,18 @@ def delay_for_typing(RECEIVED_TIME, response):
 
 @app.route("/user_stop", methods=['POST'])
 def userStop():
+    sid = request.json.get('sid')
     TIME = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
-    logging.info(f"!!!!!--------- AMT end test: datetime {TIME}----------")
-    model.reload()
+    logging.info(f"!!!!!---------{sid} AMT end test: datetime {TIME}----------")
+    logging.info(f"{sid} history: {MODEL_MAP[sid].global_profile.history}")
+    print(f"{sid} history: {MODEL_MAP[sid].global_profile.history}")
+    # garbage clean
+    if sid in MODEL_MAP:
+        MODEL_MAP[sid].reload()
+        model_for_reuse = MODEL_MAP.pop(sid)
+        AVAILABEL_MODELS.append(model_for_reuse)
+        assert sid not in MODEL_MAP
+
     return jsonify({"reload_success": True})
 
 @app.route("/persuasion_bot", methods=['POST'])
@@ -139,60 +161,64 @@ def getResponse():
     sid = request.json.get('sid')
     input_text = request.json.get('input_text')
     RECEIVED_TIME = time.time()
-    print(sid)
 
+    if sid not in MODEL_MAP:
+        # when a new user comes in
+        if len(AVAILABEL_MODELS) == 0:
+            print(f"------------------ building model for {sid} --------------------")
+            logging.info(f"--------------------- building model for {sid} -------------------")
+            new_model = build_one_model()
+            MODEL_MAP[sid] = new_model
+        else:
+            print(f"------------------ reusing model for {sid} --------------------")
+            logging.info(f"--------------------- reusing model for {sid} -------------------")
+            MODEL_MAP[sid] = AVAILABEL_MODELS.pop(0)
+        pdb.set_trace()
+
+    # how many users are there concurrently
+    global MAX_USER
+    MAX_USER = max(MAX_USER, len(MODEL_MAP))
+    print(f" at the moment, there are {len(MODEL_MAP)} users, MAX_USER is {MAX_USER} ")
+    logging.info(f" at the moment, there are {len(MODEL_MAP)} users, MAX_USER is {MAX_USER} ")
+    
     # exit button condition
-    if model.turn_i >= 9 or ("closing" in model.global_profile.sys_world.sent_profile.keys()):
+    if MODEL_MAP[sid].turn_i >= 9 or ("closing" in MODEL_MAP[sid].global_profile.sys_world.sent_profile.keys()):
         exitbutton_appear = True
 
 
     MODE = cfg.interactive_mode
     if input_text == "<start>":
         # a new dialog
-        model.reload()
+        MODEL_MAP[sid].reload()
         input_text = None
         TIME = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
-        logging.info(f"!!!!!--------- AMT start test: datetime {TIME}----------")
+        logging.info(f"!!!!!---------{sid} AMT start test: datetime {TIME}----------")
 
-    result = model.chat(input_text=input_text, mode=MODE, sid=sid)
+    result = MODEL_MAP[sid].chat(input_text=input_text, mode=MODE, sid=sid)
     if result is not None:
         response, [sents_success, sents_failed], have_enough_candidates, usr_input_text = result
         # TOTAL_SUCCESS_CANDIDATES += len(sents_success)
 
+    pdb.set_trace()
     delay_for_typing(RECEIVED_TIME, response)
 
     # exit button condition
-    if ("closing" in model.global_profile.sys_world.sent_profile.keys()):
+    if ("closing" in MODEL_MAP[sid].global_profile.sys_world.sent_profile.keys()):
         exitbutton_appear = True
 
-    a = time.time()
-    if len(model.global_profile.history_label) >= 4 and not exitbutton_appear:
+    if len(MODEL_MAP[sid].global_profile.history_label) >= 4 and not exitbutton_appear:
         # pdb.set_trace()
-        usr_labels = model.global_profile.history_label[:-3]
-        print(model.global_profile.history_label)
-        logging.info(model.global_profile.history_label)
+        usr_labels = MODEL_MAP[sid].global_profile.history_label[:-3]
+        print(MODEL_MAP[sid].global_profile.history_label)
+        logging.info(MODEL_MAP[sid].global_profile.history_label)
         any_is_agree = any([("provide-donation-amount" in usr_label) for usr_label in usr_labels])
         if any_is_agree:
             exitbutton_appear = True
-
-    b = time.time()
-    print(f"time: {b-a}")
-    # if exitbutton_appear:
-    #     EXIT_FOR_THIS_DIALOG = True
-    
-    # if EXIT_FOR_THIS_DIALOG:
-    #     exitbutton_appear = True
         
-    # [output_text, sys_da_output, sys_se_output, usr_da_output, usr_se_outpu] = model.chat(input_text, sid)
     return jsonify({"response": response, 
                     "exitbutton_appear": exitbutton_appear
-                    })#,     #T/F only          
-                    # "sents_success": sents_success, 
-                    # "sents_failed": sents_failed, 
-                    # "have_enough_candidates": have_enough_candidates, 
-                    # "usr_input_text": usr_input_text})
-    #return jsonify(ed_result)
+                    })
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=8089)
+    app.run(host='0.0.0.0', port=8091)
     #socketio.run(app, host='0.0.0.0', port = 8087, use_reloader=False)
