@@ -33,13 +33,13 @@ import logging
 
 
 class GlobalProfile(object):
-    def __init__(self, domain, model_config):
+    def __init__(self, domain, model_config, sent_embedding_model=None):
         self.domain = domain
         self.model_config = model_config
         # self.act_clf_model = act_clf_model
         self.sentiment_analyzer = SentimentIntensityAnalyzer()
         self.sent_embedding_model = SentenceTransformer('bert-base-nli-mean-tokens', 
-                                                        device=torch.device(cfg.sent_embedding_model_device))#('roberta-large-nli-stsb-mean-tokens')
+                                                        device=torch.device(cfg.sent_embedding_model_device)) if sent_embedding_model is None else sent_embedding_model#('roberta-large-nli-stsb-mean-tokens')
 
         self.sys_world = SysWorld(domain=self.domain, name="system_world")
         self.usr_world = UsrWorld(domain=self.domain, name="user_world")

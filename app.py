@@ -18,14 +18,16 @@ import datetime
 
 from transformers import GPT2LMHeadModel, GPT2Tokenizer, GPT2Config
 from GPTModel1 import GPT2LMHeadModel_modified
-from PPO import load_model
-from PersuasionInteract import PersuasiveBot
+from PPO import load_model as load_model_in_PPO
+from model_clf import load_model as load_model_in_MODEL_CLF, SequenceSummary, load_pkl
+from PersuasionInteract import PersuasiveBot, ModelClassifierConfig
 import config as cfg
 import sys
 from torchfly.modules.losses import SequenceFocalLoss, SequenceCrossEntropyLoss
 import logging
+from sentence_transformers import SentenceTransformer
 
-LOG_FILE = 'logs/amt_baseline_test_app_real_multi-thread-test.log'
+LOG_FILE = 'logs/amt_baseline_test_app_real_multi-thread-test-new.log'
 logging.basicConfig(filename=LOG_FILE,level=logging.DEBUG)
 TIME = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
 logging.info(f"!!!!!--------- AMT test: datetime {TIME}----------")
@@ -66,7 +68,7 @@ def load_model_for_AMT(EVAL_MODEL_A_DIR, DEVICE1, DEVICE1_list, SPLIT_INTO1, DEV
     TOKENIZER = GPT2Tokenizer.from_pretrained("gpt2")#torch.load(tokenizer_dir)
 
     # val_dataloader = get_val_dataloader(TOKENIZER)
-    model_A, model_B = load_model(cfg=cfg, device1=DEVICE1, device2=DEVICE2, 
+    model_A, model_B = load_model_in_PPO(cfg=cfg, device1=DEVICE1, device2=DEVICE2, 
                                 split_into1=SPLIT_INTO1, split_into2=SPLIT_INTO2,
                                 dropout=0, device_list1=DEVICE1_list, device_list2=DEVICE2_list,
                                 model_A_dir=EVAL_MODEL_A_DIR, use_old_model_B=False)
@@ -76,32 +78,55 @@ def load_model_for_AMT(EVAL_MODEL_A_DIR, DEVICE1, DEVICE1_list, SPLIT_INTO1, DEV
 
     return model_A, model_B, TOKENIZER, DEVICE1, DEVICE2
 
+def load_model_clf_for_AMT(model_clf_dir, device1, device2):
+    config = GPT2Config()
+    config = config.from_pretrained('gpt2')#config.from_pretrained('gpt2-medium')
+    config.summary_first_dropout = 0.2
+    config.summary_type = "cls_index"
+    le_A = load_pkl("training/data/labelencoder_A.pkl")
+    le_B = load_pkl("training/data/labelencoder_B.pkl")
+
+    tokenizer = GPT2Tokenizer.from_pretrained("gpt2")#torch.load(tokenizer_dir)
+    tokenizer.add_special_tokens({'cls_token': '[CLS]'})
+    
+    model_A, model_B = load_model_in_MODEL_CLF(cfg, "small", tokenizer, device1, device2)
+    clf_A = SequenceSummary(num_labels=le_A.classes_.shape[0], config=config)
+    clf_B = SequenceSummary(num_labels=le_B.classes_.shape[0], config=config)
+    clf_TF = SequenceSummary(num_labels=2, config=config)
+    
+    model_A_state, model_B_state, clf_A_state, clf_B_state, clf_TF_state = torch.load(model_clf_dir)
+    model_A.load_state_dict(model_A_state)
+    model_B.load_state_dict(model_B_state)
+    clf_A.load_state_dict(clf_A_state)
+    clf_B.load_state_dict(clf_B_state)
+    clf_TF.load_state_dict(clf_TF_state)
+    print(f"all models loaded")
+
+    return tokenizer, model_A, model_B, clf_A, clf_B, clf_TF
+
+DEVICE1 = torch.device("cuda:5")
+DEVICE1_list = ["cuda:5"]
+SPLIT_INTO1= 1
+
+DEVICE2 = torch.device("cuda:6")
+DEVICE2_list = ["cuda:6"]
+SPLIT_INTO2= 1
+
+MODEL_A, MODEL_B, TOKENIZER, DEVICE1, DEVICE2 = load_model_for_AMT(EVAL_MODEL_A_DIR, 
+                                                                   DEVICE1, DEVICE1_list, SPLIT_INTO1, 
+                                                                   DEVICE2, DEVICE2_list, SPLIT_INTO2)
+MODELS_USED_IN_MODEL_CLF = load_model_clf_for_AMT(ModelClassifierConfig.model_dir, 
+                                                  ModelClassifierConfig.device1, 
+                                                  ModelClassifierConfig.device2)
+SENT_EMBEDDING_MODEL = SentenceTransformer('bert-base-nli-mean-tokens', 
+                                            device=torch.device(cfg.sent_embedding_model_device))
 def build_one_model(MAX_USER):
     # keeps a copy of model
     a = time.time()
-    if MAX_USER <= 4:
-        DEVICE1 = torch.device("cuda:5")
-        DEVICE1_list = ["cuda:5"]
-        SPLIT_INTO1= 1
-
-        DEVICE2 = torch.device("cuda:6")
-        DEVICE2_list = ["cuda:6"]
-        SPLIT_INTO2= 1
-    else:
-        DEVICE1 = torch.device("cuda:2")
-        DEVICE1_list = ["cuda:2"]
-        SPLIT_INTO1= 1
-
-        DEVICE2 = torch.device("cuda:3")
-        DEVICE2_list = ["cuda:3"]
-        SPLIT_INTO2= 1
-
-    model_A, model_B, TOKENIZER, DEVICE1, DEVICE2 = load_model_for_AMT(EVAL_MODEL_A_DIR, 
-                                                                        DEVICE1, DEVICE1_list, SPLIT_INTO1, DEVICE2, DEVICE2_list, SPLIT_INTO2)
 
     model = PersuasiveBot(model_config=CurrentModelConfig, 
-                        model_A=model_A, model_B=model_B, tokenizer=TOKENIZER, 
-                        device1=DEVICE1, device2=DEVICE2)
+                        model_A=MODEL_A, model_B=MODEL_B, tokenizer=TOKENIZER, 
+                        device1=DEVICE1, device2=DEVICE2, models_used_in_model_clf=MODELS_USED_IN_MODEL_CLF, sent_embedding_model=SENT_EMBEDDING_MODEL)
 
     # model = HuggingfaceModel("./runs/1000pretrained")
     model.reload()
@@ -126,6 +151,7 @@ def end_condition(usr_input):
 MODEL_MAP = {}
 MAX_USER = -1
 AVAILABEL_MODELS = [build_one_model(MAX_USER) for _ in range(2)]
+# pdb.set_trace()
 
 def delay_for_typing(RECEIVED_TIME, response):
     response_char_len = len(response)
@@ -153,6 +179,8 @@ def delay_for_typing(RECEIVED_TIME, response):
 @app.route("/user_stop", methods=['POST'])
 def userStop():
     sid = request.json.get('sid')
+    print(f"sid to stop: {sid}")
+    logging.info(f"sid to stop: {sid}")
     TIME = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
     # garbage clean
     if sid in MODEL_MAP:
@@ -177,6 +205,7 @@ def userStop():
 
 @app.route("/persuasion_bot", methods=['POST'])
 def getResponse():
+    global MAX_USER
     exitbutton_appear = False
     sid = request.json.get('sid')
     input_text = request.json.get('input_text')
@@ -192,12 +221,16 @@ def getResponse():
         if len(AVAILABEL_MODELS) == 0:
             print(f"------------------ building model for {sid} --------------------")
             logging.info(f"--------------------- building model for {sid} -------------------")
-            new_model = build_one_model()
+            new_model = build_one_model(MAX_USER)
             MODEL_MAP[sid] = new_model
+            print(f"------------------ building model for {sid} finished--------------------")
+            logging.info(f"--------------------- building model for {sid} finished-------------------")
         else:
             print(f"------------------ reusing model for {sid} --------------------")
             logging.info(f"--------------------- reusing model for {sid} -------------------")
             MODEL_MAP[sid] = AVAILABEL_MODELS.pop(0)
+            print(f"------------------ reusing model for {sid} finished--------------------")
+            logging.info(f"--------------------- reusing model for {sid} finished-------------------")
         # pdb.set_trace()
         logging.info(f"AVAILABEL_MODELS in getResponse: {len(AVAILABEL_MODELS)}")
         logging.info(f"MODEL_MAP in getResponse: {MODEL_MAP.keys()}")
@@ -207,7 +240,6 @@ def getResponse():
         MODEL_MAP[sid].reload()
 
     # how many users are there concurrently
-    global MAX_USER
     MAX_USER = max(MAX_USER, len(MODEL_MAP))
     print(f" at the moment, there are {len(MODEL_MAP)} users, MAX_USER is {MAX_USER} ")
     logging.info(f" at the moment, there are {len(MODEL_MAP)} users, MAX_USER is {MAX_USER} ")
@@ -230,7 +262,6 @@ def getResponse():
         response, [sents_success, sents_failed], have_enough_candidates, usr_input_text = result
         # TOTAL_SUCCESS_CANDIDATES += len(sents_success)
 
-    # pdb.set_trace()
     delay_for_typing(RECEIVED_TIME, response)
 
     # exit button condition
@@ -245,7 +276,15 @@ def getResponse():
         any_is_agree = any([("provide-donation-amount" in usr_label) for usr_label in usr_labels])
         if any_is_agree:
             exitbutton_appear = True
-        
+
+    # try:
+    #     pdb.set_trace()
+    # except:
+    logging.info(f"ids: {[(k, id(m.past), id(m.model_clf.past)) for k, m in MODEL_MAP.items()]}")
+    print(f"ids: {[(k, id(m.past), id(m.model_clf.past)) for k, m in MODEL_MAP.items()]}")
+    # print(id(AVAILABEL_MODELS[0].model_clf.past), AVAILABEL_MODELS[0].model_clf.history, id(AVAILABEL_MODELS[0].past), AVAILABEL_MODELS[0].past[0].shape)   
+    # print(id(AVAILABEL_MODELS[1].model_clf.past), AVAILABEL_MODELS[1].model_clf.history, id(AVAILABEL_MODELS[1].past), AVAILABEL_MODELS[1].past[0].shape)   
+
     return jsonify({"response": response, 
                     "exitbutton_appear": exitbutton_appear
                     })

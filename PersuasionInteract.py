@@ -93,7 +93,7 @@ class ModelClassifierConfig:
 
 class PersuasiveBot:
     def __init__(self, model_config, 
-                 model_A=None, model_B=None, tokenizer=None, device1=None, device2=None):
+                 model_A=None, model_B=None, tokenizer=None, device1=None, device2=None, models_used_in_model_clf=None, sent_embedding_model=None):
         logging.basicConfig(filename=model_config.log_file,level=logging.DEBUG)
         logger = logging.getLogger(__name__)
         logger.setLevel(logging.DEBUG)
@@ -120,7 +120,7 @@ class PersuasiveBot:
         else:
             self.device1 = device1
             self.device2 = device2
-        self.load_models(model_A, model_B)
+        self.load_models(model_A, model_B, models_used_in_model_clf)
 
         # tokenizer weird behavior 
         # sep = tokenizer.encode("\n\n\n")
@@ -134,7 +134,7 @@ class PersuasiveBot:
         self.human_demonstrations = []
 
         self.domain = Domain(cfg.domain)
-        self.global_profile = GlobalProfile(domain=self.domain, model_config=self.model_config)
+        self.global_profile = GlobalProfile(domain=self.domain, model_config=self.model_config, sent_embedding_model=sent_embedding_model)
         # self.usr_profile = UsrProfile()
         # self.sys_profile = SysProfile()
         self.human_rule = HumanRule(self, with_rule=self.with_rule)
@@ -147,12 +147,13 @@ class PersuasiveBot:
                      'responses': []}
         self.reload()
 
-    def load_models(self, model_A, model_B):
+    def load_models(self, model_A, model_B, models_used_in_model_clf):
         # define the model
 
         self.model_clf = build_model_classifier(ModelClassifierConfig.model_dir, 
                                                 ModelClassifierConfig.device1, 
-                                                ModelClassifierConfig.device2)
+                                                ModelClassifierConfig.device2,
+                                                models_used_in_model_clf=models_used_in_model_clf)
 
         if model_A is None and model_B is None:
             if cfg.model_size == "small":
@@ -196,6 +197,8 @@ class PersuasiveBot:
             print("loaded predefined models!!!!!!\n\n\n")
             self.model_A = model_A
             self.model_B = model_B
+            self.model_A.eval()
+            self.model_B.eval()
 
     def chat(self, input_text=None, mode=cfg.interactive_mode, sid=None):
         # sid = 0        

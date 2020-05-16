@@ -356,7 +356,7 @@ class TFDataset(Dataset):
         return unpacked_data
     
 class ModelClassifier(object):
-    def __init__(self, config, which_to_train, model_A, model_B, tokenizer, device1, device2):
+    def __init__(self, config, which_to_train, model_A, model_B, tokenizer, device1, device2, clf_A=None, clf_B=None, clf_TF=None):
         # config.num_labels = le.classes_.shape[0]
         # label encode
         # super().__init__()
@@ -364,9 +364,9 @@ class ModelClassifier(object):
         self.le_A = load_pkl("training/data/labelencoder_A.pkl")
         self.le_B = load_pkl("training/data/labelencoder_B.pkl")
 
-        self.clf_A = SequenceSummary(num_labels=self.le_A.classes_.shape[0], config=config)
-        self.clf_B = SequenceSummary(num_labels=self.le_B.classes_.shape[0], config=config)
-        self.clf_TF = SequenceSummary(num_labels=2, config=config)
+        self.clf_A = SequenceSummary(num_labels=self.le_A.classes_.shape[0], config=config) if clf_A is None else clf_A
+        self.clf_B = SequenceSummary(num_labels=self.le_B.classes_.shape[0], config=config) if clf_B is None else clf_B
+        self.clf_TF = SequenceSummary(num_labels=2, config=config) if clf_TF is None else clf_TF
         
         # self.apply(self.init_weight)
         self.past = None
@@ -943,32 +943,51 @@ class ModelClassifier(object):
             past = [p.to(target.device) for p in past]
         return past
 
-def build_model_classifier(model_dir, device1, device2):
+def build_model_classifier(model_dir, device1, device2, models_used_in_model_clf=None):
+
     config = GPT2Config()
     config = config.from_pretrained('gpt2')#config.from_pretrained('gpt2-medium')
     config.summary_first_dropout = 0.2
     config.summary_type = "cls_index"
 
-    tokenizer = GPT2Tokenizer.from_pretrained("gpt2")#torch.load(tokenizer_dir)
-    tokenizer.add_special_tokens({'cls_token': '[CLS]'})
-    # device1 = torch.device("cuda:0")
-    # device2 = torch.device("cuda:1")
-    model_A, model_B = load_model(cfg, "small", tokenizer, device1, device2)
+    if models_used_in_model_clf is None:
+        tokenizer = GPT2Tokenizer.from_pretrained("gpt2")#torch.load(tokenizer_dir)
+        tokenizer.add_special_tokens({'cls_token': '[CLS]'})
+        # device1 = torch.device("cuda:0")
+        # device2 = torch.device("cuda:1")
+        model_A, model_B = load_model(cfg, "small", tokenizer, device1, device2)
 
-    # pdb.set_trace()
-    print("model_clf device\n\n\n\n\n\n")
-    print(model_A.device)
-    print(model_B.device)
-    print("here\n\n\n")
-    which_to_train = ["A", "B", "TF"]
-    model_clf = ModelClassifier(config=config, which_to_train=which_to_train, 
-                                model_A=model_A, model_B=model_B,
-                                tokenizer=tokenizer, device1=device1, device2=device2)
-    
-    model_clf.load_model(all_model_dir=model_dir)
+        # pdb.set_trace()
+        print("model_clf device\n\n\n\n\n\n")
+        print(model_A.device)
+        print(model_B.device)
+        print("here\n\n\n")
+        which_to_train = ["A", "B", "TF"]
+        model_clf = ModelClassifier(config=config, which_to_train=which_to_train, 
+                                    model_A=model_A, model_B=model_B,
+                                    tokenizer=tokenizer, device1=device1, device2=device2)
+        
+        model_clf.load_model(all_model_dir=model_dir)
 
-    for param in model_clf.parameters():
-        param.requires_grad = False
+        for param in model_clf.parameters():
+            param.requires_grad = False
+
+    else:
+        tokenizer, model_A, model_B, clf_A, clf_B, clf_TF = models_used_in_model_clf
+        # pdb.set_trace()
+        print("use predefined models for model_clf!!!\n\n\n\n\n\n")
+        print("model_clf device\n\n\n\n\n\n")
+        print(model_A.device)
+        print(model_B.device)
+        print("here\n\n\n")
+        which_to_train = ["A", "B", "TF"]
+        model_clf = ModelClassifier(config=config, which_to_train=which_to_train, 
+                                    model_A=model_A, model_B=model_B,
+                                    tokenizer=tokenizer, device1=device1, device2=device2,
+                                    clf_A=clf_A, clf_B=clf_B, clf_TF=clf_TF)
+
+        for param in model_clf.parameters():
+            param.requires_grad = False
     
     return model_clf
 
