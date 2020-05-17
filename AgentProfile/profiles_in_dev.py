@@ -262,11 +262,6 @@ class GlobalProfile(object):
                 if "i've heard of them as well" in sent:
                     answers['usr'] = self.domain.YES
 
-        if who == self.domain.SYS:
-            if SystemAct.PROVIDE_ORG_FACTS in sent_acts:
-                # as long as the system talks about the org facts, the the user has heard of it.
-                answers['usr'] = self.domain.YES
-
         return answers
 
     def answer_HAVE_KIDS(self, sent, who, last_sent, sent_acts):
@@ -498,7 +493,7 @@ class GlobalProfile(object):
             # not asked
             if who == self.domain.USR:
                 if "i would like to donate" in sent or "i can donate a bit" in sent\
-                    or "how much do you suggest" in sent or "spare" in sent or "glad to help" in sent\
+                    or "how much do you suggest" in sent or "glad to help" in sent\
                     or "i will donate" in sent or\
                         UserAct.AGREE_DONATION in sent_acts or\
                             UserAct.PROVIDE_DONATION_AMOUNT in sent_acts:
@@ -611,7 +606,7 @@ class GlobalProfile(object):
                 # 1.1) asked-user speak
                 # 1.1.1) asked-user speak-about self
                 if "i would like to donate" in sent or "i can donate a bit" in sent\
-                    or "how much do you suggest" in sent or "spare" in sent or "glad to help" in sent\
+                    or "how much do you suggest" in sent or "glad to help" in sent\
                     or "i will donate" in sent or\
                         UserAct.AGREE_DONATION in sent_acts or\
                             UserAct.PROVIDE_DONATION_AMOUNT in sent_acts:
@@ -694,12 +689,22 @@ class GlobalProfile(object):
                                                  self.domain.SYS: to_update_dic_sys}
 
     def print(self):
-        print("\n*******system profile*******")
+        print("\n*******system profile************************************")
         self.sys_world.print()
+        print("***********************************************************\n")
 
-        print("\n*******user profile*******")
+        print("\n*******user profile**************************************")
         self.usr_world.print()
-        print("****************************\n")
+        print("***********************************************************\n")
+
+    def print_to_log(self):
+        logging.info("\n*******system profile************************************")
+        self.sys_world.print_to_log()
+        logging.info("***********************************************************\n")
+
+        logging.info("\n*******user profile**************************************")
+        self.usr_world.print_to_log()
+        logging.info("***********************************************************\n")
 
     def get_profiles(self):
         profile = {'sys_world': {'sys_profile': deepcopy(self.sys_world.sys_profile),
@@ -745,6 +750,7 @@ class GlobalProfile(object):
                 else:
                     fail_reason = "<inconsistency>"
             else:
+                pdb.set_trace()
                 rep_consis_condition = rep_condition
                 if self.last_sents is None:
                     fail_reason = "<repetition> {} with sys, none with usr".format(rep_status_with_sys)
@@ -765,7 +771,7 @@ class GlobalProfile(object):
         return rep_consis_condition, rep_amount, edited_sents, edited_sent_acts, fail_reason
 
     def check_consistency(self, sents, sent_acts):
-        pdb.set_trace()
+        # pdb.set_trace()
         to_update_dic_usr, to_update_dic_sys = self.extract_info(sents, who=self.domain.SYS, sent_acts=sent_acts)
         consis_status = cfg.PASS
         for att, answer in to_update_dic_usr.items():
@@ -782,6 +788,8 @@ class GlobalProfile(object):
             if "you decided to donate" in sent:
                 pass
                 # pdb.set_trace()
+        if consis_status != cfg.PASS:
+            pdb.set_trace()
         return consis_status
 
     def regex_label(self, model_clf, sys_texts, which_task):
@@ -986,6 +994,27 @@ class IndividualWorld(object):
         print(f"last labels: {self.last_labels}")
         print("************************************")
 
+    def print_to_log(self):
+        logging.info("********* {} *********".format(self.name))
+        logging.info("******* system profile *******")
+        for k, v in self.sys_profile.items():
+            logging.info("{}: {}".format(k, v))
+        logging.info("******* user profile *******")
+        for k, v in self.usr_profile.items():
+            logging.info("{}: {}".format(k, v))
+        logging.info("******* sent profile *******")
+        for k, v in self.sent_profile.items():
+            logging.info("{}: {}".format(k, v))
+        logging.info("******** act sent pair *************")
+        # pdb.set_trace()
+        for turn in self.act_sent_pair:
+            for turn_i in turn:
+                logging.info(f"{turn_i[0]}: {turn_i[1]}")
+        logging.info("************ last sent *******************")
+        logging.info(f"last sents: {self.last_sents}")
+        logging.info(f"last labels: {self.last_labels}")
+        logging.info("************************************")
+
     def keys(self, who):
         if who == self.domain.SYS:
             return list(self.sys_profile.keys())
@@ -1011,7 +1040,11 @@ class UsrWorld(IndividualWorld):
         self.act_sent_pair = []
 
     def update(self, to_update_dic_usr, to_update_dic_sys, usr_texts, usr_labels, last_sys_labels, last_sys_sents):
-        # update using the user inputs
+        # update using the user inputs    
+        if SystemAct.PROVIDE_ORG_FACTS in last_sys_labels:
+            # as long as the system talks about the org facts, then the user has heard of it.
+            self.usr_profile[self.domain.HEARD_OF_THE_ORG] = self.domain.YES
+
         self.last_sents = last_sys_sents
         self.last_labels = last_sys_labels
 
@@ -1107,13 +1140,26 @@ class UsrWorld(IndividualWorld):
         # print(sys_text)
         # print(sys_label)
         if sys_label in act_to_attributes:
-            if sys_label != SystemAct.organization_related_inquiry:
-                if self.usr_profile[act_to_attributes[sys_label]] != self.domain.INIT: ### change here
+            if sys_label == SystemAct.organization_related_inquiry:
+                if self.usr_profile[act_to_attributes[SystemAct.organization_related_inquiry]] in [self.domain.YES, self.domain.NO]: ### change here
                     return True
                 else:
                     return False
+            elif sys_label == SystemAct.propose_donation_inquiry:
+                if self.usr_profile[act_to_attributes[SystemAct.propose_donation_inquiry]] in [self.domain.YES]:
+                    return True
+                else: 
+                    donation_amount = self.usr_profile[self.domain.DONATION_AMOUNT]
+                    try:
+                        donation_amount = int(donation_amount)
+                        if donation_amount > 0:
+                            return True
+                        else:
+                            return False
+                    except:
+                        return False
             else:
-                if self.usr_profile[act_to_attributes[SystemAct.organization_related_inquiry]] in [self.domain.YES, self.domain.NO]: ### change here
+                if self.usr_profile[act_to_attributes[sys_label]] != self.domain.INIT: ### change here
                     return True
                 else:
                     return False

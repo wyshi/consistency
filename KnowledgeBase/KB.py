@@ -66,9 +66,14 @@ class HumanRule(object):
             usr_labels = self.chatbot.global_profile.history_label
             any_is_agree = any([("agree-donation" in usr_label or "provide-donation-amount" in usr_label) for usr_label in usr_labels])
 
+            if any_is_agree:
+                return None
+
+            if (SystemAct.propose_donation_inquiry in self.chatbot.global_profile.sys_world.sent_profile.keys()):
+                return None
+
             if (self.chatbot.global_profile.usr_world.usr_profile[self.chatbot.domain.WANT_TO_DONATE] == self.chatbot.domain.INIT)\
-                or (SystemAct.propose_donation_inquiry not in self.chatbot.global_profile.sys_world.sent_profile.keys())\
-                    or (not any_is_agree):
+                and (SystemAct.propose_donation_inquiry not in self.chatbot.global_profile.sys_world.sent_profile.keys()):
             # if SystemAct.propose_donation_inquiry not in self.chatbot.global_profile.sys_world.sent_profile.keys():
                 # we should enforce rule
                 # we should check the enforced templates are not repetition
