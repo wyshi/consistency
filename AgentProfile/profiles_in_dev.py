@@ -1283,7 +1283,8 @@ class UsrWorld(IndividualWorld):
         try:
             assert sys_label in [SystemAct.other_inquiry]
         except:
-            pdb.set_trace()
+            logging.info(f"assert {sys_label} in [SystemAct.other_inquiry]")
+            # pdb.set_trace()
         if is_repetition_inquiry:
             # inquiries with similar wording have been asked
             return True

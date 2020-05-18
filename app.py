@@ -173,6 +173,8 @@ def delay_for_typing(RECEIVED_TIME, response):
     
     if time_to_sleep > 0:
         time_to_sleep = min(time_to_sleep, 30)
+        print(f"time should sleep: {min(time_to_type_char, time_to_type_word)}")
+        print(f"time already passed: {time_already_passed}")
         print(f"sleep for {time_to_sleep}")
         time.sleep(time_to_sleep)
 
@@ -290,5 +292,5 @@ def getResponse():
                     })
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=8089)
+    app.run(host='0.0.0.0', port=8090)
     #socketio.run(app, host='0.0.0.0', port = 8087, use_reloader=False)
