@@ -27,7 +27,7 @@ from torchfly.modules.losses import SequenceFocalLoss, SequenceCrossEntropyLoss
 import logging
 from sentence_transformers import SentenceTransformer
 
-LOG_FILE = 'logs/amt_baseline_test_app_real_multi-thread-test-new.log'
+LOG_FILE = 'logs/amt_new_model-no_RL.log'
 logging.basicConfig(filename=LOG_FILE,level=logging.DEBUG)
 TIME = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
 logging.info(f"!!!!!--------- AMT test: datetime {TIME}----------")
@@ -40,9 +40,9 @@ class CurrentModelConfig:
     log_file = LOG_FILE
     
     with_baseline =  True
-    with_repetition_module = False
-    with_consistency_module = False
-    with_sentence_clf = False
+    with_repetition_module = True
+    with_consistency_module = True
+    with_sentence_clf = True
     with_RL_finetune_model = False
 
     if not with_repetition_module and with_consistency_module:
@@ -173,6 +173,8 @@ def delay_for_typing(RECEIVED_TIME, response):
     
     if time_to_sleep > 0:
         time_to_sleep = min(time_to_sleep, 30)
+        print(f"time should sleep: {min(time_to_type_char, time_to_type_word)}")
+        print(f"time already passed: {time_already_passed}")
         print(f"sleep for {time_to_sleep}")
         time.sleep(time_to_sleep)
 
