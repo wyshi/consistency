@@ -27,7 +27,7 @@ from torchfly.modules.losses import SequenceFocalLoss, SequenceCrossEntropyLoss
 import logging
 from sentence_transformers import SentenceTransformer
 
-LOG_FILE = 'logs/amt_baseline_test_app_real_multi-thread-test-new.log'
+LOG_FILE = 'logs/amt_new_model-no_RL.log'
 logging.basicConfig(filename=LOG_FILE,level=logging.DEBUG)
 TIME = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
 logging.info(f"!!!!!--------- AMT test: datetime {TIME}----------")
@@ -40,9 +40,9 @@ class CurrentModelConfig:
     log_file = LOG_FILE
     
     with_baseline =  True
-    with_repetition_module = False
-    with_consistency_module = False
-    with_sentence_clf = False
+    with_repetition_module = True
+    with_consistency_module = True
+    with_sentence_clf = True
     with_RL_finetune_model = False
 
     if not with_repetition_module and with_consistency_module:
@@ -210,9 +210,6 @@ def getResponse():
     sid = request.json.get('sid')
     input_text = request.json.get('input_text')
     RECEIVED_TIME = time.time()
-<<<<<<< HEAD
-    print(sid)
-=======
 
     if sid not in MODEL_MAP:
         # when a new user comes in
@@ -220,7 +217,6 @@ def getResponse():
         logging.info(f"MODEL_MAP in getResponse before: {MODEL_MAP.keys()}")
         print(f"AVAILABEL_MODELS in getResponse before: {len(AVAILABEL_MODELS)}")
         print(f"MODEL_MAP in getResponse before: {MODEL_MAP.keys()}")
->>>>>>> dialog_server
 
         if len(AVAILABEL_MODELS) == 0:
             print(f"------------------ building model for {sid} --------------------")
@@ -256,32 +252,16 @@ def getResponse():
     MODE = cfg.interactive_mode
     if input_text == "<start>":
         # a new dialog
-<<<<<<< HEAD
-        model.reload()
-        input_text = None
-        TIME = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
-        logging.info(f"!!!!!--------- AMT start test: datetime {TIME}----------")
-
-    result = model.chat(input_text=input_text, mode=MODE, sid=sid)
-=======
         MODEL_MAP[sid].reload()
         input_text = None
         TIME = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
         logging.info(f"!!!!!---------{sid} AMT start test: datetime {TIME}----------")
 
     result = MODEL_MAP[sid].chat(input_text=input_text, mode=MODE, sid=sid)
->>>>>>> dialog_server
     if result is not None:
         response, [sents_success, sents_failed], have_enough_candidates, usr_input_text = result
         # TOTAL_SUCCESS_CANDIDATES += len(sents_success)
 
-<<<<<<< HEAD
-    # exit button condition
-    if ("closing" in model.global_profile.sys_world.sent_profile.keys()):
-        exitbutton_appear = True
-
-    delay_for_typing(RECEIVED_TIME, response)
-=======
     delay_for_typing(RECEIVED_TIME, response)
 
     # exit button condition
@@ -304,7 +284,6 @@ def getResponse():
     print(f"ids: {[(k, id(m.past), id(m.model_clf.past)) for k, m in MODEL_MAP.items()]}")
     # print(id(AVAILABEL_MODELS[0].model_clf.past), AVAILABEL_MODELS[0].model_clf.history, id(AVAILABEL_MODELS[0].past), AVAILABEL_MODELS[0].past[0].shape)   
     # print(id(AVAILABEL_MODELS[1].model_clf.past), AVAILABEL_MODELS[1].model_clf.history, id(AVAILABEL_MODELS[1].past), AVAILABEL_MODELS[1].past[0].shape)   
->>>>>>> dialog_server
 
     return jsonify({"response": response, 
                     "exitbutton_appear": exitbutton_appear
