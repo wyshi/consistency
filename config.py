@@ -65,6 +65,7 @@ MAX_NUM_CANDIDATES = 20
 
 # human rule configuration
 HAVE_TO_PROPOSE = 3
+HAVE_TO_ASK_AGAIN = 8
 
 PASS = "pass"
 REPETITION = "repetition"

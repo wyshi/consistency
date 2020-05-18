@@ -989,6 +989,9 @@ class PersuasiveBot:
         TOTAL_SUCCESS = 0
         TOTAL_INCONSISTENT_FAIL = 0
         TOTAL_REPETITION_FAIL = 0
+        TOTAL_SELECTED_IN_FAILED_CANDIDATES = 0
+        TOTAL_SELECTED_IN_SUCCESS_CANDIDATES = 0
+        TOTAL_DIFFERENT_IN_SUCCESS_CANDIDATES = 0
         for turn_i in range(len(self.logs['responses'])):
             for k in ['responses', 'candidates', 'failed_candidates', 'global_profiles']:
                 # print("{}\n".format(k))
@@ -1000,17 +1003,24 @@ class PersuasiveBot:
                     try:
                         if k == "failed_candidates":
                             if len(self.logs[k]) > 0:
+                                # pdb.set_trace()
                                 for a in self.logs[k][turn_i]:
                                     self.logger.info(a)
-                                    if "<inconsistenty>" in a:
+                                    if "<inconsistency>" in a:
                                         TOTAL_INCONSISTENT_FAIL += 1
                                     if "<repetition>" in a:
                                         TOTAL_REPETITION_FAIL += 1
-                        if len(self.logs[k]) > 0:
+                                    if "SELECTED" in a:
+                                        TOTAL_SELECTED_IN_FAILED_CANDIDATES += 1
+                        elif len(self.logs[k]) > 0:
                             for a in self.logs[k][turn_i]:
                                 if a.startswith("=== candidates, len="):
                                     TOTAL_SUCCESS += int(a.split("len=")[1].split("===")[0])
                                 self.logger.info(a)
+                                if "SELECTED" in a:
+                                    TOTAL_SELECTED_IN_SUCCESS_CANDIDATES += 1
+                                if "different" in a:
+                                    TOTAL_DIFFERENT_IN_SUCCESS_CANDIDATES += 1
                     except:
                         pdb.set_trace()
                     if k == "responses":
@@ -1028,8 +1038,10 @@ class PersuasiveBot:
                             self.logger.debug("")
             # print("\n")
             self.logger.info("---------- turn ends ---------------------------------\n")
-        self.logger.info(f"total success: {TOTAL_SUCCESS}, turn #: {len(self.logs['responses'])}")
+        self.logger.info(f"Statistics:")
+        self.logger.info(f"total success: {TOTAL_SUCCESS}, total different: {TOTAL_DIFFERENT_IN_SUCCESS_CANDIDATES}, turn #: {len(self.logs['responses'])}")
         self.logger.info(f"total repetition: {TOTAL_REPETITION_FAIL}, total inconsistency: {TOTAL_INCONSISTENT_FAIL}")
+        self.logger.info(f"total selected in success: {TOTAL_SELECTED_IN_SUCCESS_CANDIDATES}, total selected in failed: {TOTAL_SELECTED_IN_FAILED_CANDIDATES}")
         self.logger.info("*************************** dialog end ****************************************")
         
     def log_human_demonstration(self, sent_candidates, edited_sent_candidates, sent_act_candidates, past_candidates, hidden_states_candidates,
@@ -1209,7 +1221,7 @@ if __name__ == "__main__":
     bot = PersuasiveBot(model_config=CurrentModelConfig, 
                         model_A=model_A, model_B=model_B, tokenizer=TOKENIZER, 
                         device1=DEVICE1, device2=DEVICE2)
-    MODE = cfg.interactive_mode
+    MODE = cfg.self_play_mode#cfg.interactive_mode#cfg.self_play_mode
 
     # bot = PersuasiveBot()
     # pdb.set_trace()
@@ -1218,7 +1230,7 @@ if __name__ == "__main__":
     # signal.signal(signal.SIGINT, signal.default_int_handler)
 
     
-    MAX_DIALOGS = 100
+    MAX_DIALOGS = 15
     TOTAL_TURNS = 0
     TOTAL_SUCCESS_CANDIDATES = 0
     dial_i = 0
@@ -1226,7 +1238,7 @@ if __name__ == "__main__":
     while dial_i < MAX_DIALOGS:
         try:
             if bot.past is not None:
-                if cfg.mode != cfg.self_play_mode:
+                if MODE != cfg.self_play_mode:
                     user_text  = input("user: ")
                 else:
                     user_text = None
@@ -1234,6 +1246,7 @@ if __name__ == "__main__":
                 dial_i += 1
                 print("\n\n\n")
                 print("INIT MEMORY!")
+                print(f"start dialog {dial_i}\n\n\n")
                 # bot.save()
                 bot.reload()
             

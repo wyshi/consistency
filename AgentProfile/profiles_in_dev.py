@@ -49,7 +49,7 @@ class GlobalProfile(object):
         self.last_labels = None
         self.answers_extracted_from_last_sent = None
 
-        self.greeting_re = re.compile(r"((how are you)|(how're you)|(how you doing))", re.IGNORECASE)
+        self.greeting_re = re.compile(r"((how are you)|(how're you)|(how you doing)|(how are you doing)|(how're you doing))", re.IGNORECASE)
         
     # def __getitem__(self, key):
     #     return self.profiles[key.lower()]
@@ -83,18 +83,21 @@ class GlobalProfile(object):
         for q in self.domain.attributes:
             answers = self.answer_question(sents, q, who, sent_acts)
             
-            if answers['usr']:
+            if answers['usr'] is not None:
                 qa_dict[self.domain.USR].update({q: answers['usr']})
-            if answers['sys']:
+            if answers['sys'] is not None:
                 qa_dict[self.domain.SYS].update({q: answers['sys']})
                 
         for side in qa_dict:
             if self.domain.DONATION_AMOUNT in qa_dict[side]:
-                if type(qa_dict[side][self.domain.DONATION_AMOUNT]) is int:
-                    if qa_dict[side][self.domain.DONATION_AMOUNT] > 0:
+                try:
+                    donation_amt = float(qa_dict[side][self.domain.DONATION_AMOUNT])
+                    if donation_amt > 0:
                         qa_dict[side][self.domain.WANT_TO_DONATE] = self.domain.YES
-                    elif qa_dict[side][self.domain.DONATION_AMOUNT] <= 0:
+                    elif donation_amt <= 0:
                         qa_dict[side][self.domain.WANT_TO_DONATE] = self.domain.NO
+                except:
+                    pass
 
         sent = " ".join(sents).lower()
         if re.search(r"((me,)|(me)) too", sent, re.IGNORECASE) \
@@ -203,13 +206,14 @@ class GlobalProfile(object):
                     elif UserAct.NEGATIVE_TO_INQUIRY in sent_acts:
                         answers['usr'] = self.domain.NO
                     else:
-                        if score['compound'] >= 0.05:
-                            # positive
-                            answers['usr'] = self.domain.YES
-                        elif score['compound'] <= -0.05:
-                            answers['usr'] = self.domain.NO
-                        else:
-                            answers['usr'] = self.domain.NOT_SURE
+                        answers['usr'] = self.domain.NOT_SURE
+                        # if score['compound'] >= 0.05:
+                        #     # positive
+                        #     answers['usr'] = self.domain.YES
+                        # elif score['compound'] <= -0.05:
+                        #     answers['usr'] = self.domain.NO
+                        # else:
+                        #     answers['usr'] = self.domain.NOT_SURE
 
                 # 1.1.2) asked-user speak-about system
                 if re.search(r"((you've)|(you have)) heard", sent, re.IGNORECASE):
@@ -223,13 +227,14 @@ class GlobalProfile(object):
                 elif "no" in sent: 
                     answers['sys'] = self.domain.NO
                 else:
-                    if score['compound'] >= 0.05:
-                        # positive
-                        answers['sys'] = self.domain.YES
-                    elif score['compound'] <= -0.05:
-                        answers['sys'] = self.domain.NO
-                    else:
-                        answers['sys'] = self.domain.NOT_SURE
+                    answers['sys'] = self.domain.NOT_SURE
+                    # if score['compound'] >= 0.05:
+                    #     # positive
+                    #     answers['sys'] = self.domain.YES
+                    # elif score['compound'] <= -0.05:
+                    #     answers['sys'] = self.domain.NO
+                    # else:
+                    #     answers['sys'] = self.domain.NOT_SURE
             
                 # 1.2.2) asked-system speak-about user
                 if re.search(r"((you've)|(you have)) heard", sent, re.IGNORECASE)\
@@ -286,13 +291,14 @@ class GlobalProfile(object):
                     elif UserAct.NEGATIVE_TO_INQUIRY in sent_acts:
                         answers['usr'] = self.domain.NO
                     else:
-                        if score['compound'] >= 0.05:
-                            # positive
-                            answers['usr'] = self.domain.YES
-                        elif score['compound'] <= -0.05:
-                            answers['usr'] = self.domain.NO
-                        else:
-                            answers['usr'] = self.domain.NOT_SURE
+                        answers['usr'] = self.domain.NOT_SURE
+                        # if score['compound'] >= 0.05:
+                        #     # positive
+                        #     answers['usr'] = self.domain.YES
+                        # elif score['compound'] <= -0.05:
+                        #     answers['usr'] = self.domain.NO
+                        # else:
+                        #     answers['usr'] = self.domain.NOT_SURE
 
                 # 1.1.2) asked-user speak-about system
                 if re.search(r"((you've)|(you have))", sent, re.IGNORECASE) and "kid" in sent:
@@ -306,13 +312,14 @@ class GlobalProfile(object):
                 elif "no" in sent: 
                     answers['sys'] = self.domain.NO
                 else:
-                    if score['compound'] >= 0.05:
-                        # positive
-                        answers['sys'] = self.domain.YES
-                    elif score['compound'] <= -0.05:
-                        answers['sys'] = self.domain.NO
-                    else:
-                        answers['sys'] = self.domain.NOT_SURE
+                    answers['sys'] = self.domain.NOT_SURE
+                    # if score['compound'] >= 0.05:
+                    #     # positive
+                    #     answers['sys'] = self.domain.YES
+                    # elif score['compound'] <= -0.05:
+                    #     answers['sys'] = self.domain.NO
+                    # else:
+                    #     answers['sys'] = self.domain.NOT_SURE
             
                 # 1.2.2) asked-system speak-about user
                 if re.search(r"((you've)|(you have))", sent, re.IGNORECASE) and "kid" in sent:
@@ -364,13 +371,14 @@ class GlobalProfile(object):
                     elif UserAct.NEGATIVE_TO_INQUIRY in sent_acts:
                         answers['usr'] = self.domain.NO
                     else:
-                        if score['compound'] >= 0.05:
-                            # positive
-                            answers['usr'] = self.domain.YES
-                        elif score['compound'] <= -0.05:
-                            answers['usr'] = self.domain.NO
-                        else:
-                            answers['usr'] = self.domain.NOT_SURE
+                        answers['usr'] = self.domain.NOT_SURE
+                        # if score['compound'] >= 0.05:
+                        #     # positive
+                        #     answers['usr'] = self.domain.YES
+                        # elif score['compound'] <= -0.05:
+                        #     answers['usr'] = self.domain.NO
+                        # else:
+                        #     answers['usr'] = self.domain.NOT_SURE
 
                 # 1.1.2) asked-user speak-about system
                 if re.search(r"((you've)|(you have)) donated", sent, re.IGNORECASE):
@@ -384,13 +392,14 @@ class GlobalProfile(object):
                 elif "no" in sent: 
                     answers['sys'] = self.domain.NO
                 else:
-                    if score['compound'] >= 0.05:
-                        # positive
-                        answers['sys'] = self.domain.YES
-                    elif score['compound'] <= -0.05:
-                        answers['sys'] = self.domain.NO
-                    else:
-                        answers['sys'] = self.domain.NOT_SURE
+                    answers['sys'] = self.domain.NOT_SURE
+                    # if score['compound'] >= 0.05:
+                    #     # positive
+                    #     answers['sys'] = self.domain.YES
+                    # elif score['compound'] <= -0.05:
+                    #     answers['sys'] = self.domain.NO
+                    # else:
+                    #     answers['sys'] = self.domain.NOT_SURE
             
                 # 1.2.2) asked-system speak-about user
                 if re.search(r"((you've)|(you have)) donated", sent, re.IGNORECASE):
@@ -438,10 +447,13 @@ class GlobalProfile(object):
                     or "how much do you suggest" in sent or \
                     UserAct.AGREE_DONATION in sent_acts or \
                     UserAct.PROVIDE_DONATION_AMOUNT in sent_acts:
-                    if num_in_sent and num_in_sent == 0:
-                        answers['usr'] = self.domain.NO
+                    if "how much do you suggest" in sent:
+                        answers['usr'] = self.domain.NOT_SURE
                     else:
-                        answers['usr'] = self.domain.YES
+                        if num_in_sent is not None and num_in_sent == 0:
+                            answers['usr'] = self.domain.NO
+                        else:
+                            answers['usr'] = self.domain.YES
                 elif "prefer to donate time" in sent or "next time" in sent or "not today" in sent or\
                     UserAct.DISAGREE_DONATION in sent_acts: 
                     answers['usr'] = self.domain.NO
@@ -453,16 +465,17 @@ class GlobalProfile(object):
                     elif UserAct.NEGATIVE_TO_INQUIRY in sent_acts:
                         answers['usr'] = self.domain.NO
                     else:
-                        if score['compound'] >= 0.05:
-                            # positive
-                            if num_in_sent and num_in_sent == 0:
-                                answers['usr'] = self.domain.NO
-                            else:
-                                answers['usr'] = self.domain.YES
-                        elif score['compound'] <= -0.05:
-                            answers['usr'] = self.domain.NO
-                        else:
-                            answers['usr'] = self.domain.NOT_SURE
+                        answers['usr'] = self.domain.NOT_SURE
+                        # if score['compound'] >= 0.05:
+                        #     # positive
+                        #     if num_in_sent is not None and num_in_sent == 0:
+                        #         answers['usr'] = self.domain.NO
+                        #     else:
+                        #         answers['usr'] = self.domain.YES
+                        # elif score['compound'] <= -0.05:
+                        #     answers['usr'] = self.domain.NO
+                        # else:
+                        #     answers['usr'] = self.domain.NOT_SURE
 
                 # 1.1.2) asked-user speak-about system
                 if "that's kind of you" in sent:
@@ -473,17 +486,21 @@ class GlobalProfile(object):
                 # 1.2.1) asked-system speak-about self
                 if "yes" in sent or "i would like to donate some money" in sent or "i can donate a bit" in sent\
                     or "how much do you suggest" in sent:
-                    answers['sys'] = self.domain.YES
+                    if "how much do you suggest" in sent:
+                        answers['sys'] = self.domain.NOT_SURE
+                    else:
+                        answers['sys'] = self.domain.YES
                 elif "prefer to donate time" in sent or "next time" in sent or "not today" in sent: 
                     answers['sys'] = self.domain.NO
                 else:
-                    if score['compound'] >= 0.05:
-                        # positive
-                        answers['sys'] = self.domain.YES
-                    elif score['compound'] <= -0.05:
-                        answers['sys'] = self.domain.NO
-                    else:
-                        answers['sys'] = self.domain.NOT_SURE
+                    answers['sys'] = self.domain.NOT_SURE
+                    # if score['compound'] >= 0.05:
+                    #     # positive
+                    #     answers['sys'] = self.domain.YES
+                    # elif score['compound'] <= -0.05:
+                    #     answers['sys'] = self.domain.NO
+                    # else:
+                    #     answers['sys'] = self.domain.NOT_SURE
             
                 # 1.2.2) asked-system speak-about user
                 if "thank you so much" in sent or "you are very kind" in sent:
@@ -497,10 +514,13 @@ class GlobalProfile(object):
                     or "i will donate" in sent or\
                         UserAct.AGREE_DONATION in sent_acts or\
                             UserAct.PROVIDE_DONATION_AMOUNT in sent_acts:
-                    if num_in_sent and num_in_sent == 0:
-                        answers['usr'] = self.domain.NO
+                    if "how much do you suggest" in sent:
+                        answers['usr'] = self.domain.NOT_SURE
                     else:
-                        answers['usr'] = self.domain.YES
+                        if num_in_sent is not None and num_in_sent == 0:
+                            answers['usr'] = self.domain.NO
+                        else:
+                            answers['usr'] = self.domain.YES
                     # answers['usr'] = self.domain.YES
                 elif "prefer to donate time" in sent or "next time" in sent or "not today" in sent\
                 or "not interested" in sent or "don't want to donate" in sent or \
@@ -516,7 +536,10 @@ class GlobalProfile(object):
                 # 1.2.1) asked-system speak-about self
                 if "i would like to donate some money" in sent or "i can donate a bit" in sent\
                     or "how much do you suggest" in sent:
-                    answers['sys'] = self.domain.YES
+                    if "how much do you suggest" in sent:
+                        answers['sys'] = self.domain.NOT_SURE
+                    else:
+                        answers['sys'] = self.domain.YES
                 elif "prefer to donate time" in sent or "next time" in sent or\
                     "i just don't donate" in sent or "i don't donate" in sent: 
                     answers['sys'] = self.domain.NO
@@ -525,15 +548,16 @@ class GlobalProfile(object):
                 if "thank you so much" in sent or "you are very kind" in sent \
                 or "you decided to donate" in sent or "you decide to donate" in sent or "thank you for your donation today" in sent or "you are willing to donate" in sent\
                 or "appreciate your donation" in sent or "appreciate your willingness to donate" in sent or\
-                    SystemAct.THANK in sent_acts or SystemAct.CONFIRM_DONATION in sent_acts:
-                    if num_in_sent and num_in_sent == 0:
-                        answers['usr'] = self.domain.NO
-                    else:
-                        answers['usr'] = self.domain.YES
+                    SystemAct.THANK in sent_acts or SystemAct.CONFIRM_DONATION in sent_acts or\
+                         SystemAct.PRAISE_USER in sent_acts:
+                    # if num_in_sent is not None and num_in_sent == 0:
+                    #     answers['usr'] = self.domain.NO
+                    # else:
+                    answers['usr'] = self.domain.YES
                 
-                elif "ould you like to donate some of your task payment" in sent or \
-                    SystemAct.propose_donation_inquiry in sent_acts:
-                    answers['usr'] = self.domain.INIT
+                # elif "ould you like to donate some of your task payment" in sent or \
+                #     SystemAct.propose_donation_inquiry in sent_acts:
+                #     answers['usr'] = self.domain.INIT
                 
                 elif SystemAct.ASK_NOT_DONATE_REASON in sent_acts:
                     answers['usr'] = self.domain.NO
@@ -554,14 +578,16 @@ class GlobalProfile(object):
                 if "yes" in sent or "i would like to donate" in sent or "i can donate a bit" in sent\
                     or "how much do you suggest" in sent or \
                     UserAct.AGREE_DONATION in sent_acts or \
-                    UserAct.PROVIDE_DONATION_AMOUNT in sent_acts or score['compound'] >= 0.05:
-                    if num_in_sent:
-                        answers['usr'] = num_in_sent
-                    else:
+                    UserAct.PROVIDE_DONATION_AMOUNT in sent_acts:
+                    if "how much do you suggest" in sent:
                         answers['usr'] = self.domain.NOT_SURE
+                    else:
+                        if num_in_sent is not None:
+                            answers['usr'] = num_in_sent
+                        else:
+                            answers['usr'] = self.domain.NOT_SURE
                 elif "prefer to donate time" in sent or "next time" in sent or "not today" in sent or\
-                    UserAct.DISAGREE_DONATION in sent_acts or\
-                        score['compound'] <= -0.05: 
+                    UserAct.DISAGREE_DONATION in sent_acts: 
                     answers['usr'] = 0
                 else:
                     if UserAct.POSITIVE_TO_INQUIRY in sent_acts:
@@ -571,13 +597,14 @@ class GlobalProfile(object):
                     elif UserAct.NEGATIVE_TO_INQUIRY in sent_acts:
                         answers['usr'] = self.domain.NO
                     else:
-                        if score['compound'] >= 0.05:
-                            # positive
-                            answers['usr'] = self.domain.YES
-                        elif score['compound'] <= -0.05:
-                            answers['usr'] = self.domain.NO
-                        else:
-                            answers['usr'] = self.domain.NOT_SURE
+                        answers['usr'] = self.domain.NOT_SURE
+                        # if score['compound'] >= 0.05:
+                        #     # positive
+                        #     answers['usr'] = self.domain.YES
+                        # elif score['compound'] <= -0.05:
+                        #     answers['usr'] = self.domain.NO
+                        # else:
+                        #     answers['usr'] = self.domain.NOT_SURE
 
                # 1.1.2) asked-user speak-about system
                 if "that's kind of you" in sent:
@@ -588,14 +615,17 @@ class GlobalProfile(object):
                 # 1.2.1) asked-system speak-about self
                 if "yes" in sent or "i would like to donate some money" in sent or "i can donate a bit" in sent\
                     or "how much do you suggest" in sent:
-                    if num_in_sent:
-                        answers['sys'] = num_in_sent
+                    if "how much do you suggest" in sent:
+                        answers['sys'] = self.domain.NOT_SURE
+                    else:
+                        if num_in_sent is not None:
+                            answers['sys'] = num_in_sent
                 elif "prefer to donate time" in sent or "next time" in sent: 
                     answers['sys'] = 0
             
                 # 1.2.2) asked-system speak-about user
                 if "thank you so much" in sent or "you are very kind" in sent:
-                    if num_in_sent:
+                    if num_in_sent is not None:
                         answers['usr'] = num_in_sent
                     else:
                         answers['usr'] = self.domain.NOT_SURE
@@ -610,10 +640,13 @@ class GlobalProfile(object):
                     or "i will donate" in sent or\
                         UserAct.AGREE_DONATION in sent_acts or\
                             UserAct.PROVIDE_DONATION_AMOUNT in sent_acts:
-                    if num_in_sent:
-                        answers['usr'] = num_in_sent
-                    else:
+                    if "how much do you suggest" in sent:
                         answers['usr'] = self.domain.NOT_SURE
+                    else:
+                        if num_in_sent is not None:
+                            answers['usr'] = num_in_sent
+                        else:
+                            answers['usr'] = self.domain.NOT_SURE
                 elif "prefer to donate time" in sent or "next time" in sent or "not today" in sent\
                 or "not interested" in sent or "don't want to donate" in sent or \
                     UserAct.DISAGREE_DONATION in sent_acts: 
@@ -627,18 +660,22 @@ class GlobalProfile(object):
                 # 1.2) asked-system
                 # 1.2.1) asked-system speak-about self
                 if "yes" in sent or "i would like to donate some money" in sent or "i can donate a bit" in sent\
-                    or "how much do you suggest" in sent:
-                    if num_in_sent:
-                        answers['sys'] = num_in_sent
+                    or "how much do you suggest" in sent\
+                        or SystemAct.EXAMPLE_DONATION in sent_acts:
+                    if "how much do you suggest" in sent:
+                        answers['sys'] = self.domain.NOT_SURE
+                    else:
+                        if num_in_sent is not None:
+                            answers['sys'] = num_in_sent
                 elif "prefer to donate time" in sent or "next time" in sent: 
                     answers['sys'] = 0
             
                 # 1.2.2) asked-system speak-about user                
-                if "ould you like to donate some of your task payment" in sent or \
-                    SystemAct.propose_donation_inquiry in sent_acts:
-                    answers['usr'] = self.domain.INIT
+                # if "ould you like to donate some of your task payment" in sent or \
+                #     SystemAct.propose_donation_inquiry in sent_acts:
+                #     answers['usr'] = self.domain.INIT
                 
-                elif SystemAct.ASK_NOT_DONATE_REASON in sent_acts:
+                if SystemAct.ASK_NOT_DONATE_REASON in sent_acts:
                     answers['usr'] = 0
 
         return answers
@@ -654,31 +691,36 @@ class GlobalProfile(object):
 
     def update(self, sents, sent_labels, who):
         to_update_dic_usr, to_update_dic_sys = self.extract_info(sents, who=who, sent_acts=sent_labels)
-
+        # 
+        print("things to update****************************************************")
+        print(f"{who}: {sent_labels}: {sents}")
+        print(f"{to_update_dic_usr}\n{to_update_dic_sys}")
+        print("********************************************************************")
+        # pdb.set_trace()
         if who == self.domain.USR:
-            last_sys_labels_temp = self.history_label[-1] if len(self.history_label) else None
-            last_sys_sents_temp = self.history[-1] if len(self.history) else None
+            # last_sys_labels_temp = self.history_label[-1] if len(self.history_label) else None
+            # last_sys_sents_temp = self.history[-1] if len(self.history) else None
             self.usr_world.update(to_update_dic_usr=to_update_dic_usr, 
                                   to_update_dic_sys=to_update_dic_sys,
                                   usr_texts=sents, 
-                                  usr_labels=sent_labels,
-                                  last_sys_labels=last_sys_labels_temp,
-                                  last_sys_sents=last_sys_sents_temp)
+                                  usr_labels=sent_labels)#,
+                                #   last_sys_labels=last_sys_labels_temp,
+                                #   last_sys_sents=last_sys_sents_temp)
             # sync up with the partner, for potential conditional generation
-            self.sys_world.syncup(self.usr_world.usr_profile)
+            self.sys_world.syncup(self.usr_world.usr_profile, last_usr_labels=sent_labels, last_usr_sents=sents)
 
         elif who == self.domain.SYS:
             # pdb.set_trace()
-            last_usr_labels_temp = self.history_label[-1] if len(self.history_label) else None
-            last_usr_sents_temp = self.history[-1] if len(self.history) else None
+            # last_usr_labels_temp = self.history_label[-1] if len(self.history_label) else None
+            # last_usr_sents_temp = self.history[-1] if len(self.history) else None
             self.sys_world.update(to_update_dic_usr=to_update_dic_usr, 
                                   to_update_dic_sys=to_update_dic_sys,
                                   sys_texts=sents, 
-                                  sys_labels=sent_labels,
-                                  last_usr_labels=last_usr_labels_temp,
-                                  last_usr_sents=last_usr_sents_temp)
+                                  sys_labels=sent_labels)#,
+                                #   last_usr_labels=last_usr_labels_temp,
+                                #   last_usr_sents=last_usr_sents_temp)
             # sync up with the partner, for potential conditional generation
-            self.usr_world.syncup(self.sys_world.sys_profile)
+            self.usr_world.syncup(self.sys_world.sys_profile, last_sys_labels=sent_labels, last_sys_sents=sents)
 
         
         self.history.append(sents)
@@ -740,7 +782,7 @@ class GlobalProfile(object):
             # 2. inconsistency
             if rep_condition:
                 # if it's not a repetition, then we need to check for consistency
-                consis_status = self.check_consistency(edited_sents, edited_sent_acts)
+                consis_status, fail_consistency_reason = self.check_consistency(edited_sents, edited_sent_acts)
                 # pdb.set_trace()
                 consis_condition = consis_status in [cfg.PASS]
 
@@ -748,9 +790,9 @@ class GlobalProfile(object):
                 if rep_consis_condition:
                     fail_reason = consis_status
                 else:
-                    fail_reason = "<inconsistency>"
+                    fail_reason = f"<inconsistency>: {fail_consistency_reason}"
             else:
-                pdb.set_trace()
+                # pdb.set_trace()
                 rep_consis_condition = rep_condition
                 if self.last_sents is None:
                     fail_reason = "<repetition> {} with sys, none with usr".format(rep_status_with_sys)
@@ -774,23 +816,27 @@ class GlobalProfile(object):
         # pdb.set_trace()
         to_update_dic_usr, to_update_dic_sys = self.extract_info(sents, who=self.domain.SYS, sent_acts=sent_acts)
         consis_status = cfg.PASS
+        fail_reason = ""
         for att, answer in to_update_dic_usr.items():
             # if the system says something that's different from the user profile before
             if self.usr_world.usr_profile[att] != answer:
+                fail_reason += f"{att} is {answer}, but {self.usr_world.usr_profile[att]} in usr_world usr_profile; "
                 consis_status = cfg.INCONSISTENCY
 
         for att, answer in to_update_dic_sys.items():
             # if the system says something that's different from the system profile before
             if self.sys_world.sys_profile[att] != self.domain.INIT \
                and self.sys_world.sys_profile[att] != answer:
+                fail_reason += f"{att} is {answer}, but {self.sys_world.sys_profile[att]} in sys_world sys_profile; "
                 consis_status = cfg.INCONSISTENCY
         for sent in sents:
             if "you decided to donate" in sent:
                 pass
                 # pdb.set_trace()
         if consis_status != cfg.PASS:
-            pdb.set_trace()
-        return consis_status
+            # pdb.set_trace()
+            pass
+        return consis_status, fail_reason
 
     def regex_label(self, model_clf, sys_texts, which_task):
         """
@@ -801,6 +847,8 @@ class GlobalProfile(object):
 
         predicted_labels, past = model_clf.predict(separate_sents=sys_texts, 
                                                     which_task=which_task)
+        # pdb.set_trace()
+        print(f"{which_task} {predicted_labels}: {sys_texts}")
         def regex_label_for_one_utt(utt, predicted_label, which_task=which_task):
             # try:
             #     predicted_label = self.pred_model.predict(text=utt, his=context, turn=turn_i)
@@ -843,8 +891,12 @@ class GlobalProfile(object):
                         label = SystemAct.other_inquiry
 
                 elif predicted_label in ["greeting"]:
-                    if "?" in sent or re.search(self.greeting_re, utt):
+
+                    if "?" in sent or re.search(self.greeting_re, utt) or "how" in sent:
                         label = SystemAct.greeting_inquiry
+                    elif re.search(re.compile(r"((hi)|(hello)|(hi there)|(hello there)|(hey there)|(hey))", re.IGNORECASE), utt) or\
+                        (len(utt.split())<=2 and not (re.search(re.compile(r"((good)|(alright)|(great)|(ok))", re.IGNORECASE), utt))):
+                        label = "simple-greeting"
                     else:
                         label = SystemAct.greeting_answer
 
@@ -874,6 +926,7 @@ class GlobalProfile(object):
                     else:
                         label = predicted_label
             else:
+                # pdb.set_trace()
                 if predicted_label in ["task-related-inquiry", "personal-related-inquiry"]:#, "have-you-heard-of-the-org"]:
                     
                     if self.sents_are_similar(sent, ['do you have children', 
@@ -906,8 +959,10 @@ class GlobalProfile(object):
                         label = UserAct.other_inquiry
 
                 elif predicted_label in ["greeting"]:
-                    if "?" in sent or re.search(self.greeting_re, utt):
+                    if "?" in sent or re.search(self.greeting_re, utt) or "how" in sent:
                         label = UserAct.greeting_inquiry
+                    elif re.search(re.compile(r"((hi)|(hello)|(hi there)|(hello there))", re.IGNORECASE), utt) and len(utt.split())<=2:
+                        label = "simple-greeting"
                     else:
                         label = UserAct.greeting_answer
 
@@ -937,16 +992,24 @@ class GlobalProfile(object):
                     #                                 'how much do you like to donate to the charity now',
                     #                                 'if you would like to consider a small portion of your payment']):
                     #     label = SystemAct.propose_donation_inquiry
-
-                    label = predicted_label
-
+                    if predicted_label in [UserAct.PROVIDE_DONATION_AMOUNT, UserAct.AGREE_DONATION]:
+                        num_in_sent = toNumReg(sent)
+                        if num_in_sent is not None:
+                            if (num_in_sent == 0):
+                                label = UserAct.DISAGREE_DONATION
+                            else:
+                                label = predicted_label
+                        else:
+                            label = predicted_label
+                    else:
+                        label = predicted_label
             return label
 
         start = time.time()
         labels = [regex_label_for_one_utt(utt, predicted_label, which_task) for utt, predicted_label in zip(sys_texts, predicted_labels)]
         end = time.time()
-        print(f"regex_label takes {end-start}")
-        logging.info(f"regex_label takes {end-start}")
+        # print(f"regex_label takes {end-start}")
+        # logging.info(f"regex_label takes {end-start}")
         return labels, past
 
 
@@ -1039,20 +1102,20 @@ class UsrWorld(IndividualWorld):
         super().__init__(domain, name)
         self.act_sent_pair = []
 
-    def update(self, to_update_dic_usr, to_update_dic_sys, usr_texts, usr_labels, last_sys_labels, last_sys_sents):
+    def update(self, to_update_dic_usr, to_update_dic_sys, usr_texts, usr_labels):
         # update using the user inputs    
-        if SystemAct.PROVIDE_ORG_FACTS in last_sys_labels:
+        if SystemAct.PROVIDE_ORG_FACTS in self.last_labels:
             # as long as the system talks about the org facts, then the user has heard of it.
             self.usr_profile[self.domain.HEARD_OF_THE_ORG] = self.domain.YES
 
-        self.last_sents = last_sys_sents
-        self.last_labels = last_sys_labels
+        # self.last_sents = last_sys_sents
+        # self.last_labels = last_sys_labels
 
         self.usr_profile.update(to_update_dic_usr)
         self.sys_profile.update(to_update_dic_sys)
 
         usr_text = " ".join(usr_texts)
-        for last_sys_label in last_sys_labels:
+        for last_sys_label in self.last_labels:
             if last_sys_label in self.sent_profile:
                 self.sent_profile[last_sys_label].append(usr_text)
             else:
@@ -1070,7 +1133,7 @@ class UsrWorld(IndividualWorld):
                                                                         itertools.chain(*self.sent_profile.values()), 
                                                                         threshold=cfg.repetition_threshold)
 
-            if "inquiry" in sys_label:
+            if "inquiry" in sys_label and "to-inquiry" not in sys_label:
                 # e.g. sys: have you heard of save the children?
                 #      usr: i have heard of it
                 #      sys: do you know about save the children?
@@ -1140,26 +1203,56 @@ class UsrWorld(IndividualWorld):
         # print(sys_text)
         # print(sys_label)
         if sys_label in act_to_attributes:
-            if sys_label == SystemAct.organization_related_inquiry:
-                if self.usr_profile[act_to_attributes[SystemAct.organization_related_inquiry]] in [self.domain.YES, self.domain.NO]: ### change here
-                    return True
-                else:
-                    return False
-            elif sys_label == SystemAct.propose_donation_inquiry:
-                if self.usr_profile[act_to_attributes[SystemAct.propose_donation_inquiry]] in [self.domain.YES]:
-                    return True
-                else: 
-                    donation_amount = self.usr_profile[self.domain.DONATION_AMOUNT]
-                    try:
-                        donation_amount = int(donation_amount)
-                        if donation_amount > 0:
-                            return True
-                        else:
-                            return False
-                    except:
+            if False:
+                if sys_label == SystemAct.organization_related_inquiry:
+                    if self.usr_profile[act_to_attributes[SystemAct.organization_related_inquiry]] in [self.domain.YES, self.domain.NO]: ### change here
+                        return True
+                    else:
                         return False
+                elif sys_label == SystemAct.propose_donation_inquiry:
+                    if self.usr_profile[act_to_attributes[SystemAct.propose_donation_inquiry]] in [self.domain.YES]:
+                        return True
+                    else: 
+                        donation_amount = self.usr_profile[self.domain.DONATION_AMOUNT]
+                        try:
+                            donation_amount = float(donation_amount)
+                            if donation_amount > 0:
+                                return True
+                            else:
+                                return False
+                        except:
+                            return False
             else:
-                if self.usr_profile[act_to_attributes[sys_label]] != self.domain.INIT: ### change here
+                if sys_label == SystemAct.propose_donation_inquiry:
+                    if "how much" in sys_text.lower():
+                        donation_amount = self.usr_profile[self.domain.DONATION_AMOUNT]
+                        try:
+                            donation_amount = float(donation_amount)
+                            if donation_amount > 0:
+                                return True
+                            else:
+                                return False
+                        except:
+                            any_provide_amount = any(["provide-donation-amount" in pair[0][0] for pair in self.act_sent_pair]) 
+                            if any_provide_amount:
+                                return True
+                            else:
+                                return False
+
+                    else:
+                        if self.usr_profile[act_to_attributes[SystemAct.propose_donation_inquiry]] in [self.domain.YES]:
+                            return True
+                        else: 
+                            donation_amount = self.usr_profile[self.domain.DONATION_AMOUNT]
+                            try:
+                                donation_amount = float(donation_amount)
+                                if donation_amount > 0:
+                                    return True
+                                else:
+                                    return False
+                            except:
+                                return False
+                elif self.usr_profile[act_to_attributes[sys_label]] != self.domain.INIT: ### change here
                     return True
                 else:
                     return False
@@ -1187,14 +1280,17 @@ class UsrWorld(IndividualWorld):
         #     return False
         # else:
         #     return True
-        assert sys_label in [SystemAct.other_inquiry]
+        try:
+            assert sys_label in [SystemAct.other_inquiry]
+        except:
+            pdb.set_trace()
         if is_repetition_inquiry:
             # inquiries with similar wording have been asked
             return True
         else:
             return False
 
-    def syncup(self, profile_to_sync, whose=None):
+    def syncup(self, profile_to_sync, last_sys_labels, last_sys_sents, whose=None):
         if whose is None:
             whose = self.domain.SYS
         if whose == self.domain.USR:
@@ -1203,6 +1299,9 @@ class UsrWorld(IndividualWorld):
         else:
             for k, v in profile_to_sync.items():
                 self.sys_profile[k] = v
+
+        self.last_labels = last_sys_labels
+        self.last_sents = last_sys_sents
     
 
 class SysWorld(IndividualWorld):
@@ -1211,11 +1310,11 @@ class SysWorld(IndividualWorld):
         self.sys_profile[self.domain.HEARD_OF_THE_ORG] = self.domain.YES
         self.sys_profile[self.domain.WANT_TO_DONATE] = self.domain.YES
 
-    def update(self, to_update_dic_usr, to_update_dic_sys, sys_texts, sys_labels, last_usr_labels, last_usr_sents):
+    def update(self, to_update_dic_usr, to_update_dic_sys, sys_texts, sys_labels):
         # update using the system inputs
         # label = self.regex_label(sys_text, context, turn_i)
-        self.last_sents = last_usr_sents
-        self.last_labels = last_usr_labels
+        # self.last_sents = last_usr_sents
+        # self.last_labels = last_usr_labels
 
         self.usr_profile.update(to_update_dic_usr)
         self.sys_profile.update(to_update_dic_sys)
@@ -1238,7 +1337,7 @@ class SysWorld(IndividualWorld):
 
             
             if True: #sys_label in self.sent_profile:
-                if "inquiry" in sys_label:
+                if "inquiry" in sys_label and "to-inquiry" not in sys_label:
                     # 1. inquiry
                     if False:
                         # this is repetition inquiry
@@ -1247,6 +1346,7 @@ class SysWorld(IndividualWorld):
                     else:
                         return cfg.PASS, repetition_ratio
                 else:
+                    
                     # 2. statement                    
                     if is_repetition:
                         # 2.1 fake repetition
@@ -1263,10 +1363,15 @@ class SysWorld(IndividualWorld):
                             if cfg.verbose:
                                 print("{} encountered in sys_check statements! don't form qa_pair {}: {}".format(cfg.REPETITION, sys_label, sys_text))
                                 logging.info("{} encountered in sys_check statements! don't form qa_pair {}: {}".format(cfg.REPETITION, sys_label, sys_text))
+                            # pdb.set_trace()
                             return cfg.REPETITION, repetition_ratio
 
                     else:
-                        return cfg.PASS, repetition_ratio
+                        if self.answer_out_of_nowhere(sys_text=sys_text, sys_label=sys_label):
+                            # pdb.set_trace()
+                            return cfg.REPETITION, repetition_ratio
+                        else:
+                            return cfg.PASS, repetition_ratio
 
             # else:
             #     if is_repetition:
@@ -1308,7 +1413,7 @@ class SysWorld(IndividualWorld):
         # if we cannot extract the answer to the sys_text from the usr_response_list, then it's not answered.
         #===QA=== improvements comes in 
         #todo
-        last_user_label_is_inquiry = any(["inquiry" in l for l in self.last_labels])
+        last_user_label_is_inquiry = any(["inquiry" in l and ("to-inquiry" not in sys_label) for l in self.last_labels])
         if last_user_label_is_inquiry:
             if UserAct.donation_procedure_inquiry in self.last_labels:
                 if SystemAct.PROVIDE_DONATION_PROCEDURE in sys_label:
@@ -1332,13 +1437,27 @@ class SysWorld(IndividualWorld):
             # greeting_answer = SharedDialogAct.greeting_answer
         else:
             return False
-        
+
+    def answer_out_of_nowhere(self, sys_text, sys_label):
+        """
+        True: if the system says some answer out of no where
+        False: the system didn't say anything irrelavent answers
+        """
+        if SystemAct.greeting_answer in sys_label:
+            if self.last_labels and UserAct.greeting_inquiry in self.last_labels:
+                return False 
+            else:
+                return True
+        else:
+            return False
+
+
     def refresh(self):
         super().refresh()
         self.sys_profile[self.domain.HEARD_OF_THE_ORG] = self.domain.YES
         self.sys_profile[self.domain.WANT_TO_DONATE] = self.domain.YES
         
-    def syncup(self, profile_to_sync, whose=None):
+    def syncup(self, profile_to_sync, last_usr_labels, last_usr_sents, whose=None):
         if whose is None:
             whose = self.domain.USR
 
@@ -1349,6 +1468,8 @@ class SysWorld(IndividualWorld):
             for k, v in profile_to_sync.items():
                 self.sys_profile[k] = v
 
+        self.last_labels = last_usr_labels
+        self.last_sents = last_usr_sents
     # def correct_user(self, ):
 
 

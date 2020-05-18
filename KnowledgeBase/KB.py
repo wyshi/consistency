@@ -61,6 +61,8 @@ class HumanRule(object):
             # have to propose donation at this turn if it hasn't proposed yet
             enforced_acts = [SystemAct.propose_donation_inquiry, SystemAct.PROVIDE_DONATION_PROCEDURE]
             enforced_templates = self.sys_template.get_template(enforced_acts)
+            enforced_acts_last_ask = [SystemAct.propose_donation_inquiry]
+            enforced_templates_last_ask = self.sys_template.get_template(enforced_acts_last_ask)
             import pdb
             # pdb.set_trace()
             usr_labels = self.chatbot.global_profile.history_label
@@ -68,6 +70,9 @@ class HumanRule(object):
 
             if any_is_agree:
                 return None
+
+            if not any_is_agree and self.chatbot.turn_i == cfg.HAVE_TO_ASK_AGAIN:
+                return ["How much would like to donate to the charity now?"], enforced_acts_last_ask
 
             if (SystemAct.propose_donation_inquiry in self.chatbot.global_profile.sys_world.sent_profile.keys()):
                 return None

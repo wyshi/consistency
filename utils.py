@@ -169,3 +169,24 @@ def print_cm(cm, labels, hide_zeroes=False, hide_diagonal=False, hide_threshold=
 
 
 
+import nltk
+import pdb
+
+def filter_ngram(utt, n):
+    words = utt.split()
+    right = n
+    repeat = False
+    while right <= len(words):
+        cur_grams = nltk.ngrams(words[:right], n)
+        fdist = nltk.FreqDist(cur_grams)
+        if any([v > 1 for v in fdist.values()]):
+            repeat = True
+            break
+        # for k, v in fdist.items():
+        #     if v > 1:
+        #         break
+        # pdb.set_trace()
+        right += 1
+    if repeat:
+        right = right - n
+    return " ".join(words[:right])

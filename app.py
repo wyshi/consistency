@@ -169,12 +169,8 @@ def delay_for_typing(RECEIVED_TIME, response):
     time_to_sleep_word = time_to_type_word - time_already_passed
 
     time_to_sleep = min(time_to_sleep_char, time_to_sleep_word)
-<<<<<<< HEAD
-
-=======
     # time_to_sleep -= 0.5
     
->>>>>>> dialog_server
     if time_to_sleep > 0:
         time_to_sleep = min(time_to_sleep, 30)
         print(f"sleep for {time_to_sleep}")
@@ -182,11 +178,6 @@ def delay_for_typing(RECEIVED_TIME, response):
 
 @app.route("/user_stop", methods=['POST'])
 def userStop():
-<<<<<<< HEAD
-    TIME = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
-    logging.info(f"!!!!!--------- AMT end test: datetime {TIME}----------")
-    model.reload()
-=======
     sid = request.json.get('sid')
     print(f"sid to stop: {sid}")
     logging.info(f"sid to stop: {sid}")
@@ -210,7 +201,6 @@ def userStop():
         print(f"MODEL_MAP in userStop: {MODEL_MAP.keys()}")
         assert sid not in MODEL_MAP
 
->>>>>>> dialog_server
     return jsonify({"reload_success": True})
 
 @app.route("/persuasion_bot", methods=['POST'])
