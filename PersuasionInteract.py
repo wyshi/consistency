@@ -1221,7 +1221,7 @@ if __name__ == "__main__":
     bot = PersuasiveBot(model_config=CurrentModelConfig, 
                         model_A=model_A, model_B=model_B, tokenizer=TOKENIZER, 
                         device1=DEVICE1, device2=DEVICE2)
-    MODE = cfg.self_play_mode#cfg.interactive_mode#cfg.self_play_mode
+    MODE = cfg.interactive_mode#cfg.self_play_mode#cfg.interactive_mode#cfg.self_play_mode
 
     # bot = PersuasiveBot()
     # pdb.set_trace()

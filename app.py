@@ -27,7 +27,7 @@ from torchfly.modules.losses import SequenceFocalLoss, SequenceCrossEntropyLoss
 import logging
 from sentence_transformers import SentenceTransformer
 
-LOG_FILE = 'logs/amt_new_model-no_RL-real.log'
+LOG_FILE = 'logs/amt_new_model-no_RL-real-real.log'
 logging.basicConfig(filename=LOG_FILE,level=logging.DEBUG)
 TIME = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
 logging.info(f"!!!!!--------- AMT test: datetime {TIME}----------")

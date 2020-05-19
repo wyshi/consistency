@@ -71,7 +71,7 @@ class HumanRule(object):
             if any_is_agree:
                 return None
 
-            if not any_is_agree and self.chatbot.turn_i == cfg.HAVE_TO_ASK_AGAIN:
+            if (not any_is_agree) and (self.chatbot.turn_i == cfg.HAVE_TO_ASK_AGAIN) and (not (SystemAct.propose_donation_inquiry in sent_acts)):
                 return ["How much would like to donate to the charity now?"], enforced_acts_last_ask
 
             if (SystemAct.propose_donation_inquiry in self.chatbot.global_profile.sys_world.sent_profile.keys()):
@@ -99,7 +99,11 @@ class HumanRule(object):
                             return True
                     if cfg.verbose:
                         print("case 3")
-                    return enforced_templates, enforced_acts # didn't find appropriate candidates, so we append this sentence 
+                    if SystemAct.PROVIDE_DONATION_PROCEDURE in sent_acts:
+                        # if already said donation procedure, don't repeat
+                        return enforced_templates[:1], enforced_acts[:1]
+                    else:
+                        return enforced_templates, enforced_acts # didn't find appropriate candidates, so we append this sentence 
 
                 # edited_enforced_templates = []
                 # edited_enforced_acts = []
