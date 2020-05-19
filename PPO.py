@@ -295,9 +295,6 @@ def load_GPT2(cfg, device1, split_into, device_list, dropout):
 
 
 
-# In[42]:
-
-
 def distribute_collect(sequences, logprobs, pred_token, pred_logprob, working_indices, termination_token=2):
     """To support effecient batch text generation
         The algorithm automatically filters out generated samples.
@@ -371,8 +368,10 @@ class CustomRewardFunc:
         self.backup_candidates_reward = 0.5
         self.failed_candidates_reward = -2
         self.long_candidate_penalty = -3
+        self.short_candidate_penalty = -3
         self.len_denominator = float('Inf')
         self.len_cut = 50
+        self.len_min = 2
 
 
     def __call__(self, sequences, have_enough_candidates, with_ground_truth):
@@ -384,29 +383,48 @@ class CustomRewardFunc:
         rewards = []
         if have_enough_candidates:
             for sent in sents_success:
-                if len(sent.split()) < self.len_cut:
-                    rewards.append(self.success_candidates_reward + len(sent.split())/self.len_denominator)
-                else:
+                sent_len = len(sent.split())
+                if self.len_min < sent_len and sent_len < self.len_cut:
+                    rewards.append(self.success_candidates_reward + sent_len/self.len_denominator)
+                elif sent_len >= self.len_cut:
                     rewards.append(self.long_candidate_penalty)
+                elif sent_len <= self.len_min:
+                    rewards.append(self.short_candidate_penalty)
+                else:
+                    raise ValueError
             for sent in sents_failed:
-                if len(sent.split()) < self.len_cut:
-                    rewards.append(self.failed_candidates_reward - len(sent.split())/self.len_denominator)
-                else:
+                sent_len = len(sent.split())
+                if self.len_min < sent_len and sent_len < self.len_cut:
+                    rewards.append(self.failed_candidates_reward - sent_len/self.len_denominator)
+                elif sent_len >= self.len_cut:
                     rewards.append(self.long_candidate_penalty)
+                elif sent_len <= self.len_min:
+                    rewards.append(self.short_candidate_penalty)
+                else:
+                    raise ValueError
             # rewards = [self.success_candidates_reward]*len(sents_success) + \
             #         [self.failed_candidates_reward]*len(sents_failed)                
         else:
             for sent in sents_success:
-                if len(sent.split()) < self.len_cut:
-                    rewards.append(self.backup_candidates_reward + len(sent.split())/self.len_denominator)
-                else:
+                sent_len = len(sent.split())
+                if self.len_min < sent_len and sent_len < self.len_cut:
+                    rewards.append(self.backup_candidates_reward + sent_len/self.len_denominator)
+                elif sent_len >= self.len_cut:
                     rewards.append(self.long_candidate_penalty)
+                elif sent_len <= self.len_min:
+                    rewards.append(self.short_candidate_penalty)
+                else:
+                    raise ValueError
             for sent in sents_failed:
-                if len(sent.split()) < self.len_cut:
-                    rewards.append(self.failed_candidates_reward - len(sent.split())/self.len_denominator)
-                else:
+                sent_len = len(sent.split())
+                if self.len_min < sent_len and sent_len < self.len_cut:
+                    rewards.append(self.failed_candidates_reward - sent_len/self.len_denominator)
+                elif sent_len >= self.len_cut:
                     rewards.append(self.long_candidate_penalty)
-
+                elif sent_len <= self.len_min:
+                    rewards.append(self.short_candidate_penalty)
+                else:
+                    raise ValueError
             # rewards = [self.backup_candidates_reward]*len(sents_success) + \
             #         [self.failed_candidates_reward]*len(sents_failed)
         
@@ -969,7 +987,8 @@ class Trainer:
                     # torch.cuda.empty_cache()
                     torch.nn.utils.clip_grad_norm_(self.model_A.parameters(), 0.5)
                     optimizer.step()
-                    scheduler.step()
+                    if USE_ADAMW:
+                        scheduler.step()
                     optimizer.zero_grad()
 
             del past
@@ -987,11 +1006,11 @@ class Trainer:
             print(f"max memory B: {torch.cuda.max_memory_allocated(model_B.device)}")
             logger.info(f"max memory B: {torch.cuda.max_memory_allocated(model_B.device)}")
             if self.use_approx_kl:
-                model_name = f"Checkpoint/{self.trained_steps+PREVIOUS_STEPS}_steps_{mean_reward}_reward_model_A_kl_{round(np.mean(approx_kl_gpt2_list), 2)}.pth"
+                model_name = f"Checkpoint/{self.trained_steps+PREVIOUS_STEPS}_steps_{mean_reward}_reward_model_A_kl_{round(np.mean(approx_kl_gpt2_list), 2)}_{log_dir.split('/')[-1].split('.')[0]}.pth"
             else:
-                model_name = f"Checkpoint/{self.trained_steps+PREVIOUS_STEPS}_steps_{mean_reward}_reward_model_A_kl_{round(np.mean(accurate_kl_gpt2_list), 2)}.pth"
+                model_name = f"Checkpoint/{self.trained_steps+PREVIOUS_STEPS}_steps_{mean_reward}_reward_model_A_kl_{round(np.mean(accurate_kl_gpt2_list), 2)}_{log_dir.split('/')[-1].split('.')[0]}.pth"
             torch.save((self.model_A.state_dict(), self.model_B.state_dict()), model_name)
-            torch.save(self.replay_buffer, f"Checkpoint/replay_buffer.pth")
+            torch.save(self.replay_buffer, f"Checkpoint/replay_buffer_{log_dir.split('/')[-1].split('.')[0]}.pth")
 
     def calculate_loss(self, sequences_logprob, old_logprob, old_logprob_gpt2, reward,
                        logits, old_logits, old_logits_gpt2, normalize_over_length):
@@ -1102,19 +1121,27 @@ class Trainer:
             return loss, approx_kl.item(), None, approx_kl_gpt2.mean().item(), None, policy_loss.mean().item()
 
 if __name__ == "__main__":
-    log_dir = max([int(f[3]) for f in listdir(".") if f.startswith("ppo") and f.endswith(".log")]) + 1
-    log_dir = f"ppo{log_dir}.log"
+    try:
+        log_dir = max([int(f[3]) for f in listdir("./logs/ppo") if f.startswith("ppo") and f.endswith(".log")]) + 1
+    except:
+        log_dir = 1
+    log_dir = f"logs/ppo/ppo{log_dir}.log"
     logging.basicConfig(filename=log_dir, level=logging.INFO)
     # logging.basicConfig(filename='hello2.log', level=logging.INFO)
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
+
+    logger.info("PpoParams")
+    for k, v in vars(PpoParams).items():
+        if not k.startswith("__"):
+            logger.info(f"{k}: {v}")
 
     NEW_MODEL_A_DIR = None#"Checkpoint/7_steps_2.3_reward_model_A_kl_47.13.pth"#None#"Checkpoint/9_steps_1.3272727272727274_reward_model_A.pth"#None#"Checkpoint/7_steps_1.984710743801653_reward_model_A.pth"#None#"Checkpoint/30_steps_2.0_reward_model_A.pth"#None#"Checkpoint/9_steps_-0.03278688524590164_reward_model_A.pth"#None#"Checkpoint/1_steps_1.12_reward_model_A.pth"#None#"Checkpoint/20_steps_0.049586776859504134_reward_model_A.pth"
     REPLAY_BUFFER_DIR = None#"Checkpoint/replay_buffer_in_exception.pth"#None#"Checkpoint/replay_buffer_in_exception.pth"#None#"Checkpoint/replay_buffer.pth"#None#"Checkpoint/replay_buffer.pth"#None#"Checkpoint/replay_buffer.pth"#None#"Checkpoint/replay_buffer.pth"#"Checkpoint/replay_buffer.pth"#None#"Checkpoint/replay_buffer.pth"
     DEBUG = False
     USE_APPROX_KL = False
     PREVIOUS_STEPS = 0
-    TOTAL_STEPS = 50
+    TOTAL_STEPS = 100
 
     if REPLAY_BUFFER_DIR is not None:
         replay_buffer_temp = torch.load(REPLAY_BUFFER_DIR)
@@ -1152,13 +1179,14 @@ if __name__ == "__main__":
     clip_range = 0.2
     entropy_coef = 1e-2
     kl_gpt2_coef = 1e-2
+    logger.info(f"kl_gpt2_coef: {kl_gpt2_coef}")
     min_entropy = 10.0 # depends on the task
     criterion = SequenceCrossEntropyLoss()
 
 
     class CurrentModelConfig:
         with_rule = False
-        log_file = f'logs/{log_dir}'
+        log_file = log_dir#f'logs/ppo/{log_dir}'
         
         with_baseline =  True
         with_repetition_module = True
@@ -1184,6 +1212,12 @@ if __name__ == "__main__":
         else:
             NUM_CANDIDATES = cfg.NUM_CANDIDATES
 
+    logger.info("CurrentModelConfig")
+    for k, v in vars(CurrentModelConfig).items():
+        if not k.startswith("__"):
+            logger.info(f"{k}: {v}")
+        
+
     actor = Actor(CurrentModelConfig, model_A=model_A, model_B=model_B, tokenizer=tokenizer, 
                   device1=DEVICE1, device2=DEVICE2, dialog_i=PREV_DIALOGS)
 
@@ -1203,29 +1237,32 @@ if __name__ == "__main__":
 
     num_train_optimization_steps = PpoParams.ppo_epoch * (PpoParams.batchsize // PpoParams.mini_batchsize) * TOTAL_STEPS
 
-    from pytorch_pretrained_bert import OpenAIAdam    
-    # optimizer = OpenAIAdam(optimizer_grouped_parameters,
-    #                     lr=2e-5,
-    #                     warmup=0.1,
-    #                     max_grad_norm=1.0,
-    #                     weight_decay=0.01,
-    #                     t_total=num_train_optimization_steps)
+    USE_ADAMW = False
+    if not USE_ADAMW:
+        from pytorch_pretrained_bert import OpenAIAdam    
+        optimizer = OpenAIAdam(optimizer_grouped_parameters,
+                            lr=2e-5,
+                            warmup=0.1,
+                            max_grad_norm=1.0,
+                            weight_decay=0.01,
+                            t_total=num_train_optimization_steps)
+    else:
+        from transformers import get_linear_schedule_with_warmup
+        optimizer = AdamW(optimizer_grouped_parameters,
+                        lr=2e-5,
+                        eps=1e-06)
+        scheduler = get_linear_schedule_with_warmup(optimizer,
+                                         num_warmup_steps=100,
+                                         num_training_steps=num_train_optimization_steps)
+        # optimizer = FusedAdam(optimizer_grouped_parameters, 
+        #                     lr=1e-6,
+        #                     eps=1e-06,
+        #                     bias_correction=False)
     # from fairseq.optim.adafactor import Adafactor
     # optimizer = Adafactor(optimizer_grouped_parameters,
     #                       lr=2e-5,
     #                       clip_threshold=1,
     #                       )
-    # from transformers import get_linear_schedule_with_warmup
-    optimizer = AdamW(optimizer_grouped_parameters,
-                    lr=3e-5,
-                    eps=1e-06)
-    scheduler = get_linear_schedule_with_warmup(optimizer,
-                                     num_warmup_steps=100,
-                                     num_training_steps=num_train_optimization_steps)
-    # optimizer = FusedAdam(optimizer_grouped_parameters, 
-    #                     lr=1e-6,
-    #                     eps=1e-06,
-    #                     bias_correction=False)
 
 
 
@@ -1245,8 +1282,8 @@ if __name__ == "__main__":
             # print(torch.cuda.memory_summary(device=model_B.device, abbreviated=False))
 
         except:
-            torch.save((trainer.model_A.state_dict(), trainer.model_B.state_dict()), f"Checkpoint/in_exception_{trainer.trained_steps}_steps_reward_model_A.pth")
-            torch.save(trainer.replay_buffer, f"Checkpoint/replay_buffer_in_exception.pth")
+            torch.save((trainer.model_A.state_dict(), trainer.model_B.state_dict()), f"Checkpoint/in_exception_{trainer.trained_steps}_steps_reward_model_A_{log_dir.split('/')[-1].split('.')[0]}.pth")
+            torch.save(trainer.replay_buffer, f"Checkpoint/replay_buffer_in_exception_{log_dir.split('/')[-1].split('.')[0]}.pth")
             print(torch.cuda.memory_summary(device=model_A.device, abbreviated=False))
             print(torch.cuda.memory_summary(device=model_B.device, abbreviated=False))
     else:

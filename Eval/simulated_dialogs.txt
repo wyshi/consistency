@@ -172,3 +172,15 @@ Epoch 0 Validation Perplexity B: 19.508286649530586 Variance: 54.61690058688758
 Checkpoint/43_steps_2.6611570247933884_reward_model_A_kl_9.37.pth
 Epoch 0 Validation Perplexity A: 13.479661710334547 Variance: 27.031199272782633
 Epoch 0 Validation Perplexity B: 16.323324179408527 Variance: 44.72410813210546
+/data/wyshi/persuasion/consistency/Checkpoint/first_train-32,32*3, 256,1e-2/48_steps_2.727272727272727_reward_model_A_kl_5.73.pth
+Epoch 0 Validation Perplexity A: 13.285780425023551 Variance: 27.07175578370491
+Epoch 0 Validation Perplexity B: 15.993986900406654 Variance: 43.63971841320761
+/data/wyshi/persuasion/consistency/Checkpoint/first_train-32,32*3, 256,1e-2/53_steps_2.581818181818182_reward_model_A_kl_5.42.pth
+Epoch 0 Validation Perplexity A: 13.36258451866381 Variance: 27.352088018762185
+Epoch 0 Validation Perplexity B: 16.015353751905035 Variance: 43.7418066778454
+/home/wyshi/persuasion/consistency/Checkpoint/9_steps_1.64_reward_model_A_kl_7.57_ppo2.pth
+Epoch 0 Validation Perplexity A: 15.843699681638467 Variance: 52.84263280597421
+Epoch 0 Validation Perplexity B: 16.703085022743302 Variance: 49.23405404160636
+/data/wyshi/persuasion/consistency/Checkpoint/first_train-32,32*3, 256,1e-2/33_steps_2.6545454545454548_reward_model_A_kl_6.08.pth
+Epoch 0 Validation Perplexity A: 13.466564703469325 Variance: 26.76610506551141
+Epoch 0 Validation Perplexity B: 15.981952098884967 Variance: 40.74582321085207

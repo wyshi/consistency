@@ -1,15 +1,15 @@
 import os
 from pathlib import Path
 
-paths = sorted(Path("Checkpoint").iterdir(), key=os.path.getmtime)
-rewards = []
-for p in paths:
-    p = str(p)
-    if "steps" in p and "exception" not in p:
-        rewards.append(str(p.split("_")[2])+"\n")
+# paths = sorted(Path("Checkpoint").iterdir(), key=os.path.getmtime)
+# rewards = []
+# for p in paths:
+#     p = str(p)
+#     if "steps" in p and "exception" not in p:
+#         rewards.append(str(p.split("_")[2])+"\n")
 
-with open("Checkpoint/rewards.txt", "w") as fh:
-    fh.writelines(rewards)
+# with open("Checkpoint/rewards.txt", "w") as fh:
+#     fh.writelines(rewards)
 
 ### ppl
 import os
@@ -254,17 +254,19 @@ def validate(dataloader, model_A, model_B, ep=0):
 
 # load models
 TOKENIZER = GPT2Tokenizer.from_pretrained("gpt2")#torch.load(tokenizer_dir)
-EVAL_MODEL_A_DIR = cfg.model_to_eval_dir
+# EVAL_MODEL_A_DIR = "/home/wyshi/persuasion/consistency/ARDM/persuasion/persuasion_medium_3.th"
+EVAL_MODEL_A_DIR = "/data/wyshi/persuasion/consistency/Checkpoint/first_train-32,32*3, 256,1e-2/33_steps_2.6545454545454548_reward_model_A_kl_6.08.pth"
+# EVAL_MODEL_A_DIR = "/home/wyshi/persuasion/consistency/Checkpoint/9_steps_1.64_reward_model_A_kl_7.57_ppo2.pth"
 with open("Eval/simulated_dialogs.txt", "a") as fh:
     fh.write(f"{EVAL_MODEL_A_DIR}\n")
 
-DEVICE1 = torch.device(cfg.model_A_device)
-DEVICE1_list = cfg.model_A_device_list
-SPLIT_INTO1= cfg.split_into_A
+DEVICE1 = torch.device("cuda:5")#torch.device(cfg.model_A_device)
+DEVICE1_list = ["cuda:5"]
+SPLIT_INTO1= 1
 
-DEVICE2 = torch.device(cfg.model_B_device)
-DEVICE2_list = cfg.model_B_device_list
-SPLIT_INTO2= cfg.split_into_B
+DEVICE2 = torch.device("cuda:6")
+DEVICE2_list = ['cuda:6']
+SPLIT_INTO2= 1
 val_dataloader = get_val_dataloader(TOKENIZER)
 
 
@@ -299,13 +301,14 @@ else:
     pass
 
 
-torch.cuda.empty_cache()
-cfg.candidate_select_strategy = cfg.IMITATION_LEARNING_SELECTION
-bot = PersuasiveBot(model_A=model_A, model_B=model_B, tokenizer=TOKENIZER, 
-                    device1=DEVICE1, device2=DEVICE2)
+if False:
+    torch.cuda.empty_cache()
+    cfg.candidate_select_strategy = cfg.IMITATION_LEARNING_SELECTION
+    bot = PersuasiveBot(model_A=model_A, model_B=model_B, tokenizer=TOKENIZER, 
+                        device1=DEVICE1, device2=DEVICE2)
 
 
-# calculate_num_success_candidates(bot, MAX_DIALOGS=3, mode=cfg.self_play_mode)
+    # calculate_num_success_candidates(bot, MAX_DIALOGS=3, mode=cfg.self_play_mode)
 
-calculate_num_success_candidates(bot, MAX_DIALOGS=100, mode=cfg.interactive_mode)
+    calculate_num_success_candidates(bot, MAX_DIALOGS=100, mode=cfg.interactive_mode)
 
