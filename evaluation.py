@@ -6,7 +6,7 @@ from pathlib import Path
 # for p in paths:
 #     p = str(p)
 #     if "steps" in p and "exception" not in p:
-#         rewards.append(str(p.split("_")[2])+"\n")
+#         rewards.append(str(p.split("_steps_")[1].split("_")[0])+"\n")
 
 # with open("Checkpoint/rewards.txt", "w") as fh:
 #     fh.writelines(rewards)
@@ -255,17 +255,18 @@ def validate(dataloader, model_A, model_B, ep=0):
 # load models
 TOKENIZER = GPT2Tokenizer.from_pretrained("gpt2")#torch.load(tokenizer_dir)
 # EVAL_MODEL_A_DIR = "/home/wyshi/persuasion/consistency/ARDM/persuasion/persuasion_medium_3.th"
-EVAL_MODEL_A_DIR = "/data/wyshi/persuasion/consistency/Checkpoint/first_train-32,32*3, 256,1e-2/33_steps_2.6545454545454548_reward_model_A_kl_6.08.pth"
-# EVAL_MODEL_A_DIR = "/home/wyshi/persuasion/consistency/Checkpoint/9_steps_1.64_reward_model_A_kl_7.57_ppo2.pth"
+# EVAL_MODEL_A_DIR = "/data/wyshi/persuasion/consistency/Checkpoint/first_train-32,32*3, 256,1e-2/33_steps_2.6545454545454548_reward_model_A_kl_6.08.pth"
+EVAL_MODEL_A_DIR = "/home/wyshi/persuasion/consistency/Checkpoint/26_steps_1.8666666666666667_2.606060606060606_reward_model_A_kl_5.5_ppo3.pth"
+# EVAL_MODEL_A_DIR = "models/persuasion-gpt2-medium.pth"
 with open("Eval/simulated_dialogs.txt", "a") as fh:
     fh.write(f"{EVAL_MODEL_A_DIR}\n")
 
-DEVICE1 = torch.device("cuda:5")#torch.device(cfg.model_A_device)
-DEVICE1_list = ["cuda:5"]
+DEVICE1 = torch.device("cuda:2")#torch.device(cfg.model_A_device)
+DEVICE1_list = ["cuda:2"]
 SPLIT_INTO1= 1
 
-DEVICE2 = torch.device("cuda:6")
-DEVICE2_list = ['cuda:6']
+DEVICE2 = torch.device("cuda:3")
+DEVICE2_list = ['cuda:3']
 SPLIT_INTO2= 1
 val_dataloader = get_val_dataloader(TOKENIZER)
 

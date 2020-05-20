@@ -565,7 +565,9 @@ class Actor(PersuasiveBot):
                             # update contexts
                             logging.info(f"sys: {ground_truth}")
                             logging.info(f"success candidates: {sents_success}")
+                            logging.info(f"success candidates avg len: {np.mean([len(one_sent.split()) for one_sent in sents_success])}")
                             logging.info(f"failed candidates: {sents_failed}")
+                            logging.info(f"failed candidates avg len: {np.mean([len(one_sent.split()) for one_sent in sents_failed])}")
                             logging.info(f"----------------------")
                             self.contexts.append("A:"+ground_truth)
 
@@ -994,8 +996,11 @@ class Trainer:
             del past
             torch.cuda.empty_cache() 
             mean_reward = np.mean([r for r in all_rewards if r != self.actor.reward_func.ground_truth_reward])
+            mean_reward_2 = np.mean(all_rewards)
             print("Mean Reward", mean_reward)
             logger.info(f"Mean Reward: {mean_reward}")
+            print(f"Mean Reward with ground truth: {mean_reward_2}")
+            logging.info(f"Mean Reward with ground truth: {mean_reward_2}")
             end = time.time()
             speed = (end - start) / PpoParams.batchsize
             print("Speed", speed)
@@ -1006,9 +1011,9 @@ class Trainer:
             print(f"max memory B: {torch.cuda.max_memory_allocated(model_B.device)}")
             logger.info(f"max memory B: {torch.cuda.max_memory_allocated(model_B.device)}")
             if self.use_approx_kl:
-                model_name = f"Checkpoint/{self.trained_steps+PREVIOUS_STEPS}_steps_{mean_reward}_reward_model_A_kl_{round(np.mean(approx_kl_gpt2_list), 2)}_{log_dir.split('/')[-1].split('.')[0]}.pth"
+                model_name = f"Checkpoint/{self.trained_steps+PREVIOUS_STEPS}_steps_{mean_reward}_{mean_reward_2}_reward_model_A_kl_{round(np.mean(approx_kl_gpt2_list), 2)}_{log_dir.split('/')[-1].split('.')[0]}.pth"
             else:
-                model_name = f"Checkpoint/{self.trained_steps+PREVIOUS_STEPS}_steps_{mean_reward}_reward_model_A_kl_{round(np.mean(accurate_kl_gpt2_list), 2)}_{log_dir.split('/')[-1].split('.')[0]}.pth"
+                model_name = f"Checkpoint/{self.trained_steps+PREVIOUS_STEPS}_steps_{mean_reward}_{mean_reward_2}_reward_model_A_kl_{round(np.mean(accurate_kl_gpt2_list), 2)}_{log_dir.split('/')[-1].split('.')[0]}.pth"
             torch.save((self.model_A.state_dict(), self.model_B.state_dict()), model_name)
             torch.save(self.replay_buffer, f"Checkpoint/replay_buffer_{log_dir.split('/')[-1].split('.')[0]}.pth")
 
@@ -1178,7 +1183,7 @@ if __name__ == "__main__":
     USE_ENTROPY = False
     clip_range = 0.2
     entropy_coef = 1e-2
-    kl_gpt2_coef = 1e-2
+    kl_gpt2_coef = 1e-1
     logger.info(f"kl_gpt2_coef: {kl_gpt2_coef}")
     min_entropy = 10.0 # depends on the task
     criterion = SequenceCrossEntropyLoss()
