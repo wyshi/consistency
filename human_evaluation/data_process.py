@@ -36,9 +36,10 @@ for txt_dir in os.listdir("/home/wyshi/persuasion/test/ParlAI/data/personachat_c
 
 donation0.remove(-1)
 ttest_ind(donation0[2:101], donation0[101:])
+ttest_ind(np.array(donation0[2:101])>0, np.array(donation0[101:])>0)
 
 # model1
-df1 = pd.read_csv(f"../test/ParlAI/data/personachat_chat/post_task_survey (5:19:20, 7:37 PM).csv", names=columns)
+df1 = pd.read_csv(f"../test/ParlAI/data/personachat_chat/post_task_survey (5:20:20, 11:34 AM).csv", names=columns)
 df1 = df1.iloc[df_baseline.shape[0]:]
 df1 = df1[~df1['id'].isin(sandbox_id)]
 
@@ -49,4 +50,5 @@ ttest_ind(df.consis, df1.consis)
 ttest_ind(df.persuasive, df1.persuasive)
 ttest_ind(df.grammar, df1.grammar)
 ttest_ind(df.overall, df1.overall)
+ttest_ind(df.human=="Human", df1.human=="Human")
 ttest_ind(df_check.human=="Human", df1_check.human=="Human")

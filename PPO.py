@@ -1183,7 +1183,7 @@ if __name__ == "__main__":
     USE_ENTROPY = False
     clip_range = 0.2
     entropy_coef = 1e-2
-    kl_gpt2_coef = 1e-1
+    kl_gpt2_coef = 1e-2
     logger.info(f"kl_gpt2_coef: {kl_gpt2_coef}")
     min_entropy = 10.0 # depends on the task
     criterion = SequenceCrossEntropyLoss()
@@ -1242,7 +1242,7 @@ if __name__ == "__main__":
 
     num_train_optimization_steps = PpoParams.ppo_epoch * (PpoParams.batchsize // PpoParams.mini_batchsize) * TOTAL_STEPS
 
-    USE_ADAMW = False
+    USE_ADAMW = True
     if not USE_ADAMW:
         from pytorch_pretrained_bert import OpenAIAdam    
         optimizer = OpenAIAdam(optimizer_grouped_parameters,
