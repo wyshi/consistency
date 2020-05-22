@@ -53,8 +53,11 @@ ttest_ind(np.array(donation0[2:101])>0, np.array(donation0[101:])>0)
 (np.array(donation0[2:101])>0).mean(), (np.array(donation0[101:])>0).mean()
 np.array(donation0[2:101]).mean(), np.array(donation0[101:]).mean()
 
+ttest_ind(donation_df[donation_df.id.isin(df_real.id)]['donation'], donation_df[donation_df.id.isin(df1_real.id)]['donation'])
+ttest_ind(donation_df[donation_df.id.isin(df_real.id)]['donation']>0, donation_df[donation_df.id.isin(df1_real.id)]['donation']>0)
+
 # model1
-df1 = pd.read_csv(f"../test/ParlAI/data/personachat_chat/post_task_survey (5:21:20, 6:32 PM).csv", names=columns)
+df1 = pd.read_csv(f"../test/ParlAI/data/personachat_chat/post_task_survey (5:22:20, 11:18 AM).csv", names=columns)
 df1 = df1.iloc[df_baseline.shape[0]:]
 df1 = df1[~df1['id'].isin(sandbox_id)]
 df1 = df1[~df1['id'].isin(ids0)]
@@ -76,6 +79,23 @@ ttest_ind(df_check.persuasive, df1_check.persuasive)
 ttest_ind(df_check.overall, df1_check.overall)
 
 ids_inter = list(set(ids1) & set(sids))
+
+def ttest(df1, df2):
+    print(ttest_ind(df1.repeat, df2.repeat))
+    print(ttest_ind(df1.consis, df2.consis))
+    print(ttest_ind(df1.grammar, df2.grammar))
+    print(ttest_ind(df1.persuasive, df2.persuasive))
+    print(ttest_ind(df1.overall, df2.overall))
+    print(ttest_ind(df1.human=="Human", df2.human=="Human"))
+
+
+df_real = df2.iloc[:100].append(df2.iloc[-11:])
+df1_real = df2.iloc[100:-11]
+df_real = df_real[df_real.check=='right']
+df_real = df_real[~df_real.id.isin(['AAHVZF0ZP7HMD', 'A2SW4E5KZ6WZJ9'])]
+df1_real = df1_real[df1_real.check=='right']
+df1_real = df1_real[~df1_real.id.isin(['AAHVZF0ZP7HMD', 'A2SW4E5KZ6WZJ9'])]
+ttest(df_real, df1_real)
 
 sids = ["A2JS0X3RSHFFSN",
 "A1ZYTJAQNS5ICC",
