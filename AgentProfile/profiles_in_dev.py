@@ -696,6 +696,10 @@ class GlobalProfile(object):
         print(f"{who}: {sent_labels}: {sents}")
         print(f"{to_update_dic_usr}\n{to_update_dic_sys}")
         print("********************************************************************")
+        logging.info("things to update****************************************************")
+        logging.info(f"{who}: {sent_labels}: {sents}")
+        logging.info(f"{to_update_dic_usr}\n{to_update_dic_sys}")
+        logging.info("********************************************************************")
         # pdb.set_trace()
         if who == self.domain.USR:
             # last_sys_labels_temp = self.history_label[-1] if len(self.history_label) else None

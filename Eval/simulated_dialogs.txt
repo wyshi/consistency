@@ -194,3 +194,90 @@ Epoch 0 Validation Perplexity B: 15.851761133983882 Variance: 39.03171074718203
 /home/wyshi/persuasion/consistency/Checkpoint/26_steps_1.8666666666666667_2.606060606060606_reward_model_A_kl_5.5_ppo3.pth
 Epoch 0 Validation Perplexity A: 15.251322558431914 Variance: 41.42844449332077
 Epoch 0 Validation Perplexity B: 16.314223491784297 Variance: 43.87364129235277
+/home/wyshi/persuasion/consistency/Checkpoint/1_steps_1.86_2.6_reward_model_A_kl_13.28_ppo5.pth
+Epoch 0 Validation Perplexity A: 12.447364730064315 Variance: 25.74549085775214
+Epoch 0 Validation Perplexity B: 15.841439940712668 Variance: 38.94814382578624
+/home/wyshi/persuasion/consistency/Checkpoint/23_steps_1.79_2.536363636363636_reward_model_A_kl_7.53_ppo5.pth
+Epoch 0 Validation Perplexity A: 12.541224836099028 Variance: 24.174351614920493
+Epoch 0 Validation Perplexity B: 15.492194970448812 Variance: 38.68864330517641
+/home/wyshi/persuasion/consistency/Checkpoint/70_steps_1.7363636363636363_2.487603305785124_reward_model_A_kl_9.39_ppo5.pth
+Epoch 0 Validation Perplexity A: 11424.355381652562 Variance: 12383132885.365473
+Epoch 0 Validation Perplexity B: 840880347.7765151 Variance: 2.7190125259647787e+19
+/home/wyshi/persuasion/consistency/Checkpoint/1_steps_1.86_2.6_reward_model_A_kl_13.28_ppo5.pth
+Epoch 0 Validation Perplexity A: 12.447364730064315 Variance: 25.74549085775214
+Epoch 0 Validation Perplexity B: 15.841439940712668 Variance: 38.94814382578624
+/home/wyshi/persuasion/consistency/Checkpoint/1_steps_1.86_2.6_reward_model_A_kl_13.28_ppo5.pth
+Epoch 0 Validation Perplexity A: 12.447364730064315 Variance: 25.74549085775214
+Epoch 0 Validation Perplexity B: 15.841439940712668 Variance: 38.94814382578624
+/home/wyshi/persuasion/consistency/Checkpoint/1_steps_1.86_2.6_reward_model_A_kl_13.28_ppo5.pth
+Epoch 0 Validation Perplexity A: 12.447364730064315 Variance: 25.74549085775214
+Epoch 0 Validation Perplexity B: 15.841439940712668 Variance: 38.94814382578624
+dialog 1:
+usr: 
+sys: Hi there. How are you doing today?
+usr: hi i am doing good
+sys: I'd like to talk to you about a charity called Save the Children.
+usr: sure go ahead
+sys: How much would you like to donate to the charity now?
+usr: what does ths charity do? you haven't tell me yet
+sys: Save the Children is an international non-governmental organization that promotes children's rights, provides relief and helps support children in developing countries.
+usr: ok sorry i don't want to donate
+sys: Well, I am going to. I am going to donate the whole of my task payment.
+usr: that's very nice of you
+sys: I am going to donate a little more. I am going to donate a quarter, or something like that.
+usr: ok that's good of you
+sys: I am going to donate a little less. I think we are going to agree to donate $.50.
+usr: i didn't agree to anything...
+sys: I am sorry to hear that. Do you have children?
+usr: no i don't
+sys: Well, I have two kids. I think that is a lot of money. How much would like to donate to the charity now?
+usr: sorry still no
+sys: Would you like to donate a little more?
+usr: no sorry
+sys: I am sorry. I just can't do it.
+usr: then don't do it
+sys: So, I will donate a little more.
+-------------------------
+finally 74, 19, num dialogs 1
+/home/wyshi/persuasion/consistency/Checkpoint/23_steps_1.79_2.536363636363636_reward_model_A_kl_7.53_ppo5.pth
+Epoch 0 Validation Perplexity A: 12.541224836099028 Variance: 24.174351614920493
+Epoch 0 Validation Perplexity B: 15.492194970448812 Variance: 38.68864330517641
+dialog 1:
+usr: 
+sys: Hello there! How are you doing today?
+usr: hi i am good
+sys: Have you heard of a charity called Save the Children?
+usr: no what is it
+sys: Save the Children is an organization that helps support children around the world.
+usr: that sounds good 
+sys: They are also currently working with children in the US and around the world to help them get away from violence. Would you like to make a donation to Save the Children? You can choose any amount from $0 to all your task payment ($2) to donate, which will be directly deducted from your payment.
+usr: sorry no i don't want to
+sys: Thank you for your donation, but please be aware that this is an international organization.
+usr: but i don't want to donate
+sys: Donations are essential to help ensuring children's rights to health, education, safety, etc.
+usr: i agree, but i don't want to donate
+sys: So i'm going to donate
+usr: that's very kind of you
+sys: Thats good. You can help the children and the planet by donating.
+usr: sorry still no
+sys: You have the chance to donate $1 today. How much would you like to donate?
+usr: $0
+sys: Your donation will be directly deducted from your task payment.
+usr: ok good to know
+sys: Can I ask how much are you willing to donate?
+usr: $0 is my donation
+sys: This is a charity that cares about the children, so we need to do something about them.
+-------------------------
+finally 106, 22, num dialogs 1
+/data/wyshi/persuasion/consistency/Checkpoint/first_train-32,32*3, 256,1e-2/48_steps_2.727272727272727_reward_model_A_kl_5.73.pth
+Epoch 0 Validation Perplexity A: 13.285780425023551 Variance: 27.07175578370491
+Epoch 0 Validation Perplexity B: 15.993986900406654 Variance: 43.63971841320761
+finally 38, 9, num dialogs 0
+/home/wyshi/persuasion/consistency/Checkpoint/33_steps_1.76_2.5090909090909093_reward_model_A_kl_1.2_ppo4
+/home/wyshi/persuasion/consistency/Checkpoint/33_steps_1.76_2.5090909090909093_reward_model_A_kl_1.2_ppo4.pth
+Epoch 0 Validation Perplexity A: 13.890884433129822 Variance: 39.95632479532517
+Epoch 0 Validation Perplexity B: 15.988813751875751 Variance: 49.807172194421554
+finally 12, 5, num dialogs 0
+/home/wyshi/persuasion/consistency/Checkpoint/23_steps_1.79_2.536363636363636_reward_model_A_kl_7.53_ppo5.pth
+Epoch 0 Validation Perplexity A: 12.541224836099028 Variance: 24.174351614920493
+Epoch 0 Validation Perplexity B: 15.492194970448812 Variance: 38.68864330517641

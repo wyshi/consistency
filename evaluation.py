@@ -85,7 +85,7 @@ def calculate_num_success_candidates(bot, MAX_DIALOGS, mode):
                 TOTAL_TURNS += 1
                 response, [sents_success, sents_failed], have_enough_candidates, usr_input_text = result
                 TOTAL_SUCCESS_CANDIDATES += len(sents_success)
-            if cfg.candidate_select_strategy != cfg.HUMAN_SELECTION:
+            if CurrentModelConfig.candidate_select_strategy != cfg.HUMAN_SELECTION:
                 if cfg.verbose:
                     bot.global_profile.print()
             
@@ -255,8 +255,10 @@ def validate(dataloader, model_A, model_B, ep=0):
 # load models
 TOKENIZER = GPT2Tokenizer.from_pretrained("gpt2")#torch.load(tokenizer_dir)
 # EVAL_MODEL_A_DIR = "/home/wyshi/persuasion/consistency/ARDM/persuasion/persuasion_medium_3.th"
-# EVAL_MODEL_A_DIR = "/data/wyshi/persuasion/consistency/Checkpoint/first_train-32,32*3, 256,1e-2/33_steps_2.6545454545454548_reward_model_A_kl_6.08.pth"
-EVAL_MODEL_A_DIR = "/home/wyshi/persuasion/consistency/Checkpoint/26_steps_1.8666666666666667_2.606060606060606_reward_model_A_kl_5.5_ppo3.pth"
+# EVAL_MODEL_A_DIR = "/data/wyshi/persuasion/consistency/Checkpoint/first_train-32,32*3, 256,1e-2/48_steps_2.727272727272727_reward_model_A_kl_5.73.pth"#good, but with "what's your name" questions
+# EVAL_MODEL_A_DIR = "/home/wyshi/persuasion/consistency/Checkpoint/1_steps_1.86_2.6_reward_model_A_kl_13.28_ppo5.pth"#not so good
+EVAL_MODEL_A_DIR = "/home/wyshi/persuasion/consistency/Checkpoint/23_steps_1.79_2.536363636363636_reward_model_A_kl_7.53_ppo5.pth"#good
+# EVAL_MODEL_A_DIR = "/home/wyshi/persuasion/consistency/Checkpoint/33_steps_1.76_2.5090909090909093_reward_model_A_kl_1.2_ppo4.pth"#bad
 # EVAL_MODEL_A_DIR = "models/persuasion-gpt2-medium.pth"
 with open("Eval/simulated_dialogs.txt", "a") as fh:
     fh.write(f"{EVAL_MODEL_A_DIR}\n")
@@ -284,7 +286,7 @@ validate(val_dataloader, model_A, model_B, ep=0)
 # try:
 
 # so that the human rule can be applied
-cfg.rl_finetune = False
+# cfg.rl_finetune = False
 # cfg.candidate_select_strategy = cfg.IMITATION_LEARNING_SELECTION
 
 if False:
@@ -302,12 +304,49 @@ else:
     pass
 
 
-if False:
+if True:
+    LOG_FILE = "Eval/me_talking_to_the_bot_to_decide_which_to_use_for_RL_good_model.log"
+    class CurrentModelConfig:
+        with_rule = True
+        log_file = LOG_FILE
+        
+        with_baseline =  True
+        with_repetition_module = True
+        with_consistency_module = True
+        with_sentence_clf = True
+        with_RL_finetune_model = False
+
+        if not with_repetition_module and with_consistency_module:
+            candidate_select_strategy = cfg.RANDOM_SELECT
+        elif not with_repetition_module and not with_consistency_module:
+            candidate_select_strategy = cfg.RANDOM_SELECT
+        elif with_repetition_module and not with_consistency_module:
+            candidate_select_strategy = cfg.REPETITION_RATIO
+        elif with_repetition_module and with_consistency_module:
+            candidate_select_strategy = cfg.REPETITION_RATIO
+
+        if with_sentence_clf:
+            candidate_select_strategy = cfg.IMITATION_LEARNING_SELECTION
+
+        if with_baseline and (not with_repetition_module) and (not with_consistency_module) and (not with_sentence_clf)\
+            and (not with_RL_finetune_model):
+            NUM_CANDIDATES = 1
+            with_rule = False
+        else:
+            NUM_CANDIDATES = cfg.NUM_CANDIDATES
+    
     torch.cuda.empty_cache()
-    cfg.candidate_select_strategy = cfg.IMITATION_LEARNING_SELECTION
-    bot = PersuasiveBot(model_A=model_A, model_B=model_B, tokenizer=TOKENIZER, 
+    bot = PersuasiveBot(CurrentModelConfig, model_A=model_A, model_B=model_B, tokenizer=TOKENIZER, 
                         device1=DEVICE1, device2=DEVICE2)
 
+    print(f"with_baseline: {CurrentModelConfig.with_baseline}")
+    print(f"with_repetition_module: {CurrentModelConfig.with_repetition_module}")
+    print(f"with_consistency_module: {CurrentModelConfig.with_consistency_module}")
+    print(f"with_sentence_clf: {CurrentModelConfig.with_sentence_clf}")
+    print(f"with_RL_finetune_model: {CurrentModelConfig.with_RL_finetune_model}")
+    print(f"candidate_select_strategy: {CurrentModelConfig.candidate_select_strategy}")
+    print(f"NUM_CANDIDATES: {CurrentModelConfig.NUM_CANDIDATES}")
+    print(f"with_rule: {CurrentModelConfig.with_rule}")
 
     # calculate_num_success_candidates(bot, MAX_DIALOGS=3, mode=cfg.self_play_mode)
 
