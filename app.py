@@ -27,13 +27,14 @@ from torchfly.modules.losses import SequenceFocalLoss, SequenceCrossEntropyLoss
 import logging
 from sentence_transformers import SentenceTransformer
 
-LOG_FILE = 'logs/amt_new_model-no_RL-real-real.log'
+LOG_FILE = 'logs/amt_new_model-with_RL-real-real.log'
 logging.basicConfig(filename=LOG_FILE,level=logging.DEBUG)
 TIME = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
 logging.info(f"!!!!!--------- AMT test: datetime {TIME}----------")
 app = Flask(__name__)
 
-EVAL_MODEL_A_DIR = "/home/wyshi/persuasion/consistency/ARDM/persuasion/persuasion_medium_3.th"
+# EVAL_MODEL_A_DIR = "/home/wyshi/persuasion/consistency/ARDM/persuasion/persuasion_medium_3.th"
+EVAL_MODEL_A_DIR = "/home/wyshi/persuasion/consistency/Checkpoint/23_steps_1.79_2.536363636363636_reward_model_A_kl_7.53_ppo5.pth"
 
 class CurrentModelConfig:
     with_rule = True
@@ -43,7 +44,7 @@ class CurrentModelConfig:
     with_repetition_module = True
     with_consistency_module = True
     with_sentence_clf = True
-    with_RL_finetune_model = False
+    with_RL_finetune_model = True
 
     if not with_repetition_module and with_consistency_module:
         candidate_select_strategy = cfg.RANDOM_SELECT
@@ -130,6 +131,7 @@ def build_one_model(MAX_USER):
 
     # model = HuggingfaceModel("./runs/1000pretrained")
     model.reload()
+    logging.info(f"model_to_Eval: {EVAL_MODEL_A_DIR}")
     logging.info(f"with_baseline: {CurrentModelConfig.with_baseline}")
     logging.info(f"with_repetition_module: {CurrentModelConfig.with_repetition_module}")
     logging.info(f"with_consistency_module: {CurrentModelConfig.with_consistency_module}")

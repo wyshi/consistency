@@ -281,3 +281,36 @@ finally 12, 5, num dialogs 0
 /home/wyshi/persuasion/consistency/Checkpoint/23_steps_1.79_2.536363636363636_reward_model_A_kl_7.53_ppo5.pth
 Epoch 0 Validation Perplexity A: 12.541224836099028 Variance: 24.174351614920493
 Epoch 0 Validation Perplexity B: 15.492194970448812 Variance: 38.68864330517641
+dialog 1:
+usr: 
+sys: Hi how are you doing?
+usr: hello i am doing good
+sys: Have you heard of Save the Children?
+usr: yes i have
+sys: It's an organization that helps children in need around the world.
+usr: yes they are good
+sys: I think i am going to donate some of my payment for this task to them.
+usr: that very kind of you
+sys: I know it is kind of selfish of me to donate, but it's the right thing to do.
+usr: why is it selfish
+sys: If you like to donate to a charity, you can do it right now.
+usr: ok but not today sorry
+sys: Ok, how much would you like to donate to the charity now?
+usr: nothing 
+sys: What is the last thing you want to say to the children?
+usr: what children
+sys: We have to give back, we have to help other children
+usr: i agree but no sorry
+sys: A charity should be giving to other children
+usr: i agree
+sys: Do you believe that people who commit atrocities should be ashamed of themselves?
+usr: yes of course
+sys: Every day, millions of children die of hunger and are left with no one to help them.
+usr: that's sad
+sys: Would you be willing to donate to the charity Save the Children, in the name of a child, a small donation that can go towards the good of the child?
+usr: sorry still no
+sys: I have no interest in your money, but if you do donate, the money will go to helping children around the world.
+usr: sounds good
+sys: Your donation is essential to helping children in need.
+-------------------------
+finally 123, 22, num dialogs 1
