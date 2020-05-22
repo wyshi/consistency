@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-
+from PersuasionInteract import top_filtering
 # paths = sorted(Path("Checkpoint").iterdir(), key=os.path.getmtime)
 # rewards = []
 # for p in paths:
@@ -183,7 +183,49 @@ def load_original_model_B(cfg, device2, split_into, dropout):
     return model_B
 
 
-def validate(dataloader, model_A, model_B, ep=0):
+def sample_one_sent(past, model, prefix="A:"):
+    prev_input = self.tokenizer.encode(prefix)
+    if prefix == "A:":
+        prev_input = torch.LongTensor(prev_input).unsqueeze(0).to(self.device1)
+    else:
+        prev_input = torch.LongTensor(prev_input).unsqueeze(0).to(self.device2)
+
+    if past is not None and model.device != past[0].device:
+        past = [p.to(model.device) for p in past]
+    """Sampling based method"""
+    sent = []
+    # pdb.set_trace()
+    with torch.no_grad():
+        import pdb
+        # pdb.set_trace()
+        for i in range(self.max_sequence_len):
+            # try:
+            # pdb.set_trace()
+            logits, past, hidden_states = model(prev_input, past=past)
+            
+            logits = logits[:, -1, :] / self.temperature
+            logits = top_filtering(logits, top_k=500, top_p=0.9)
+            # prev_input = logits.argmax(-1).unsqueeze(1)
+            probs = F.softmax(logits, -1)
+            
+            
+            prev_input = torch.multinomial(probs, num_samples=1)
+            prev_word = prev_input.item()
+            # except:
+            #     pdb.set_trace()  
+
+            if prev_word == 628:
+                break
+            # elif prev_word == self.tokenizer.encoder["[EOS]"]:
+            #     past = None
+            #     return "ARDM MEMORY RESTARTS!", past
+            #     break
+            else:
+                sent.append(prev_word)
+    return self.tokenizer.decode(sent), past, hidden_states
+
+
+def validate_ppl(dataloader, model_A, model_B, ep=0):
     eval_criterion = SequenceCrossEntropyLoss()
     # device = 
 
@@ -352,3 +394,65 @@ if True:
 
     calculate_num_success_candidates(bot, MAX_DIALOGS=100, mode=cfg.interactive_mode)
 
+
+import collections
+import nltk
+from nltk import ngrams
+# automatic metrics
+def compute_distinct(inputs, n=4):
+    counter = collections.Counter()
+    total_count = 0
+   
+    for item in inputs:
+        hyp = nltk.word_tokenize(item[1].lower())
+        n_grams = list(ngrams(hyp, n=n))  
+        counter.update(n_grams)
+        total_count += len(n_grams)
+    return len(counter) / total_count
+
+def get_human_n_grams(inputs, n=4):
+    human_n_grams = collections.Counter()
+
+    for item in tqdm.tqdm(inputs):
+        list_n_grams = ngrams(nltk.word_tokenize(item.lower()), n=n)
+        human_n_grams.update(list_n_grams)
+       
+    human_n_grams = {k:v for k,v in human_n_grams.items() if v > 1}
+    return human_n_grams
+
+def compute_sentence_repeat(inputs, human_n_grams, n=4):
+    scores = []
+    for item in inputs:
+        count = 0
+        tokens = nltk.word_tokenize(item[1].lower())
+        n_grams = list(ngrams(tokens, n=n))
+        for n_gram in n_grams:
+            if n_gram in human_n_grams:
+                count += 1
+        if len(n_grams) == 0:
+            scores.append(0)
+        else:
+            scores.append(count/len(n_grams))
+
+    return np.mean(scores)
+
+from nltk.translate.bleu_score import sentence_bleu
+def compute_bleu(inputs, n=2):
+    if n==3:
+        weights=(0.333, 0.333, 0.333, 0)
+    elif n==2:
+        weights=(0.5, 0.5, 0.0, 0)
+    elif n==4:
+        weights=(0.25, 0.25, 0.25, 0.25)
+    else:
+        assert False
+
+    scores = []
+   
+    for item in inputs:
+        ref = nltk.word_tokenize(item[0].lower())
+        hyp = nltk.word_tokenize(item[1].lower())
+       
+        score = sentence_bleu([ref], hyp, weights=weights)
+        scores.append(score)
+    return np.mean(scores)
