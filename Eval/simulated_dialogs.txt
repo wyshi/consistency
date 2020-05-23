@@ -314,3 +314,9 @@ usr: sounds good
 sys: Your donation is essential to helping children in need.
 -------------------------
 finally 123, 22, num dialogs 1
+/home/wyshi/persuasion/consistency/Checkpoint/23_steps_1.79_2.536363636363636_reward_model_A_kl_7.53_ppo5.pth
+Epoch 0 Validation Perplexity A: 12.541224836099028 Variance: 24.174351614920493
+Epoch 0 Validation Perplexity B: 15.492194970448812 Variance: 38.68864330517641
+/home/wyshi/persuasion/consistency/Checkpoint/23_steps_1.79_2.536363636363636_reward_model_A_kl_7.53_ppo5.pth
+Epoch 0 Validation Perplexity A: 12.541224836099028 Variance: 24.174351614920493
+Epoch 0 Validation Perplexity B: 15.492194970448812 Variance: 38.68864330517641

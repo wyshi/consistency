@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from PersuasionInteract import top_filtering
+from PersuasionInteract import top_filtering, sent_tokenize_modified
 # paths = sorted(Path("Checkpoint").iterdir(), key=os.path.getmtime)
 # rewards = []
 # for p in paths:
@@ -25,7 +25,7 @@ from torch.nn.utils.rnn import pad_sequence
 
 from transformers import GPT2LMHeadModel, GPT2Tokenizer, GPT2Config
 from GPTModel1 import GPT2LMHeadModel_modified
-from PPO import load_model
+from PPO import load_model, Actor
 from PersuasionInteract import PersuasiveBot
 import config as cfg
 import sys
@@ -114,6 +114,112 @@ def calculate_num_success_candidates(bot, MAX_DIALOGS, mode):
         print(f"finally {TOTAL_SUCCESS_CANDIDATES}, {TOTAL_TURNS}, num dialogs {dial_i-1}")
         fh.write(f"finally {TOTAL_SUCCESS_CANDIDATES}, {TOTAL_TURNS}, num dialogs {dial_i-1}\n")
 
+def calculate_num_success_candidates_for_eval_set(bot, dataloader, mode):
+    dialogs_list = []
+    cur_dialog = []
+    user_text = ""
+    # signal.signal(signal.SIGINT, signal.default_int_handler)
+    MODE = mode
+
+    # MAX_DIALOGS = 5
+    TOTAL_TURNS = 0
+    TOTAL_SUCCESS_CANDIDATES = 0
+    dial_i = 0
+
+    with torch.no_grad():
+        pbar = tqdm.tqdm(dataloader)
+
+        total_ppl_A, total_ppl_B = [], []
+
+        for batch in pbar:
+            
+            # if sum([len(item) for item in batch[0][1]]) > 1024:
+            #     continue
+            
+            role_ids, dialog_tokens = batch[0]
+            # dial_inputs = [torch.LongTensor(item).unsqueeze(0).to(device) for item in dialog_tokens]
+
+            past = None
+            # all_logits = []
+            A_logits = []
+            B_logits = []
+            A_target = []
+            B_target = []
+
+            for turn_num, dial_turn_inputs in enumerate(dialog_tokens):
+                if role_ids[turn_num] == 0:
+                    device = model_A.device
+                else:
+                    device = model_B.device
+                dial_turn_inputs = torch.LongTensor(dial_turn_inputs).unsqueeze(0).to(device)
+
+                if role_ids[turn_num] == 0:
+                    bot.chat()
+                    logits, past, _ = model_A(dial_turn_inputs, past=past)
+                    A_logits.append(logits)
+                    A_target.append(dial_turn_inputs)
+                    # all_logits.append(logits)
+                else:
+                    logits, past, _ = model_B(dial_turn_inputs, past=past)
+                    B_logits.append(logits)
+                    B_target.append(dial_turn_inputs)
+                    # all_logits.append(logits)
+
+
+
+
+    while dial_i < MAX_DIALOGS:
+        try:
+            if bot.past is not None:
+                if MODE != cfg.self_play_mode:
+                    user_text  = input("user: ")
+                else:
+                    user_text = None
+            else:
+                dial_i += 1
+                print("\n\n\n")
+                print("INIT MEMORY!")
+                dialogs_list.append(cur_dialog)
+                cur_dialog = []
+                bot.save()
+                bot.reload()
+            
+
+            result = bot.chat(input_text=user_text, mode=MODE)
+            if result is not None:
+                TOTAL_TURNS += 1
+                response, [sents_success, sents_failed], have_enough_candidates, usr_input_text = result
+                TOTAL_SUCCESS_CANDIDATES += len(sents_success)
+            if CurrentModelConfig.candidate_select_strategy != cfg.HUMAN_SELECTION:
+                if cfg.verbose:
+                    bot.global_profile.print()
+            
+            # if response == "ARDM MEMORY RESTARTS!":
+            #     print("ARDM MEMORY RESTARTS!")
+            # else:
+            if result is not None:
+                print("Turn {}".format(bot.turn_i))
+                print("system: ", response)
+                if usr_input_text is not None:
+                    cur_dialog.append("usr: " + usr_input_text)
+                cur_dialog.append("sys: " + response)
+            print("$$$$$$$$$$$$$$$$$$$$$")
+
+        except KeyboardInterrupt:
+            bot.save()
+            break
+
+    with open("Eval/simulated_dialogs.txt", "a") as fh:
+        for i, dialog in enumerate(dialogs_list):
+            if dialog != []:
+                fh.write(f"dialog {i}:\n")
+                fh.writelines([d+"\n" for d in dialog])
+                fh.write(f"-------------------------\n")
+            
+        print(f"finally {TOTAL_SUCCESS_CANDIDATES}, {TOTAL_TURNS}, num dialogs {dial_i-1}")
+        fh.write(f"finally {TOTAL_SUCCESS_CANDIDATES}, {TOTAL_TURNS}, num dialogs {dial_i-1}\n")
+
+
 def get_val_dataloader(tokenizer):
     val_data = torch.load("DataProcess/val_dialogs.pkl")
     val_dataset = PersuadeDataset(val_data, tokenizer)
@@ -198,7 +304,7 @@ def sample_one_sent(past, model, prefix="A:"):
     with torch.no_grad():
         import pdb
         # pdb.set_trace()
-        for i in range(self.max_sequence_len):
+        for i in tqdm.tqdm(range(self.max_sequence_len)):
             # try:
             # pdb.set_trace()
             logits, past, hidden_states = model(prev_input, past=past)
@@ -224,8 +330,7 @@ def sample_one_sent(past, model, prefix="A:"):
                 sent.append(prev_word)
     return self.tokenizer.decode(sent), past, hidden_states
 
-
-def validate_ppl(dataloader, model_A, model_B, ep=0):
+def validate(dataloader, model_A, model_B, ep=0):
     eval_criterion = SequenceCrossEntropyLoss()
     # device = 
 
@@ -294,6 +399,142 @@ def validate_ppl(dataloader, model_A, model_B, ep=0):
 
         return np.mean(total_ppl_A), np.mean(total_ppl_B)
 
+from copy import deepcopy
+import logging
+class EvalActor(Actor):
+    def __init__(self, model_config, model_A, model_B, tokenizer, device1, device2, dialog_i):
+        super().__init__(model_config=model_config,
+                         model_A=model_A, model_B=model_B, 
+                         tokenizer=tokenizer, 
+                         device1=device1, device2=device2, 
+                         dialog_i=dialog_i)
+
+    def evaluation_valset(self):
+        """
+        the sample unit is one dialog, sample_size=1 means at a time we sample one dialog
+        """
+        self.model_A.eval()
+        self.model_B.eval()
+        
+        final_contexts, final_sents, final_rewards, final_context_ids = [], [], [], []
+        final_targets_A, final_responses_A = [], []
+        final_targets_B, final_responses_B = [], []
+        TOTAL_NUM_SUCCESS_SENTS = []
+        TOTAL_NUM_TURNS = []
+        with torch.no_grad():
+            for i in range(len(self.val_dataset)):
+                mode = cfg.supervised_mode
+                logging.info(f"in mode: {mode}")
+                if mode == cfg.supervised_mode:
+                    batch = self.val_dataset[i]
+                    role_ids, dial_tokens, dial_sents = batch
+                    dial_inputs = []
+                    for item in dial_tokens:
+                        if item[0] == 32:
+                            dial_inputs.append(torch.LongTensor(item).unsqueeze(0).to(self.device1))
+                        else:
+                            dial_inputs.append(torch.LongTensor(item).unsqueeze(0).to(self.device2))
+
+                    print(f"len: {len(role_ids)}")
+                    NUM_SUCCESS_SENTS = 0
+                    NUM_TURNS = 0
+                    for role_id, dial_turn_inputs, dial_sent in zip(role_ids, dial_inputs, dial_sents):
+                        print(f"turn #: {self.turn_i}\n\n\n")
+                        # pdb.set_trace()
+                        # if self.turn_i > 9:
+                        #     break
+                        # if dial_turn_inputs[0]
+                        if role_id == 0:
+                            if self.past is None:
+                                user_text = ""
+                            response, [sents_success, sents_failed], have_enough_candidates, usr_input_text = self.chat(input_text=user_text, mode=mode)
+                            final_responses_A.append(response)
+                            final_targets_A.append(dial_sent)
+                            ground_truth = dial_sent
+                            # logging
+                            NUM_SUCCESS_SENTS += len(sents_success)
+                            NUM_TURNS += 1
+                            try:
+                                assert not ground_truth.startswith("A:")
+                            except:
+                                pdb.set_trace()
+                            cur_rewards = self.reward_func([ground_truth, sents_success, sents_failed], have_enough_candidates, with_ground_truth=True)
+
+                            # print(f"truth: {ground_truth}")
+                            # print(f"sent_success: \n{sents_success}")
+                            # print(f"sent_failed: \n{sents_failed}")
+                            # update
+                            ground_truth_sents = sent_tokenize_modified(ground_truth)                    
+                            sent_acts, _ = self.global_profile.regex_label(self.model_clf,
+                                                                ground_truth_sents, 
+                                                                which_task="A")
+                            self.global_profile.update(sents=ground_truth_sents, sent_labels=sent_acts, who=self.domain.SYS) #self.last_sys_labels = self.sys_profile.update(sys_texts=sents, sys_labels=sent_acts)
+                            
+                            # pdb.set_trace()
+                            try:
+                                assert self.tokenizer.decode(dial_turn_inputs[0][:2].tolist()) == "A:"
+                            except:
+                                pdb.set_trace()
+                            if self.past is not None and self.model_A.device != self.past[0].device:
+                                past = [p.to(self.model_A.device) for p in self.past]
+                                self.past = past
+                            _, self.past, hidden_states = self.model_A(dial_turn_inputs, past=self.past)
+                            self.model_clf.set_past(sent=ground_truth, 
+                                                    which_task="A")
+
+                            # put in replay buffer
+                            for sent, reward in zip([ground_truth] + sents_success + sents_failed, cur_rewards):
+                                final_contexts.append(deepcopy(self.contexts))
+                                final_sents.append("A:"+sent)
+                                final_rewards.append(reward)
+                                final_context_ids.append(f"{self.dialog_i}-{self.turn_i}-supervised")
+                                # self.replay_buffer.add([deepcopy(self.contexts), "A:"+sent, reward])
+
+                            # update contexts
+                            logging.info(f"sys: {ground_truth}")
+                            logging.info(f"success candidates: {sents_success}")
+                            logging.info(f"success candidates avg len: {np.mean([len(one_sent.split()) for one_sent in sents_success])}")
+                            logging.info(f"failed candidates: {sents_failed}")
+                            logging.info(f"failed candidates avg len: {np.mean([len(one_sent.split()) for one_sent in sents_failed])}")
+                            logging.info(f"----------------------")
+                            self.contexts.append("A:"+ground_truth)
+
+                        else:
+                            # breakpoint()
+                            user_text = dial_sent
+
+                            generated_user_text, _, _ = self.sample_one_sent(past=self.past, model=self.model_B, prefix="B:")
+                            final_responses_B.append(generated_user_text)
+                            final_targets_B.append(dial_sent)
+                            try:
+                                assert not user_text.startswith("B:")
+                            except:
+                                pdb.set_trace()
+                            self.contexts.append("B:"+user_text)
+                            logging.info(f"----------------------")
+                            print(f"user: {user_text}")
+                            logging.info(f"user: {user_text}")
+                            # logits, past = model_B(dial_turn_inputs, past=past)
+                            # all_logits.append(logits)
+
+                    print(f"avg success sent: {NUM_SUCCESS_SENTS/NUM_TURNS}")
+                    logging.info(f"avg success sent: {NUM_SUCCESS_SENTS/NUM_TURNS}")
+                    TOTAL_NUM_SUCCESS_SENTS.append(NUM_SUCCESS_SENTS)
+                    TOTAL_NUM_TURNS.append(NUM_TURNS)
+                    # finish tail
+                    if role_id == 1: # the last sent is user
+                        # throw away the last user sentence
+                        pass
+
+                self.dialog_i += 1
+                self.reload()
+            assert len(final_contexts) == len(final_sents) == len(final_rewards) == len(final_context_ids)
+            return final_contexts, final_sents, final_rewards, final_context_ids,\
+                   final_targets_A, final_responses_A, final_targets_B, final_responses_B,\
+                       TOTAL_NUM_SUCCESS_SENTS, TOTAL_NUM_TURNS
+
+
+
 # load models
 TOKENIZER = GPT2Tokenizer.from_pretrained("gpt2")#torch.load(tokenizer_dir)
 # EVAL_MODEL_A_DIR = "/home/wyshi/persuasion/consistency/ARDM/persuasion/persuasion_medium_3.th"
@@ -347,40 +588,43 @@ else:
 
 
 if True:
-    LOG_FILE = "Eval/me_talking_to_the_bot_to_decide_which_to_use_for_RL_good_model.log"
+    LOG_FILE = "Eval/automatic_metrics.log"
     class CurrentModelConfig:
         with_rule = True
         log_file = LOG_FILE
         
         with_baseline =  True
-        with_repetition_module = True
-        with_consistency_module = True
-        with_sentence_clf = True
+        with_repetition_module = False
+        with_consistency_module = False
+        with_sentence_clf = False
         with_RL_finetune_model = False
 
-        if not with_repetition_module and with_consistency_module:
-            candidate_select_strategy = cfg.RANDOM_SELECT
-        elif not with_repetition_module and not with_consistency_module:
-            candidate_select_strategy = cfg.RANDOM_SELECT
-        elif with_repetition_module and not with_consistency_module:
-            candidate_select_strategy = cfg.REPETITION_RATIO
-        elif with_repetition_module and with_consistency_module:
-            candidate_select_strategy = cfg.REPETITION_RATIO
+        candidate_select_strategy = cfg.RANDOM_SELECT
+        candidate_select_strategy = cfg.REPETITION_RATIO
+        candidate_select_strategy = cfg.IMITATION_LEARNING_SELECTION
 
-        if with_sentence_clf:
-            candidate_select_strategy = cfg.IMITATION_LEARNING_SELECTION
+        NUM_CANDIDATES = 1
 
-        if with_baseline and (not with_repetition_module) and (not with_consistency_module) and (not with_sentence_clf)\
-            and (not with_RL_finetune_model):
-            NUM_CANDIDATES = 1
-            with_rule = False
-        else:
-            NUM_CANDIDATES = cfg.NUM_CANDIDATES
+        # if not with_repetition_module and with_consistency_module:
+        #     candidate_select_strategy = cfg.RANDOM_SELECT
+        # elif not with_repetition_module and not with_consistency_module:
+        #     candidate_select_strategy = cfg.RANDOM_SELECT
+        # elif with_repetition_module and not with_consistency_module:
+        #     candidate_select_strategy = cfg.REPETITION_RATIO
+        # elif with_repetition_module and with_consistency_module:
+        #     candidate_select_strategy = cfg.REPETITION_RATIO
+
+        # if with_sentence_clf:
+        #     candidate_select_strategy = cfg.IMITATION_LEARNING_SELECTION
+
+        # if with_baseline and (not with_repetition_module) and (not with_consistency_module) and (not with_sentence_clf)\
+        #     and (not with_RL_finetune_model):
+        #     NUM_CANDIDATES = 1
+        #     with_rule = False
+        # else:
+        #     NUM_CANDIDATES = cfg.NUM_CANDIDATES
     
     torch.cuda.empty_cache()
-    bot = PersuasiveBot(CurrentModelConfig, model_A=model_A, model_B=model_B, tokenizer=TOKENIZER, 
-                        device1=DEVICE1, device2=DEVICE2)
-
     print(f"with_baseline: {CurrentModelConfig.with_baseline}")
     print(f"with_repetition_module: {CurrentModelConfig.with_repetition_module}")
     print(f"with_consistency_module: {CurrentModelConfig.with_consistency_module}")
@@ -390,11 +634,20 @@ if True:
     print(f"NUM_CANDIDATES: {CurrentModelConfig.NUM_CANDIDATES}")
     print(f"with_rule: {CurrentModelConfig.with_rule}")
 
+
     # calculate_num_success_candidates(bot, MAX_DIALOGS=3, mode=cfg.self_play_mode)
 
-    calculate_num_success_candidates(bot, MAX_DIALOGS=100, mode=cfg.interactive_mode)
+    # bot = PersuasiveBot(CurrentModelConfig, model_A=model_A, model_B=model_B, tokenizer=TOKENIZER, 
+    #                     device1=DEVICE1, device2=DEVICE2)
 
+    # calculate_num_success_candidates(bot, MAX_DIALOGS=100, mode=cfg.interactive_mode)
 
+    # for automatic evaluation of each model
+    actor = EvalActor(CurrentModelConfig, model_A=model_A, model_B=model_B, tokenizer=TOKENIZER, 
+                  device1=DEVICE1, device2=DEVICE2, dialog_i=0)
+    _, _, _, _, final_targets_A, final_responses_A, final_targets_B, final_responses_B,\
+                       TOTAL_NUM_SUCCESS_SENTS, TOTAL_NUM_TURNS = actor.evaluation_valset()
+    pdb.set_trace()
 import collections
 import nltk
 from nltk import ngrams

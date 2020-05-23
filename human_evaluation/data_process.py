@@ -3,6 +3,19 @@ from scipy.stats import ttest_ind
 import os
 import numpy as np
 
+def ttest(df1, df2):
+    print(ttest_ind(df1.repeat, df2.repeat))
+    print(ttest_ind(df1.consis, df2.consis))
+    print(ttest_ind(df1.grammar, df2.grammar))
+    print(ttest_ind(df1.persuasive, df2.persuasive))
+    print(ttest_ind(df1.overall, df2.overall))
+    print(ttest_ind(df1.human=="Human", df2.human=="Human"))
+    print("donation")
+    print(ttest_ind(df1.donation, df2.donation))
+    print(f"{df1.donation.mean()}, {df2.donation.mean()}")
+    print(ttest_ind(df1.donation>0, df2.donation>0))
+    print(f"{(df1.donation>0).mean()}, {(df2.donation>0).mean()}")
+
 baseline_dir = "collected_data/baseline"
 
 columns = ['id', 'exp_year', 'exp_month', 'age', 'why_human', 'effective', 'repeat', 'consis', 'persuasive', 
@@ -10,19 +23,17 @@ columns = ['id', 'exp_year', 'exp_month', 'age', 'why_human', 'effective', 'repe
            'competent', 'confident', 'warm', 'sincere', 'check', 'human', 'experience', 'usage', 
            'gender', 'race', 'edu', 'marriage', 'kid', 'income', 'religion', 'political'
 ]
-df_baseline = pd.read_csv(f"{baseline_dir}/post_task_survey.csv", names=columns)
+df_baseline = pd.read_csv(f"{baseline_dir}/post_task_survey_full.csv", names=columns)
 sandbox_id = ['AFU4P8DM74I5', 'A2LUQBLVXKKIFF', 'A2MMW0BRDVDXEC', 'A36HO7VSU7ON09', 'A1A6P3VOR53H7D', 'A3BFFI1JV5H7TC']
-df = df_baseline[~df_baseline['id'].isin(sandbox_id)]
-# drop duplicates
-df = df.drop_duplicates(subset='id', keep='first')
-ids0 = df['id'].tolist()
-ids0_correct = df[df['check']=="right"]['id'].tolist()
-# donation
+df_baseline = df_baseline[~df_baseline.id.isin(sandbox_id)]
+df_baseline = df_baseline.drop_duplicates(subset='id', keep='first')
+
+# get userids
 userids = []
 donation0 = []
-for txt_dir in sorted(os.listdir("/home/wyshi/persuasion/test/ParlAI/data/personachat_chat/emnlp_dialogs_txt")):
-# for txt_dir in os.listdir(baseline_dir+"/emnlp_dialogs_txt"):
-    with open(f"/home/wyshi/persuasion/test/ParlAI/data/personachat_chat/emnlp_dialogs_txt/{txt_dir}", "r") as fh:
+txt_dirs = []
+for txt_dir in sorted(os.listdir(f"{baseline_dir}/emnlp_dialogs_txt/")):
+    with open(f"{baseline_dir}/emnlp_dialogs_txt/{txt_dir}", "r") as fh:
     # with open(f"{baseline_dir}/emnlp_dialogs_txt/{txt_dir}", "r") as fh:
         if "incomplete" not in txt_dir and "sandbox" not in txt_dir:
             first_line = fh.readline()
@@ -34,68 +45,68 @@ for txt_dir in sorted(os.listdir("/home/wyshi/persuasion/test/ParlAI/data/person
                 continue
             userids.append(userid)
             donation0.append(float(first_line.split(",")[1]))
+            txt_dirs.append(txt_dir)
             # donation_df.append()
             if float(first_line.split(",")[1]) == -1:
                 print(txt_dir, userid)
 
-donation_df = pd.DataFrame(zip(userids, donation0), columns=["id", "donation"])
+donation_df = pd.DataFrame(zip(userids, donation0, txt_dirs), columns=["id", "donation", "txt_dir"])
 donation_df = donation_df[donation_df['donation']>=0]
-ttest_ind(donation_df[donation_df.id.isin(ids0_correct)]['donation'],
-donation_df[donation_df.id.isin(ids1_correct)]['donation'])
-ttest_ind(donation_df[donation_df.id.isin(ids0_correct)]['donation']>0,
-donation_df[donation_df.id.isin(ids1_correct)]['donation']>0)
+donation_df = donation_df[~donation_df.id.isin(sandbox_id)]
+donation_df.to_csv(f"{baseline_dir}/donation_df.csv", index=None)
+
+df_baseline = df_baseline[df_baseline.id.isin(donation_df.id)]
+df_donation_baseline = pd.merge(df_baseline, donation_df, how='inner', on='id')
+df_donation_baseline.to_csv(f"{baseline_dir}/baseline_post_survey.csv", index=None)
+
+df0_check = df_donation_baseline[df_donation_baseline.check=='right']
+# baseline done ########
+
+# model 1 starts ###
+model1_dir = "collected_data/full_model"
+df_model1 = pd.read_csv(f"{model1_dir}/post_task_survey_full.csv", names=columns)
+
+userids = []
+donation0 = []
+txt_dirs = []
+for txt_dir in sorted(os.listdir(f"{model1_dir}/emnlp_dialogs_txt/")):
+    if txt_dir in os.listdir(f"{baseline_dir}/emnlp_dialogs_txt/"):
+        continue
+    with open(f"{model1_dir}/emnlp_dialogs_txt/{txt_dir}", "r") as fh:
+    # with open(f"{baseline_dir}/emnlp_dialogs_txt/{txt_dir}", "r") as fh:
+        if "incomplete" not in txt_dir and "sandbox" not in txt_dir:
+            first_line = fh.readline()
+            userid = first_line.split(",")[0].split(": ")[1]
+            if userid == "AAHVZF0ZP7HMD":
+                print(txt_dir)
+            if userid in userids:
+                print(f"userid: {userid}")
+                continue
+            userids.append(userid)
+            donation0.append(float(first_line.split(",")[1]))
+            txt_dirs.append(txt_dir)
+            # donation_df.append()
+            if float(first_line.split(",")[1]) == -1:
+                print(txt_dir, userid)
+donation_df1 = pd.DataFrame(zip(userids, donation0, txt_dirs), columns=["id", "donation", "txt_dir"])
+donation_df1 = donation_df1[donation_df1['donation']>=0]
+donation_df1 = donation_df1[~donation_df1.id.isin(sandbox_id)]
+donation_df1.to_csv(f"{model1_dir}/donation_df.csv", index=None)
+
+df_model1 = df_model1[df_model1.id.isin(donation_df1.id)]
+df_donation_model1 = pd.merge(df_model1, donation_df1, how='inner', on='id')
+df_donation_model1.to_csv(f"{model1_dir}/model1_post_survey.csv", index=None)
+
+df1_check = df_donation_model1[df_donation_model1.check=='right']
+
+# model1 done ###
 
 
-donation0.remove(-1)
-donation0.remove(-1)
-ttest_ind(donation0[2:101], donation0[101:])
-ttest_ind(np.array(donation0[2:101])>0, np.array(donation0[101:])>0)
-(np.array(donation0[2:101])>0).mean(), (np.array(donation0[101:])>0).mean()
-np.array(donation0[2:101]).mean(), np.array(donation0[101:]).mean()
-
-ttest_ind(donation_df[donation_df.id.isin(df_real.id)]['donation'], donation_df[donation_df.id.isin(df1_real.id)]['donation'])
-ttest_ind(donation_df[donation_df.id.isin(df_real.id)]['donation']>0, donation_df[donation_df.id.isin(df1_real.id)]['donation']>0)
-
-# model1
-df1 = pd.read_csv(f"../test/ParlAI/data/personachat_chat/post_task_survey (5:22:20, 11:18 AM).csv", names=columns)
-df1 = df1.iloc[df_baseline.shape[0]:]
-df1 = df1[~df1['id'].isin(sandbox_id)]
-df1 = df1[~df1['id'].isin(ids0)]
-ids1 = df1['id'].tolist()
-ids1_correct = df1[df1['check']=="right"]['id'].tolist()
-
-df_check = df[df['check']=="right"]
-df1_check = df1[df1['check']=="right"]
-ttest_ind(df.repeat, df1.repeat)
-ttest_ind(df.consis, df1.consis)
-ttest_ind(df.persuasive, df1.persuasive)
-ttest_ind(df.grammar, df1.grammar)
-ttest_ind(df.overall, df1.overall)
-ttest_ind(df.human=="Human", df1.human=="Human")
-ttest_ind(df_check.human=="Human", df1_check.human=="Human")
-ttest_ind(df_check.repeat, df1_check.repeat)
-ttest_ind(df_check.grammar, df1_check.grammar)
-ttest_ind(df_check.persuasive, df1_check.persuasive)
-ttest_ind(df_check.overall, df1_check.overall)
-
-ids_inter = list(set(ids1) & set(sids))
-
-def ttest(df1, df2):
-    print(ttest_ind(df1.repeat, df2.repeat))
-    print(ttest_ind(df1.consis, df2.consis))
-    print(ttest_ind(df1.grammar, df2.grammar))
-    print(ttest_ind(df1.persuasive, df2.persuasive))
-    print(ttest_ind(df1.overall, df2.overall))
-    print(ttest_ind(df1.human=="Human", df2.human=="Human"))
-
-
-df_real = df2.iloc[:100].append(df2.iloc[-11:])
-df1_real = df2.iloc[100:-11]
-df_real = df_real[df_real.check=='right']
-df_real = df_real[~df_real.id.isin(['AAHVZF0ZP7HMD', 'A2SW4E5KZ6WZJ9'])]
-df1_real = df1_real[df1_real.check=='right']
-df1_real = df1_real[~df1_real.id.isin(['AAHVZF0ZP7HMD', 'A2SW4E5KZ6WZJ9'])]
-ttest(df_real, df1_real)
+# comparison
+ttest(df0_check, df1_check)
+ttest(df0_check.iloc[:100], df1_check.iloc[:100])
+ttest(df0_check, df1_check[~df1_check.id.isin(sids)])
+# ttest(df_donation_baseline, df_donation_model1)
 
 sids = ["A2JS0X3RSHFFSN",
 "A1ZYTJAQNS5ICC",
