@@ -101,12 +101,45 @@ df1_check = df_donation_model1[df_donation_model1.check=='right']
 
 # model1 done ###
 
+# model2 starts
+df_model2 = pd.read_csv(f"~/persuasion/test/ParlAI/data/personachat_chat/post_task_survey.csv", names=columns)
+df_model2 = df_model2.iloc[272:]
+df_model2 = df_model2[df_model2.check=="right"]
+df_model2.repeat.mean()
+
+userids = []
+donation0 = []
+txt_dirs = []
+for txt_dir in sorted(os.listdir(f"~/persuasion/test/ParlAI/data/personachat_chat/emnlp_dialogs_txt/")):
+    with open(f"~/persuasion/test/ParlAI/data/personachat_chat/emnlp_dialogs_txt/{txt_dir}", "r") as fh:
+    # with open(f"{baseline_dir}/emnlp_dialogs_txt/{txt_dir}", "r") as fh:
+        if "incomplete" not in txt_dir and "sandbox" not in txt_dir:
+            first_line = fh.readline()
+            userid = first_line.split(",")[0].split(": ")[1]
+            if userid == "AAHVZF0ZP7HMD":
+                print(txt_dir)
+            if userid in userids:
+                print(f"userid: {userid}")
+                continue
+            userids.append(userid)
+            donation0.append(float(first_line.split(",")[1]))
+            txt_dirs.append(txt_dir)
+            # donation_df.append()
+            if float(first_line.split(",")[1]) == -1:
+                print(txt_dir, userid)
+
+# model2 done ###
 
 # comparison
 ttest(df0_check, df1_check)
 ttest(df0_check.iloc[:100], df1_check.iloc[:100])
 ttest(df0_check, df1_check[~df1_check.id.isin(sids)])
 # ttest(df_donation_baseline, df_donation_model1)
+
+
+
+
+
 
 sids = ["A2JS0X3RSHFFSN",
 "A1ZYTJAQNS5ICC",

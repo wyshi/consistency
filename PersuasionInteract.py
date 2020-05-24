@@ -5,6 +5,7 @@ import re
 import dialog_config
 from AgentProfile.profiles_in_dev import GlobalProfile
 from model_clf import build_model_classifier
+from AgentProfile.core import SystemAct, UserAct
 
 import torch
 import torch.nn as nn
@@ -205,7 +206,7 @@ class PersuasiveBot:
         # pdb.set_trace()
         with torch.no_grad():
             if self.past is None:
-                sys_sent, [sents_success, sents_failed], have_enough_candidates = self.sys_respond_and_update(mode=mode)
+                sys_sent, [sents_success, sents_failed], have_enough_candidates, sents_act_success = self.sys_respond_and_update(mode=mode)
                 turn_responses = ["sys: "+sys_sent]
             else:
                 # user-side
@@ -254,13 +255,13 @@ class PersuasiveBot:
 
                     print(f"user: {input_text}\n$$$$$$$$")
                 # system-side
-                sys_sent, [sents_success, sents_failed], have_enough_candidates = self.sys_respond_and_update(mode=mode)
+                sys_sent, [sents_success, sents_failed], have_enough_candidates, sents_act_success = self.sys_respond_and_update(mode=mode)
                 turn_responses = ["usr: "+input_text,
                                 "sys: "+sys_sent]
             
             self.logs['global_profiles'].append(self.global_profile.get_profiles())
             self.logs['responses'].append(turn_responses)
-            return sys_sent, [sents_success, sents_failed], have_enough_candidates, input_text
+            return sys_sent, [sents_success, sents_failed], have_enough_candidates, input_text, sents_act_success
 
     def generate_user_utt_self_play(self):
         input_text, self.past, self.b_hidden_states = self.sample_one_sent(past=self.past, model=self.model_B, prefix="B:")
@@ -424,6 +425,7 @@ class PersuasiveBot:
         log_this_turn = []
         failed_log_this_turn = []
         sents_success, sents_failed = [], []
+        sents_act_success, sents_act_failed = [], []
         if cfg.print_candidates:
             print("=== candidates, len={} ===".format(len(candidates)))
         log_this_turn.append("=== candidates, len={} ===".format(len(candidates)))
@@ -439,6 +441,7 @@ class PersuasiveBot:
                         print(c)
                         print(edited_c)
                     sents_success.append(edited_c)
+                    sents_act_success.append(act)
                     log_this_turn.append("--------- different from edited candidates: act: {}, score: {}----------".format(act, s))
                     log_this_turn.append(c)
                     log_this_turn.append(edited_c)
@@ -449,6 +452,7 @@ class PersuasiveBot:
                     log_this_turn.append("----------------- act: {}, score : {}---------------------------".format(act, s))
                     log_this_turn.append(edited_c)
                     sents_success.append(edited_c)
+                    sents_act_success.append(act)                    
             if cfg.print_candidates:
                 print("==================")
             log_this_turn.append("==================")
@@ -479,8 +483,10 @@ class PersuasiveBot:
                     if s is True:
                         to_print = "SELECTED " + to_print 
                         sents_success.append(edited_c)
+                        sents_act_success.append(act)    
                     else:
                         sents_failed.append(edited_c)
+                        sents_act_failed.append(act)    
                     if cfg.print_candidates:
                         print(to_print)
                         print(c)
@@ -494,6 +500,7 @@ class PersuasiveBot:
                     if s is True:
                         to_print = "SELECTED " + to_print 
                         sents_success.append(edited_c)
+                        sents_act_success.append(act)   
                     else:
                         sents_failed.append(edited_c)
                     if cfg.print_candidates:
@@ -529,7 +536,7 @@ class PersuasiveBot:
             else:
                 self.logs['failed_candidates'].append(failed_log_this_turn)
 
-        return sents_success, sents_failed
+        return sents_success, sents_failed, sents_act_success
 
     def print_all_generated_candidates(self, candidates, edited_candidates, sent_act_candidates,
                                              failed_candidates):
@@ -585,7 +592,22 @@ class PersuasiveBot:
                         #     print("original_score: {}".format(sent_candidate_conflict_scores))
                         #     print("~"*20)
                         try:
-                            return np.random.choice(range(len(sent_candidate_conflict_scores)), size=1, 
+                            if self.model_config.strategy_selection_on:
+                                if self.global_profile.usr_world.usr_profile[self.domain.WANT_TO_DONATE] in [self.domain.NOT_SURE, self.domain.NO]:
+                                    i_with_strategies = []
+                                    for idx, sent_acts in enumerate(sent_act_candidates):
+                                        if len(set(sent_acts) & set(SystemAct.strategy_list))>0:
+                                            i_with_strategies.append(idx)
+                                    if len(i_with_strategies) > 0:
+                                        return np.random.choice(i_with_strategies, size=1, replace=False)[0], normalized_score
+                                    else:
+                                        return np.random.choice(range(len(sent_candidate_conflict_scores)), size=1, 
+                                                    replace=False, p=normalized_score)[0], normalized_score
+                                else:
+                                        return np.random.choice(range(len(sent_candidate_conflict_scores)), size=1, 
+                                                    replace=False, p=normalized_score)[0], normalized_score
+                            else:
+                                return np.random.choice(range(len(sent_candidate_conflict_scores)), size=1, 
                                                 replace=False, p=normalized_score)[0], normalized_score
                         except:
                             pdb.set_trace()
@@ -856,7 +878,23 @@ class PersuasiveBot:
             selected_T_F = [True if i in model_selected_id_for_success_candidates + model_selected_id_for_failed_candidates else False \
                             for i in range(len(edited_sent_candidates)+len(failed_candidates))]
             if len(model_selected_id_for_success_candidates) > 0:
-                selected_i = np.random.choice(model_selected_id_for_success_candidates)
+                if self.model_config.strategy_selection_on:
+                    if self.global_profile.usr_world.usr_profile[self.domain.WANT_TO_DONATE] in [self.domain.NOT_SURE, self.domain.NO]:
+                        selected_i_list = []
+                        for idx in model_selected_id_for_success_candidates:
+                            if len(set(sent_act_candidates[idx]) & set(SystemAct.strategy_list))>0:
+                            # for sent_act in sent_act_candidates[idx]:
+                            #     if sent_act in SystemAct.strategy_list:
+                                selected_i_list.append(idx)
+                        if len(selected_i_list) > 0:
+                            selected_i = np.random.choice(selected_i_list)
+                        else:
+                            selected_i = np.random.choice(model_selected_id_for_success_candidates)
+                    else:
+                        selected_i = np.random.choice(model_selected_id_for_success_candidates)
+                else:
+                    selected_i = np.random.choice(model_selected_id_for_success_candidates)
+                
                 sents, sent_acts, past = edited_sent_candidates[selected_i], sent_act_candidates[selected_i], \
                                                  past_candidates[selected_i]
 
@@ -868,17 +906,16 @@ class PersuasiveBot:
             else:
                 sents, sent_acts, past, scores = self.select_candidates(edited_sent_candidates, sent_candidate_conflict_scores, sent_act_candidates, past_candidates)
             # if not cfg.self_play_mode:
-            sents_success, sents_failed = self.print_candidates(sent_candidates, edited_sent_candidates, sent_act_candidates, selected_T_F, failed_candidates)
+            sents_success, sents_failed, sents_act_success = self.print_candidates(sent_candidates, edited_sent_candidates, sent_act_candidates, selected_T_F, failed_candidates)
         else:
             sents, sent_acts, past, scores = self.select_candidates(edited_sent_candidates, sent_candidate_conflict_scores, sent_act_candidates, past_candidates)
             # if not cfg.self_play_mode:
-            sents_success, sents_failed = self.print_candidates(sent_candidates, edited_sent_candidates, sent_act_candidates, scores, failed_candidates)
+            sents_success, sents_failed, sents_act_success = self.print_candidates(sent_candidates, edited_sent_candidates, sent_act_candidates, scores, failed_candidates)
         
         # check conflict within the sents
         if self.model_config.with_repetition_module:
             sents, sent_acts = self.check_conflict_within_selected_sents(sents, sent_acts)
         
-
         # update
         # past = deepcopy(past)
         del past_candidates
@@ -910,7 +947,7 @@ class PersuasiveBot:
         else:
             sent = " ".join(sents)
 
-        return sent, [sents_success, sents_failed], have_enough_candidates
+        return sent, [sents_success, sents_failed], have_enough_candidates, sents_act_success
 
     def il_model_select_candidates(self, sent_candidates, 
                                    edited_sent_candidates, 
@@ -957,6 +994,16 @@ class PersuasiveBot:
                 left_id_for_failed_candidates.append(i)
 
         return left_id_for_success_candidates, left_id_for_failed_candidates
+
+    def pick_act_with_strategies(self, edited_sent_candidates, sent_candidate_conflict_scores, sent_act_candidates, past_candidates):
+        assert self.model_config.strategy_selection_on
+        selected_i = []
+        for i, sent_acts in enumerate(sent_act_candidates):
+            for sent_act in sent_acts:
+                if sent_act in SystemAct.strategy_list:
+                    selected_i.append(i)
+        return selected_i
+
 
     def check_conflict_within_selected_sents(self, sents, sent_acts):
         statuses = [True]*len(sents)
@@ -1090,6 +1137,7 @@ class PersuasiveBot:
             i += 1
             if i in human_selected_ids:
                 sents_success.append(edited_sent)
+                sents_act_success.append(human_act)   
             else:
                 sents_failed.append(edited_sent)
 
@@ -1111,6 +1159,7 @@ class PersuasiveBot:
             i += 1
             if i in human_selected_ids:
                 sents_success.append(sent)
+                sents_act_success.append(act)   
             else:
                 sents_failed.append(sent)
 
@@ -1133,6 +1182,7 @@ class PersuasiveBot:
                 csv_records.append(csv_record)
                 i += 1
                 sents_success.append(sent)
+                sents_act_success.append(act)   
 
 
         if not os.path.exists(cfg.demonstration_csv):
@@ -1201,6 +1251,8 @@ if __name__ == "__main__":
             NUM_CANDIDATES = 1
         else:
             NUM_CANDIDATES = cfg.NUM_CANDIDATES
+
+        strategy_selection_on = False
 
     def load_model_for_AMT(EVAL_MODEL_A_DIR):
         TOKENIZER = GPT2Tokenizer.from_pretrained("gpt2")#torch.load(tokenizer_dir)

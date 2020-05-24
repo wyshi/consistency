@@ -3,6 +3,7 @@
 # logging is important
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3,4,5,6,7"
+from AgentProfile.core import SystemAct, UserAct
 
 from time import time
 import logging
@@ -369,12 +370,13 @@ class CustomRewardFunc:
         self.failed_candidates_reward = -2
         self.long_candidate_penalty = -3
         self.short_candidate_penalty = -3
+        self.strategy_candidate_reward = 3
         self.len_denominator = float('Inf')
         self.len_cut = 50
         self.len_min = 2
 
 
-    def __call__(self, sequences, have_enough_candidates, with_ground_truth):
+    def __call__(self, sequences, have_enough_candidates, with_ground_truth, sents_act_success=None):
         if with_ground_truth:
             ground_truth, sents_success, sents_failed = sequences
         else:
@@ -382,10 +384,16 @@ class CustomRewardFunc:
 
         rewards = []
         if have_enough_candidates:
-            for sent in sents_success:
+            for sent_act, sent in zip(sents_act_success, sents_success):
                 sent_len = len(sent.split())
                 if self.len_min < sent_len and sent_len < self.len_cut:
-                    rewards.append(self.success_candidates_reward + sent_len/self.len_denominator)
+                    if CurrentModelConfig.strategy_selection_on:
+                        if len(set(sent_act) & set(SystemAct.strategy_list))>0:
+                            rewards.append(self.strategy_candidate_reward + sent_len/self.len_denominator)
+                        else:
+                            rewards.append(self.success_candidates_reward + sent_len/self.len_denominator)
+                    else:
+                        rewards.append(self.success_candidates_reward + sent_len/self.len_denominator)
                 elif sent_len >= self.len_cut:
                     rewards.append(self.long_candidate_penalty)
                 elif sent_len <= self.len_min:
@@ -521,7 +529,7 @@ class Actor(PersuasiveBot):
                         if role_id == 0:
                             if self.past is None:
                                 user_text = ""
-                            response, [sents_success, sents_failed], have_enough_candidates, usr_input_text = self.chat(input_text=user_text, mode=mode)
+                            response, [sents_success, sents_failed], have_enough_candidates, usr_input_text, sents_act_success = self.chat(input_text=user_text, mode=mode)
                             ground_truth = dial_sent
                             # logging
                             NUM_SUCCESS_SENTS += len(sents_success)
@@ -530,7 +538,7 @@ class Actor(PersuasiveBot):
                                 assert not ground_truth.startswith("A:")
                             except:
                                 pdb.set_trace()
-                            cur_rewards = self.reward_func([ground_truth, sents_success, sents_failed], have_enough_candidates, with_ground_truth=True)
+                            cur_rewards = self.reward_func([ground_truth, sents_success, sents_failed], have_enough_candidates, with_ground_truth=True, sents_act_success=sents_act_success)
 
                             # print(f"truth: {ground_truth}")
                             # print(f"sent_success: \n{sents_success}")
@@ -616,7 +624,7 @@ class Actor(PersuasiveBot):
                             print(f"user: {user_text}")
                             logging.info(f"user: {user_text}")
                         sys_sent, [sents_success, sents_failed], have_enough_candidates = self.sys_respond_and_update(mode=mode)
-                        cur_rewards = self.reward_func([sents_success, sents_failed], have_enough_candidates, with_ground_truth=False)
+                        cur_rewards = self.reward_func([sents_success, sents_failed], have_enough_candidates, with_ground_truth=False, sents_act_success=sents_act_success)
 
                         # put in replay buffer
                         for sent, reward in zip(sents_success + sents_failed, cur_rewards):
@@ -729,17 +737,17 @@ class Trainer:
         
         return all_rewards
 
-    # def kl_divergence(self, logits1, logits2):
-    #     pdb.set_trace()
-    #     probs = F.softmax(logits1, 2)
-    #     start = time.time()
-    #     kl = torch.where(probs == 0, torch.LongTensor(0).to(probs.device), probs * (F.log_softmax(logits1, 2) - F.log_softmax(logits2, 2))).mean()
-    #     end1 = time.time()
-    #     kl = (F.softmax(logits1, 2) * (F.log_softmax(logits1, 2) - F.log_softmax(logits2, 2))).mean()
-    #     end2 = time.time()
-    #     print(f"{end1-start}")
-    #     print(f"{end2-end1}")
-    #     return kl
+    def kl_divergence(self, logits1, logits2):
+        pdb.set_trace()
+        probs = F.softmax(logits1, 2)
+        start = time.time()
+        # kl = torch.where(probs == 0, torch.LongTensor(0).to(probs.device), probs * (F.log_softmax(logits1, 2) - F.log_softmax(logits2, 2))).mean()
+        end1 = time.time()
+        kl = (F.softmax(logits1, 2) * (F.log_softmax(logits1, 2) - F.log_softmax(logits2, 2))).mean()
+        end2 = time.time()
+        print(f"{end1-start}")
+        print(f"{end2-end1}")
+        return kl
 
     def calculate_old_logprobs(self, buffer_contexts, buffer_context_ids, buffer_sents, buffer_encoded_sents):
         assert self.model_A.device is self.device1
@@ -1073,8 +1081,10 @@ class Trainer:
             clipfrac = ((ratio - 1.0).abs() > clip_range).float().mean()
             approx_kl = (logprob - old_logprob).pow(2).mean()
             if not self.use_approx_kl:
-                accurate_kl = self.kl_loss(F.log_softmax(old_logits, 2), F.softmax(logits, 2))
+                # pdb.set_trace()
+                accurate_kl = self.kl_loss(F.log_softmax(logits, 2), F.softmax(old_logits, 2))
                 # accurate_kl = self.kl_divergence(logits, old_logits)
+                # F.softmax(old_logits, 2) * (F.log_softmax(old_logits, 2) - F.log_softmax(logits, 2))
             # kl = sequences_logprob * (logprobs - old_logprobs).mean()#.pow(2).mean()
             # kl(p, q) = p*log(p/q) = p(logp-log q)
             # np.where(p != 0, p * np.log(p / q), 0)
@@ -1086,8 +1096,11 @@ class Trainer:
                 with torch.no_grad():
                     approx_kl_gpt2 = (logprob - old_logprob_gpt2).pow(2)
                 # accurate_kl_gpt2 = self.kl_divergence(logits, old_logits_gpt2)
-                accurate_kl_gpt2 = self.kl_loss(F.log_softmax(old_logits_gpt2, 2), F.softmax(logits, 2))
-                # accurate_kl_gpt2 = (F.softmax(logits) * (F.log_softmax(logits) - F.log_softmax(old_logits_gpt2))).mean()
+                # accurate_kl_gpt2 = self.kl_loss(F.log_softmax(old_logits_gpt2, 2), F.softmax(logits, 2))
+                accurate_kl_gpt2 = self.kl_loss(F.log_softmax(logits, 2), F.softmax(old_logits_gpt2, 2))
+                # accurate_kl_gpt2 = (F.softmax(logits, 2) * (F.log_softmax(logits, 2) - F.log_softmax(old_logits_gpt2, 2))).mean()
+                # accurate_kl_gpt2 = (F.softmax(old_logits_gpt2, 2) * (F.log_softmax(old_logits_gpt2, 2) - F.log_softmax(logits, 2))).sum()
+                # pdb.set_trace()
             else:
                 approx_kl_gpt2 = (logprob - old_logprob_gpt2).pow(2)
             # np.where(p != 0, p * np.log(p / q), 0)
@@ -1146,7 +1159,7 @@ if __name__ == "__main__":
     DEBUG = False
     USE_APPROX_KL = False
     PREVIOUS_STEPS = 0
-    TOTAL_STEPS = 100
+    TOTAL_STEPS = 50
 
     if REPLAY_BUFFER_DIR is not None:
         replay_buffer_temp = torch.load(REPLAY_BUFFER_DIR)
@@ -1192,7 +1205,8 @@ if __name__ == "__main__":
     class CurrentModelConfig:
         with_rule = False
         log_file = log_dir#f'logs/ppo/{log_dir}'
-        
+        strategy_selection_on = True
+
         with_baseline =  True
         with_repetition_module = True
         with_consistency_module = True
@@ -1296,7 +1310,7 @@ if __name__ == "__main__":
         usr_text = ""
         while True:
             # interactive test
-            sys_sent, [sents_success, sents_failed], have_enough_candidates, usr_input_text = actor.chat(usr_text)
+            sys_sent, [sents_success, sents_failed], have_enough_candidates, usr_input_text, _ = actor.chat(usr_text)
             print(f"sys: {sys_sent}\n")
             # print(f"success:\n {sents_success}")
             # print(f"failed:\n {sents_failed}")

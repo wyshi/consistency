@@ -34,7 +34,8 @@ logging.info(f"!!!!!--------- AMT test: datetime {TIME}----------")
 app = Flask(__name__)
 
 # EVAL_MODEL_A_DIR = "/home/wyshi/persuasion/consistency/ARDM/persuasion/persuasion_medium_3.th"
-EVAL_MODEL_A_DIR = "/home/wyshi/persuasion/consistency/Checkpoint/23_steps_1.79_2.536363636363636_reward_model_A_kl_7.53_ppo5.pth"
+# EVAL_MODEL_A_DIR = "/home/wyshi/persuasion/consistency/Checkpoint/23_steps_1.79_2.536363636363636_reward_model_A_kl_7.53_ppo5.pth"
+# EVAL_MODEL_A_DIR = "/home/wyshi/persuasion/consistency/Checkpoint/23_steps_1.79_2.536363636363636_reward_model_A_kl_7.53_ppo5.pth"
 
 class CurrentModelConfig:
     with_rule = True
@@ -263,7 +264,7 @@ def getResponse():
 
     result = MODEL_MAP[sid].chat(input_text=input_text, mode=MODE, sid=sid)
     if result is not None:
-        response, [sents_success, sents_failed], have_enough_candidates, usr_input_text = result
+        response, [sents_success, sents_failed], have_enough_candidates, usr_input_text, _ = result
         # TOTAL_SUCCESS_CANDIDATES += len(sents_success)
 
     delay_for_typing(RECEIVED_TIME, response)

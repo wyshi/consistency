@@ -72,7 +72,7 @@ class HumanRule(object):
                 return None
 
             if (not any_is_agree) and (self.chatbot.turn_i == cfg.HAVE_TO_ASK_AGAIN) and (not (SystemAct.propose_donation_inquiry in sent_acts)):
-                return ["How much would like to donate to the charity now?"], enforced_acts_last_ask
+                return ["Just to confirm, how much would like to donate to the charity now?"], enforced_acts_last_ask
 
             if (SystemAct.propose_donation_inquiry in self.chatbot.global_profile.sys_world.sent_profile.keys()):
                 return None

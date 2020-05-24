@@ -64,6 +64,9 @@ class SystemAct(object):
     LOGICAL_APPEAL = "logical-appeal"
     EXAMPLE_DONATION = "self-modeling"
 
+    strategy_list = [PROVIDE_ORG_FACTS, PERSONAL_STORY, EMOTION_APPEAL, PROPOSE_DONATION, FOOT_IN_THE_DOOR,\
+                        LOGICAL_APPEAL, EXAMPLE_DONATION, propose_donation_inquiry,\
+                            kids_related_inquiry, donation_related_inquiry, other_inquiry]
     ############ dialog-act ##############
     TASK_RELATED_INQUIRY = SharedDialogAct.TASK_RELATED_INQUIRY
     PERSONAL_RELATED_INQUIRY = SharedDialogAct.PERSONAL_RELATED_INQUIRY

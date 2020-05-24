@@ -562,6 +562,10 @@ class GlobalProfile(object):
                 elif SystemAct.ASK_NOT_DONATE_REASON in sent_acts:
                     answers['usr'] = self.domain.NO
 
+                score = self.sentiment_analyzer.polarity_scores(sent)
+                if SystemAct.ACKNOWLEDGEMENT in sent_acts and score['compound'] >= 0.05:
+                    answers['usr'] = self.domain.YES
+
         return answers
 
     def answer_DONATION_AMOUNT(self, sent, who, last_sent, sent_acts):
@@ -677,6 +681,10 @@ class GlobalProfile(object):
                 
                 if SystemAct.ASK_NOT_DONATE_REASON in sent_acts:
                     answers['usr'] = 0
+
+                score = self.sentiment_analyzer.polarity_scores(sent)
+                if SystemAct.ACKNOWLEDGEMENT in sent_acts and score['compound'] >= 0.05:
+                    answers['usr'] = self.domain.YES
 
         return answers
 
@@ -818,28 +826,38 @@ class GlobalProfile(object):
 
     def check_consistency(self, sents, sent_acts):
         # pdb.set_trace()
-        to_update_dic_usr, to_update_dic_sys = self.extract_info(sents, who=self.domain.SYS, sent_acts=sent_acts)
-        consis_status = cfg.PASS
-        fail_reason = ""
-        for att, answer in to_update_dic_usr.items():
-            # if the system says something that's different from the user profile before
-            if self.usr_world.usr_profile[att] != answer:
-                fail_reason += f"{att} is {answer}, but {self.usr_world.usr_profile[att]} in usr_world usr_profile; "
-                consis_status = cfg.INCONSISTENCY
+        def check_consistency_for_one_utt(sent, sent_act):
+            to_update_dic_usr, to_update_dic_sys = self.extract_info([sent], who=self.domain.SYS, sent_acts=[sent_act])
+            print("things to update in check_consistency****************************************************")
+            print(f"{self.domain.SYS}: {sent_acts}: {sents}")
+            print(f"{to_update_dic_usr}\n{to_update_dic_sys}")
+            print("********************************************************************")
+            logging.info("things to update****************************************************")
+            logging.info(f"{self.domain.SYS}: {sent_acts}: {sents}")
+            logging.info(f"{to_update_dic_usr}\n{to_update_dic_sys}")
+            logging.info("********************************************************************")
 
-        for att, answer in to_update_dic_sys.items():
-            # if the system says something that's different from the system profile before
-            if self.sys_world.sys_profile[att] != self.domain.INIT \
-               and self.sys_world.sys_profile[att] != answer:
-                fail_reason += f"{att} is {answer}, but {self.sys_world.sys_profile[att]} in sys_world sys_profile; "
-                consis_status = cfg.INCONSISTENCY
-        for sent in sents:
-            if "you decided to donate" in sent:
-                pass
+            consis_status = cfg.PASS
+            fail_reason = ""
+            for att, answer in to_update_dic_usr.items():
+                # if the system says something that's different from the user profile before
+                if self.usr_world.usr_profile[att] != answer:
+                    fail_reason += f"{att} is {answer}, but {self.usr_world.usr_profile[att]} in usr_world usr_profile; "
+                    consis_status = cfg.INCONSISTENCY
+
+            for att, answer in to_update_dic_sys.items():
+                # if the system says something that's different from the system profile before
+                if self.sys_world.sys_profile[att] != self.domain.INIT \
+                and self.sys_world.sys_profile[att] != answer:
+                    fail_reason += f"{att} is {answer}, but {self.sys_world.sys_profile[att]} in sys_world sys_profile; "
+                    consis_status = cfg.INCONSISTENCY
+            for sent in sents:
+                if "you decided to donate" in sent:
+                    pass
+                    # pdb.set_trace()
+            if consis_status != cfg.PASS:
                 # pdb.set_trace()
-        if consis_status != cfg.PASS:
-            # pdb.set_trace()
-            pass
+                pass
         return consis_status, fail_reason
 
     def regex_label(self, model_clf, sys_texts, which_task):
@@ -928,7 +946,13 @@ class GlobalProfile(object):
                                                     'if you would like to consider a small portion of your payment']):
                         label = SystemAct.propose_donation_inquiry
                     else:
-                        label = predicted_label
+                        if predicted_label in [UserAct.ACKNOWLEDGEMENT]:
+                            if "that's great" in sent.lower() or "that is great" in sent.lower() or "great" in sent.lower():
+                                label = SystemAct.PRAISE_USER
+                            else:
+                                label = predicted_label
+                        else:
+                            label = predicted_label
             else:
                 # pdb.set_trace()
                 if predicted_label in ["task-related-inquiry", "personal-related-inquiry"]:#, "have-you-heard-of-the-org"]:
@@ -1228,25 +1252,10 @@ class UsrWorld(IndividualWorld):
                             return False
             else:
                 if sys_label == SystemAct.propose_donation_inquiry:
-                    if "how much" in sys_text.lower():
-                        donation_amount = self.usr_profile[self.domain.DONATION_AMOUNT]
-                        try:
-                            donation_amount = float(donation_amount)
-                            if donation_amount > 0:
-                                return True
-                            else:
-                                return False
-                        except:
-                            any_provide_amount = any(["provide-donation-amount" in pair[0][0] for pair in self.act_sent_pair]) 
-                            if any_provide_amount:
-                                return True
-                            else:
-                                return False
-
-                    else:
-                        if self.usr_profile[act_to_attributes[SystemAct.propose_donation_inquiry]] in [self.domain.YES]:
-                            return True
-                        else: 
+                    if self.usr_profile[act_to_attributes[SystemAct.propose_donation_inquiry]] in [self.domain.YES]:
+                        # agree-donation
+                        if "how much" in sys_text.lower():
+                            # "how much will you donate"
                             donation_amount = self.usr_profile[self.domain.DONATION_AMOUNT]
                             try:
                                 donation_amount = float(donation_amount)
@@ -1255,7 +1264,49 @@ class UsrWorld(IndividualWorld):
                                 else:
                                     return False
                             except:
-                                return False
+                                any_provide_amount = any(["provide-donation-amount" in pair[0][0] for pair in self.act_sent_pair]) 
+                                if any_provide_amount:
+                                    return True
+                                else:
+                                    return False
+                        else:
+                            # "do you want to donate"
+                            return True
+                    elif self.usr_profile[act_to_attributes[SystemAct.propose_donation_inquiry]] in [self.domain.INIT]:
+                        # haven't asked before
+                        return False
+                    else:
+                        # disagree-donation
+                        return True
+
+                    # if "how much" in sys_text.lower():
+                    #     donation_amount = self.usr_profile[self.domain.DONATION_AMOUNT]
+                    #     try:
+                    #         donation_amount = float(donation_amount)
+                    #         if donation_amount > 0:
+                    #             return True
+                    #         else:
+                    #             return False
+                    #     except:
+                    #         any_provide_amount = any(["provide-donation-amount" in pair[0][0] for pair in self.act_sent_pair]) 
+                    #         if any_provide_amount:
+                    #             return True
+                    #         else:
+                    #             return False
+
+                    # else:
+                    #     if self.usr_profile[act_to_attributes[SystemAct.propose_donation_inquiry]] in [self.domain.YES]:
+                    #         return True
+                    #     else: 
+                    #         donation_amount = self.usr_profile[self.domain.DONATION_AMOUNT]
+                    #         try:
+                    #             donation_amount = float(donation_amount)
+                    #             if donation_amount > 0:
+                    #                 return True
+                    #             else:
+                    #                 return False
+                    #         except:
+                    #             return False
                 elif self.usr_profile[act_to_attributes[sys_label]] != self.domain.INIT: ### change here
                     return True
                 else:
@@ -1451,6 +1502,14 @@ class SysWorld(IndividualWorld):
         if SystemAct.greeting_answer in sys_label:
             if self.last_labels and UserAct.greeting_inquiry in self.last_labels:
                 return False 
+            else:
+                return True
+        elif SystemAct.PROVIDE_DONATION_PROCEDURE in sys_label:
+            if self.last_labels and UserAct.donation_procedure_inquiry in self.last_labels:
+                return False
+            elif SystemAct.PROVIDE_DONATION_PROCEDURE not in self.sent_profile.keys():
+                # first time telling the donation info
+                return False
             else:
                 return True
         else:

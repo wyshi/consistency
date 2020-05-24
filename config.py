@@ -3,6 +3,7 @@ REPETITION_RATIO = "repetition_ratio"
 FIRST_OF_CANDIDATES = "first_of_candidates"
 HUMAN_SELECTION = "human_selection"
 IMITATION_LEARNING_SELECTION = "imitation_learning_selection"
+# STRATEGY_SELECTION = "strategy_selection"
 
 #======================================
 # PPO relevant argument!
@@ -30,8 +31,8 @@ model_B_device = "cuda:2"
 model_B_device_list = ['cuda:2', 'cuda:1']
 split_into_B = len(model_B_device_list)
 
-model_C_device = "cuda:0"
-model_C_device_list = ['cuda:0']
+model_C_device = "cuda:1"
+model_C_device_list = ['cuda:1']
 split_into_C = len(model_C_device_list)
 split_into_C = len(model_C_device_list)
 

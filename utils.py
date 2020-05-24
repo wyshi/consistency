@@ -190,3 +190,96 @@ def filter_ngram(utt, n):
     if repeat:
         right = right - n
     return " ".join(words[:right])
+
+import collections
+import nltk
+from nltk import ngrams
+import numpy as np
+import tqdm
+# automatic metrics
+def compute_distinct(inputs, n=4):
+    counter = collections.Counter()
+    total_count = 0   
+    for item in inputs:
+        hyp = nltk.word_tokenize(item[1].lower())
+        n_grams = list(ngrams(hyp, n=n))  
+        counter.update(n_grams)
+        total_count += len(n_grams)
+    return len(counter) / total_count
+
+def get_human_n_grams(inputs, n=4):
+    human_n_grams = collections.Counter()
+    for item in tqdm.tqdm(inputs):
+        list_n_grams = ngrams(nltk.word_tokenize(item.lower()), n=n)
+        human_n_grams.update(list_n_grams)       
+    human_n_grams = {k:v for k,v in human_n_grams.items() if v > 1}
+    return human_n_grams
+
+def compute_sentence_repeat(inputs, human_n_grams, n=4):
+    scores = []
+    for item in inputs:
+        count = 0
+        tokens = nltk.word_tokenize(item[1].lower())
+        n_grams = list(ngrams(tokens, n=n))
+        for n_gram in n_grams:
+            if n_gram in human_n_grams:
+                count += 1
+        if len(n_grams) == 0:
+            scores.append(0)
+        else:
+            scores.append(count/len(n_grams))
+    return np.mean(scores)
+
+from nltk.translate.bleu_score import sentence_bleu
+def compute_bleu(inputs, n=2):
+    if n==3:
+        weights=(0.333, 0.333, 0.333, 0)
+    elif n==2:
+        weights=(0.5, 0.5, 0.0, 0)
+    elif n==4:
+        weights=(0.25, 0.25, 0.25, 0.25)
+    else:
+        # assert False
+        weights=(1, 0, 0, 0)
+    scores = []   
+    for item in inputs:
+        ref = nltk.word_tokenize(item[0].lower())
+        hyp = nltk.word_tokenize(item[1].lower())       
+        score = sentence_bleu([ref], hyp, weights=weights)
+        scores.append(score)
+    return np.mean(scores)
+
+def automatic_metric(final_targets_A, final_responses_A, final_targets_B, final_responses_B):
+    # distinct
+    A_distinct = compute_distinct(zip(final_targets_A, final_responses_A))
+    B_distinct = compute_distinct(zip(final_targets_B, final_responses_B))
+    all_distinct = compute_distinct(zip(final_targets_A+final_targets_B, final_responses_A+final_responses_B))
+
+    # repeat
+    human_n_grams_A = get_human_n_grams(final_targets_A)
+    A_repeat = compute_sentence_repeat(zip(final_targets_A, final_responses_A), human_n_grams_A)
+    human_n_grams_B = get_human_n_grams(final_targets_B)
+    B_repeat = compute_sentence_repeat(zip(final_targets_B, final_responses_B), human_n_grams_B)
+    all_human_n_grams = get_human_n_grams(final_targets_A+final_targets_B)
+    all_repeat = compute_sentence_repeat(zip(final_targets_A+final_targets_B, final_responses_A+final_responses_B), all_human_n_grams)
+
+    # bleu 2
+    A_bleu_2 = compute_bleu(zip(final_targets_A, final_responses_A), n=2)
+    B_bleu_2 = compute_bleu(zip(final_targets_B, final_responses_B), n=2)
+    all_bleu_2 = compute_bleu(zip(final_targets_A+final_targets_B, final_responses_A+final_responses_B), n=2)
+
+    A_bleu_1 = compute_bleu(zip(final_targets_A, final_responses_A), n=1)
+    B_bleu_1 = compute_bleu(zip(final_targets_B, final_responses_B), n=1)
+    all_bleu_1 = compute_bleu(zip(final_targets_A+final_targets_B, final_responses_A+final_responses_B), n=1)
+
+    with open("Eval/simulated_dialogs.txt", "a") as fh:
+        print(f"distinct: A: {A_distinct}, B: {B_distinct}, all: {all_distinct}")
+        print(f"repeat: A: {A_repeat}, B: {B_repeat}, all: {all_repeat}")
+        print(f"bleu-2: A: {A_bleu_2}, B: {B_bleu_2}, all: {all_bleu_2}")
+        print(f"bleu-1: A: {A_bleu_1}, B: {B_bleu_1}, all: {all_bleu_1}")
+
+        fh.write(f"distinct: A: {A_distinct}, B: {B_distinct}, all: {all_distinct}")
+        fh.write(f"repeat: A: {A_repeat}, B: {B_repeat}, all: {all_repeat}")
+        fh.write(f"bleu-2: A: {A_bleu_2}, B: {B_bleu_2}, all: {all_bleu_2}")
+        fh.write(f"bleu-1: A: {A_bleu_1}, B: {B_bleu_1}, all: {all_bleu_1}")
+
