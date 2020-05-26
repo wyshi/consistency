@@ -781,6 +781,7 @@ class PersuasiveBot:
             # as long as it's not a contradiction, randomly pick one 
             if cfg.debug:
                 print("no enough candidates! randomly generate the next one!")
+            logging.info("no enough candidates! randomly generate the next one!")
             sent, past, hidden_states = self.sample_one_sent(past=self.past, model=self.model_A)
             sents = sent_tokenize_modified(sent)
 

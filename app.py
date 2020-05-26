@@ -27,7 +27,7 @@ from torchfly.modules.losses import SequenceFocalLoss, SequenceCrossEntropyLoss
 import logging
 from sentence_transformers import SentenceTransformer
 
-LOG_FILE = 'logs/amt_new_model-no_RL-real-real.log'
+LOG_FILE = 'logs/amt_new_model-no_RL-random_select-real-real-real.log'
 logging.basicConfig(filename=LOG_FILE,level=logging.DEBUG)
 TIME = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
 logging.info(f"!!!!!--------- AMT test: datetime {TIME}----------")
@@ -42,7 +42,7 @@ class CurrentModelConfig:
     with_baseline =  True
     with_repetition_module = True
     with_consistency_module = True
-    with_sentence_clf = True
+    with_sentence_clf = False
     with_RL_finetune_model = False
 
     if not with_repetition_module and with_consistency_module:
@@ -55,7 +55,9 @@ class CurrentModelConfig:
         candidate_select_strategy = cfg.REPETITION_RATIO
 
     if with_sentence_clf:
-        candidate_select_strategy = cfg.IMITATION_LEARNING_SELECTION
+        candidate_select_strategy = cfg.RANDOM_SELECT
+    
+    candidate_select_strategy = cfg.RANDOM_SELECT
 
     if with_baseline and (not with_repetition_module) and (not with_consistency_module) and (not with_sentence_clf)\
         and (not with_RL_finetune_model):
