@@ -794,7 +794,7 @@ class GlobalProfile(object):
             # 2. inconsistency
             if rep_condition:
                 # if it's not a repetition, then we need to check for consistency
-                consis_status, fail_consistency_reason = self.check_consistency(edited_sents, edited_sent_acts)
+                consis_status, fail_consistency_reason, edited_sents, edited_sent_acts = self.check_consistency(edited_sents, edited_sent_acts)
                 # pdb.set_trace()
                 consis_condition = consis_status in [cfg.PASS]
 
@@ -829,11 +829,11 @@ class GlobalProfile(object):
         def check_consistency_for_one_utt(sent, sent_act):
             to_update_dic_usr, to_update_dic_sys = self.extract_info([sent], who=self.domain.SYS, sent_acts=[sent_act])
             print("things to update in check_consistency****************************************************")
-            print(f"{self.domain.SYS}: {sent_acts}: {sents}")
+            print(f"{self.domain.SYS}: {sent_act}: {sent}")
             print(f"{to_update_dic_usr}\n{to_update_dic_sys}")
             print("********************************************************************")
             logging.info("things to update****************************************************")
-            logging.info(f"{self.domain.SYS}: {sent_acts}: {sents}")
+            logging.info(f"{self.domain.SYS}: {sent_act}: {sent}")
             logging.info(f"{to_update_dic_usr}\n{to_update_dic_sys}")
             logging.info("********************************************************************")
 
@@ -851,14 +851,36 @@ class GlobalProfile(object):
                 and self.sys_world.sys_profile[att] != answer:
                     fail_reason += f"{att} is {answer}, but {self.sys_world.sys_profile[att]} in sys_world sys_profile; "
                     consis_status = cfg.INCONSISTENCY
-            for sent in sents:
-                if "you decided to donate" in sent:
-                    pass
+            # for sent in sents:
+            #     if "you decided to donate" in sent:
+            #         pass
                     # pdb.set_trace()
             if consis_status != cfg.PASS:
                 # pdb.set_trace()
                 pass
-        return consis_status, fail_reason
+            return consis_status, fail_reason
+
+        consis_statuses, consis_reasons = [], []
+        for sent, sent_act in zip(sents, sent_acts):
+            consis_status, consis_reason = check_consistency_for_one_utt(sent, sent_act)
+            consis_statuses.append(consis_status)
+            consis_reasons.append(consis_reason)
+
+        if len(sents) == 1:
+            return consis_statuses[0], consis_reasons[0], sents, sent_acts
+        else:
+            edited_sents = []
+            edited_sent_acts = []
+            for status, sent, sent_act in zip(consis_statuses, sents, sent_acts):
+                if status not in [cfg.PASS]:
+                    pass
+                else:
+                    edited_sents.append(sent)
+                    edited_sent_acts.append(sent_act)
+            if len(edited_sents) == 0:
+                return cfg.NOT_PASS, " ".join(consis_reasons), sents, sent_acts
+            else:
+                return cfg.PASS, "<pass> with sentence removed for <inconsistency>", edited_sents, edited_sent_acts
 
     def regex_label(self, model_clf, sys_texts, which_task):
         """
@@ -894,6 +916,7 @@ class GlobalProfile(object):
 
                     elif self.sents_are_similar(sent, [#'have you heard of save the children before', 
                                                     'have you heard of save the children',
+                                                    "have you every heard of a charity called save the children",
                                                     'are you aware of save the children',
                                                     'are you familiar with save the children']):
                         label = SystemAct.organization_related_inquiry

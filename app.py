@@ -27,7 +27,7 @@ from torchfly.modules.losses import SequenceFocalLoss, SequenceCrossEntropyLoss
 import logging
 from sentence_transformers import SentenceTransformer
 
-LOG_FILE = 'logs/amt_new_model-with_RL-real-real.log'
+LOG_FILE = 'logs/amt_new_model-with_RL-real-new_strategy_model-real.log'
 logging.basicConfig(filename=LOG_FILE,level=logging.DEBUG)
 TIME = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
 logging.info(f"!!!!!--------- AMT test: datetime {TIME}----------")
@@ -35,11 +35,13 @@ app = Flask(__name__)
 
 # EVAL_MODEL_A_DIR = "/home/wyshi/persuasion/consistency/ARDM/persuasion/persuasion_medium_3.th"
 # EVAL_MODEL_A_DIR = "/home/wyshi/persuasion/consistency/Checkpoint/23_steps_1.79_2.536363636363636_reward_model_A_kl_7.53_ppo5.pth"
-# EVAL_MODEL_A_DIR = "/home/wyshi/persuasion/consistency/Checkpoint/23_steps_1.79_2.536363636363636_reward_model_A_kl_7.53_ppo5.pth"
+# EVAL_MODEL_A_DIR = "/home/wyshi/persuasion/consistency/Checkpoint/9_steps_2.73_3.390909090909091_reward_model_A_kl_8.85_ppo10.pth"
+EVAL_MODEL_A_DIR = "/home/wyshi/persuasion/consistency/Checkpoint/4_steps_2.64_3.309090909090909_reward_model_A_kl_13.8_ppo10.pth"# inquiry reward different
 
 class CurrentModelConfig:
     with_rule = True
     log_file = LOG_FILE
+    strategy_selection_on = True
     
     with_baseline =  True
     with_repetition_module = True
@@ -47,24 +49,27 @@ class CurrentModelConfig:
     with_sentence_clf = True
     with_RL_finetune_model = True
 
-    if not with_repetition_module and with_consistency_module:
-        candidate_select_strategy = cfg.RANDOM_SELECT
-    elif not with_repetition_module and not with_consistency_module:
-        candidate_select_strategy = cfg.RANDOM_SELECT
-    elif with_repetition_module and not with_consistency_module:
-        candidate_select_strategy = cfg.REPETITION_RATIO
-    elif with_repetition_module and with_consistency_module:
-        candidate_select_strategy = cfg.REPETITION_RATIO
+    candidate_select_strategy = cfg.IMITATION_LEARNING_SELECTION
+    NUM_CANDIDATES = 10
 
-    if with_sentence_clf:
-        candidate_select_strategy = cfg.IMITATION_LEARNING_SELECTION
+    # if not with_repetition_module and with_consistency_module:
+    #     candidate_select_strategy = cfg.RANDOM_SELECT
+    # elif not with_repetition_module and not with_consistency_module:
+    #     candidate_select_strategy = cfg.RANDOM_SELECT
+    # elif with_repetition_module and not with_consistency_module:
+    #     candidate_select_strategy = cfg.REPETITION_RATIO
+    # elif with_repetition_module and with_consistency_module:
+    #     candidate_select_strategy = cfg.REPETITION_RATIO
 
-    if with_baseline and (not with_repetition_module) and (not with_consistency_module) and (not with_sentence_clf)\
-        and (not with_RL_finetune_model):
-        NUM_CANDIDATES = 1
-        with_rule = False
-    else:
-        NUM_CANDIDATES = cfg.NUM_CANDIDATES
+    # if with_sentence_clf:
+    #     candidate_select_strategy = cfg.IMITATION_LEARNING_SELECTION
+
+    # if with_baseline and (not with_repetition_module) and (not with_consistency_module) and (not with_sentence_clf)\
+    #     and (not with_RL_finetune_model):
+    #     NUM_CANDIDATES = 1
+    #     with_rule = False
+    # else:
+    #     NUM_CANDIDATES = cfg.NUM_CANDIDATES
     
 def load_model_for_AMT(EVAL_MODEL_A_DIR, DEVICE1, DEVICE1_list, SPLIT_INTO1, DEVICE2, DEVICE2_list, SPLIT_INTO2):
     TOKENIZER = GPT2Tokenizer.from_pretrained("gpt2")#torch.load(tokenizer_dir)
@@ -141,6 +146,7 @@ def build_one_model(MAX_USER):
     logging.info(f"candidate_select_strategy: {CurrentModelConfig.candidate_select_strategy}")
     logging.info(f"NUM_CANDIDATES: {CurrentModelConfig.NUM_CANDIDATES}")
     logging.info(f"with_rule: {CurrentModelConfig.with_rule}")
+    logging.info(f"strategy_selection_on: {CurrentModelConfig.strategy_selection_on}")
     b = time.time()
 
     logging.info(f"building one take {b-a} time")

@@ -363,14 +363,16 @@ class ReplayBuffer:
 class CustomRewardFunc:
     """Give reward for the entire sequence
     """
-    def __init__(self):
+    def __init__(self, model_config):
+        self.model_config = model_config
         self.ground_truth_reward = 10
         self.success_candidates_reward = 2
         self.backup_candidates_reward = 0.5
         self.failed_candidates_reward = -2
         self.long_candidate_penalty = -3
         self.short_candidate_penalty = -3
-        self.strategy_candidate_reward = 3
+        self.strategy_candidate_reward1 = 2
+        self.strategy_candidate_reward2 = 4
         self.len_denominator = float('Inf')
         self.len_cut = 50
         self.len_min = 2
@@ -387,9 +389,14 @@ class CustomRewardFunc:
             for sent_act, sent in zip(sents_act_success, sents_success):
                 sent_len = len(sent.split())
                 if self.len_min < sent_len and sent_len < self.len_cut:
-                    if CurrentModelConfig.strategy_selection_on:
-                        if len(set(sent_act) & set(SystemAct.strategy_list))>0:
-                            rewards.append(self.strategy_candidate_reward + sent_len/self.len_denominator)
+                    if self.model_config.strategy_selection_on:
+                        strategy_list = list(set(sent_act) & set(SystemAct.strategy_list))
+                        if len(strategy_list)>0:
+                            if all(["inquiry" in strategy for strategy in strategy_list]):
+                                rewards.append(self.strategy_candidate_reward1 + sent_len/self.len_denominator)
+                            else:
+                                logging.info(f"strategy in reward_fun: {sent_act}")
+                                rewards.append(self.strategy_candidate_reward2 + sent_len/self.len_denominator)
                         else:
                             rewards.append(self.success_candidates_reward + sent_len/self.len_denominator)
                     else:
@@ -481,7 +488,7 @@ class Actor(PersuasiveBot):
 
 
         self.contexts = []
-        self.reward_func = CustomRewardFunc()
+        self.reward_func = CustomRewardFunc(model_config)
         self.reload()
 
     def reload(self):

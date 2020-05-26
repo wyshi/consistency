@@ -103,15 +103,15 @@ df1_check = df_donation_model1[df_donation_model1.check=='right']
 
 # model2 starts
 df_model2 = pd.read_csv(f"~/persuasion/test/ParlAI/data/personachat_chat/post_task_survey.csv", names=columns)
-df_model2 = df_model2.iloc[272:]
+df_model2 = df_model2.iloc[304:]
 df_model2 = df_model2[df_model2.check=="right"]
 df_model2.repeat.mean()
 
 userids = []
 donation0 = []
 txt_dirs = []
-for txt_dir in sorted(os.listdir(f"~/persuasion/test/ParlAI/data/personachat_chat/emnlp_dialogs_txt/")):
-    with open(f"~/persuasion/test/ParlAI/data/personachat_chat/emnlp_dialogs_txt/{txt_dir}", "r") as fh:
+for txt_dir in sorted(os.listdir(f"/home/wyshi/persuasion/test/ParlAI/data/personachat_chat/emnlp_dialogs_txt/")):
+    with open(f"/home/wyshi/persuasion/test/ParlAI/data/personachat_chat/emnlp_dialogs_txt/{txt_dir}", "r") as fh:
     # with open(f"{baseline_dir}/emnlp_dialogs_txt/{txt_dir}", "r") as fh:
         if "incomplete" not in txt_dir and "sandbox" not in txt_dir:
             first_line = fh.readline()
@@ -127,6 +127,13 @@ for txt_dir in sorted(os.listdir(f"~/persuasion/test/ParlAI/data/personachat_cha
             # donation_df.append()
             if float(first_line.split(",")[1]) == -1:
                 print(txt_dir, userid)
+donation_df2 = pd.DataFrame(zip(userids, donation0, txt_dirs), columns=["id", "donation", "txt_dir"])
+donation_df2 = donation_df2[donation_df2['donation']>=0]
+donation_df2 = donation_df2[~donation_df2.id.isin(sandbox_id)]
+donation_df2 = donation_df2[donation_df2.id.isin(df_model2.id)]
+
+df_model2 = df_model2[df_model2.id.isin(donation_df2.id)]
+df_donation_model2 = pd.merge(df_model2, donation_df2, how='inner', on='id')
 
 # model2 done ###
 

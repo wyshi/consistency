@@ -571,7 +571,7 @@ class EvalActor(Actor):
                         if role_id == 0:
                             if self.past is None:
                                 user_text = ""
-                            response, [sents_success, sents_failed], have_enough_candidates, usr_input_text, _ = self.chat(input_text=user_text, mode=mode)
+                            response, [sents_success, sents_failed], have_enough_candidates, usr_input_text, sents_act_success = self.chat(input_text=user_text, mode=mode)
                             dialog_responses_A.append(response)
                             dialog_targets_A.append(dial_sent)
                             ground_truth = dial_sent
@@ -582,7 +582,7 @@ class EvalActor(Actor):
                                 assert not ground_truth.startswith("A:")
                             except:
                                 pdb.set_trace()
-                            cur_rewards = self.reward_func([ground_truth, sents_success, sents_failed], have_enough_candidates, with_ground_truth=True)
+                            cur_rewards = self.reward_func([ground_truth, sents_success, sents_failed], have_enough_candidates, with_ground_truth=True, sents_act_success=sents_act_success)
 
                             # print(f"truth: {ground_truth}")
                             # print(f"sent_success: \n{sents_success}")
@@ -672,9 +672,14 @@ class EvalActor(Actor):
 TOKENIZER = GPT2Tokenizer.from_pretrained("gpt2")#torch.load(tokenizer_dir)
 # EVAL_MODEL_A_DIR = "/home/wyshi/persuasion/consistency/ARDM/persuasion/persuasion_medium_3.th"
 # EVAL_MODEL_A_DIR = "/home/wyshi/persuasion/consistency/Checkpoint/23_steps_1.79_2.536363636363636_reward_model_A_kl_7.53_ppo5.pth"#good
-# EVAL_MODEL_A_DIR = "/home/wyshi/persuasion/consistency/Checkpoint/4_steps_1.8636363636363635_2.603305785123967_reward_model_A_kl_12.21_ppo7.pth"
-EVAL_MODEL_A_DIR = "/home/wyshi/persuasion/consistency/Checkpoint/11_steps_1.92_2.6545454545454548_reward_model_A_kl_9.42_ppo7.pth"
-EVAL_MODEL_A_DIR = "/home/wyshi/persuasion/consistency/Checkpoint/4_steps_1.6272727272727272_2.3884297520661155_reward_model_A_kl_10.81_ppo9.pth"
+# EVAL_MODEL_A_DIR = "/home/wyshi/persuasion/consistency/Checkpoint/4_steps_1.8636363636363635_2.603305785123967_reward_model_A_kl_12.21_ppo7.pth"#before strategy reward, ok coef=0.01
+EVAL_MODEL_A_DIR = "/home/wyshi/persuasion/consistency/Checkpoint/11_steps_1.92_2.6545454545454548_reward_model_A_kl_9.42_ppo7.pth"#before strategy reward, ok coef=0.01
+# EVAL_MODEL_A_DIR = "/home/wyshi/persuasion/consistency/Checkpoint/4_steps_1.6272727272727272_2.3884297520661155_reward_model_A_kl_10.81_ppo9.pth"#before strategy reward, ok, coef=0.5
+# EVAL_MODEL_A_DIR = "/home/wyshi/persuasion/consistency/Checkpoint/7_steps_2.16_2.8727272727272726_reward_model_A_kl_14.37_ppo10.pth"# inquiry rewards the same
+# EVAL_MODEL_A_DIR = "/home/wyshi/persuasion/consistency/Checkpoint/4_steps_2.64_3.309090909090909_reward_model_A_kl_13.8_ppo10.pth"# inquiry reward different
+EVAL_MODEL_A_DIR = "/home/wyshi/persuasion/consistency/Checkpoint/7_steps_2.8181818181818183_3.4710743801652892_reward_model_A_kl_12.59_ppo10.pth"# inquiry reward different
+# EVAL_MODEL_A_DIR = "/home/wyshi/persuasion/consistency/Checkpoint/9_steps_2.73_3.390909090909091_reward_model_A_kl_8.85_ppo10.pth"# inquiry reward different
+# EVAL_MODEL_A_DIR = "/home/wyshi/persuasion/consistency/Checkpoint/27_steps_2.94_3.581818181818182_reward_model_A_kl_5.43_ppo10.pth"# inquiry reward different
 
 
 # EVAL_MODEL_A_DIR = "/home/wyshi/persuasion/consistency/Checkpoint/3_steps_1.4416666666666667_2.2196969696969697_reward_model_A_kl_15.29_ppo8.pth"
@@ -690,12 +695,12 @@ EVAL_MODEL_A_DIR = "/home/wyshi/persuasion/consistency/Checkpoint/4_steps_1.6272
 with open("Eval/simulated_dialogs.txt", "a") as fh:
     fh.write(f"{EVAL_MODEL_A_DIR}\n")
 
-DEVICE1 = torch.device("cuda:5")#torch.device(cfg.model_A_device)
-DEVICE1_list = ["cuda:5"]
+DEVICE1 = torch.device("cuda:2")#torch.device(cfg.model_A_device)
+DEVICE1_list = ["cuda:2"]
 SPLIT_INTO1= 1
 
-DEVICE2 = torch.device("cuda:6")
-DEVICE2_list = ['cuda:6']
+DEVICE2 = torch.device("cuda:3")
+DEVICE2_list = ['cuda:3']
 SPLIT_INTO2= 1
 val_dataloader = get_val_dataloader(TOKENIZER)
 
@@ -708,7 +713,7 @@ model_A.eval()
 model_B.eval()
 import pdb
 # pdb.set_trace()
-# validate(val_dataloader, model_A, model_B, ep=0)
+validate(val_dataloader, model_A, model_B, ep=0)
 
 # try:
 
@@ -751,6 +756,7 @@ else:
             candidate_select_strategy = cfg.IMITATION_LEARNING_SELECTION
 
             NUM_CANDIDATES = 1
+            strategy_selection_on = False
 
         class CurrentModelConfigForChat:
             with_rule = True
@@ -800,9 +806,9 @@ else:
 
         # calculate_num_success_candidates(bot, MAX_DIALOGS=3, mode=cfg.self_play_mode)
 
-        bot = PersuasiveBot(CurrentModelConfigForChat, model_A=model_A, model_B=model_B, tokenizer=TOKENIZER, 
-                            device1=DEVICE1, device2=DEVICE2)
-        calculate_num_success_candidates(bot, MAX_DIALOGS=100, mode=cfg.interactive_mode)
+        # bot = PersuasiveBot(CurrentModelConfigForChat, model_A=model_A, model_B=model_B, tokenizer=TOKENIZER, 
+        #                     device1=DEVICE1, device2=DEVICE2)
+        # calculate_num_success_candidates(bot, MAX_DIALOGS=100, mode=cfg.interactive_mode)
 
         # for automatic evaluation of each model
         actor = EvalActor(CurrentModelConfig, model_A=model_A, model_B=model_B, tokenizer=TOKENIZER, 
@@ -810,14 +816,19 @@ else:
         final_contexts, final_sents, final_rewards, final_context_ids, final_targets_A, final_responses_A, final_targets_B, final_responses_B,\
                         TOTAL_NUM_SUCCESS_SENTS, TOTAL_NUM_TURNS = actor.evaluation_valset()
         # pdb.set_trace()
-        model_name = f"Eval/final_all_{EVAL_MODEL_A_DIR.split('/')[-1]}_with_baseline_{CurrentModelConfig.with_baseline}_with_repetition_module_{CurrentModelConfig.with_repetition_module}_with_consistency_module_{CurrentModelConfig.with_consistency_module}_with_sentence_clf_{CurrentModelConfig.with_sentence_clf}_with_RL_finetune_model_{CurrentModelConfig.with_RL_finetune_model}_candidate_select_strategy_{CurrentModelConfig.candidate_select_strategy}_NUM_CANDIDATES_{CurrentModelConfig.NUM_CANDIDATES}_with_rule_{CurrentModelConfig.with_rule}.pkl" 
+        model_name = f"Eval/final_all_{EVAL_MODEL_A_DIR.split('/')[-1]}_with_baseline_{CurrentModelConfig.with_baseline}_with_repetition_{CurrentModelConfig.with_repetition_module}_with_consistency_{CurrentModelConfig.with_consistency_module}_with_clf_{CurrentModelConfig.with_sentence_clf}_with_RL_{CurrentModelConfig.with_RL_finetune_model}_candidate_select_{CurrentModelConfig.candidate_select_strategy}_NUM_CANDIDATES_{CurrentModelConfig.NUM_CANDIDATES}_with_rule_{CurrentModelConfig.with_rule}.pkl" 
 
         try:
             torch.save((final_contexts, final_sents, final_rewards, final_context_ids, final_targets_A, final_responses_A, final_targets_B, final_responses_B, TOTAL_NUM_SUCCESS_SENTS, TOTAL_NUM_TURNS), 
                         model_name)
         except:
+            eval_model_dir_split = EVAL_MODEL_A_DIR.split('/')[-1].split('_')
+            eval_model_dir = "_".join([eval_model_dir_split[0], eval_model_dir_split[1], eval_model_dir_split[2][:4], eval_model_dir_split[3][:4],\
+                eval_model_dir_split[-1][:-4]])
+            # 4_steps_2.64_3.309090909090909_reward_model_A_kl_13.8_ppo10
+            model_name = f"Eval/final_all_{eval_model_dir}_with_baseline_{CurrentModelConfig.with_baseline}_with_repetition_{CurrentModelConfig.with_repetition_module}_with_consistency_{CurrentModelConfig.with_consistency_module}_with_clf_{CurrentModelConfig.with_sentence_clf}_with_RL_{CurrentModelConfig.with_RL_finetune_model}_candidate_select_{CurrentModelConfig.candidate_select_strategy}_NUM_CANDIDATES_{CurrentModelConfig.NUM_CANDIDATES}_with_rule_{CurrentModelConfig.with_rule}.pkl" 
             torch.save((final_contexts, final_sents, final_rewards, final_context_ids, final_targets_A, final_responses_A, final_targets_B, final_responses_B, TOTAL_NUM_SUCCESS_SENTS, TOTAL_NUM_TURNS), 
-            f"Eval/final_all_1_step_with_baseline_{CurrentModelConfig.with_baseline}_with_repetition_module_{CurrentModelConfig.with_repetition_module}_with_consistency_module_{CurrentModelConfig.with_consistency_module}_with_sentence_clf_{CurrentModelConfig.with_sentence_clf}_with_RL_finetune_model_{CurrentModelConfig.with_RL_finetune_model}_candidate_select_strategy_{CurrentModelConfig.candidate_select_strategy}_NUM_CANDIDATES_{CurrentModelConfig.NUM_CANDIDATES}_with_rule_{CurrentModelConfig.with_rule}.pkl")
+                        model_name)
         
         def flatten_list(l):
             flat_list = [item for sublist in l for item in sublist]
