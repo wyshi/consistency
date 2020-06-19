@@ -3,7 +3,10 @@ import numpy as np
 import re
 from AgentProfile.core import SystemAct
 log_dir = "logs/amt_new_model-with_RL-real-new_strategy_model-real.log"
-#log_dir = "logs/amt_new_model-no_RL-real-real.log"
+log_dir = "logs/amt_new_model-no_RL-real-strategy_on-real.log"
+# log_dir = "logs/amt_new_model-no_RL-real-real.log"
+# log_dir = "logs/amt_new_model-no_RL-random_select-real-real-real.log"
+#log_dir = "logs/amt_baseline_test_app_real_multi-thread-test-new.log"
 # "amt_new_model-no_RL-real-real.log"
 
 # INFO:PersuasionInteract:Statistics:
@@ -33,18 +36,27 @@ for i, line in enumerate(lines):
                 'selected_in_fail': select2
         }
         dialogs_stat.append(dic)
-        
+
+
 # total success
+
+
 np.sum(list(map(lambda x:x['success'], dialogs_stat)))
-# total turn#
+# total candidates#
 np.sum(list(map(lambda x:x['success']+x['inconsis']+x['rep'], dialogs_stat)))
 # total turn#
 np.sum(list(map(lambda x:x['turn'], dialogs_stat)))
+# total selected in success
+np.sum(list(map(lambda x:x['selected_in_suc'], dialogs_stat)))
+
+np.sum(list(map(lambda x:x['rep'], dialogs_stat)))
+np.sum(list(map(lambda x:x['inconsis'], dialogs_stat)))
 
 
 # for strategy
 all_num_strategy = 0
 all_num_acts = 0
+all_unique_acts = 0
 all_has_strategy = 0
 i = 0
 for line in lines:
@@ -65,6 +77,7 @@ for line in lines:
         all_has_strategy += has_strategy
         all_num_strategy += num_strategy
         all_num_acts += num_acts
+        # all_unique_acts = 
 
 all_num_strategy, all_num_acts
 all_num_strategy/all_num_acts
@@ -78,10 +91,10 @@ import os
 all_sent_len = 0
 all_num_sents = 0
 all_num_dialog = 0
-for txt_dir in os.listdir("collected_data/amt_data/personachat_chat/emnlp_dialogs_txt/"):
-    if "incomplete" not in txt_dir and "sandbox" not in txt_dir and\
-        txt_dir.replace(".txt", ".pkl") in os.listdir("collected_data/amt_data/personachat_chat/dialogs_pkl_rlGood/"):
-        with open(f"collected_data/amt_data/personachat_chat/emnlp_dialogs_txt/{txt_dir}", "r") as fh:
+for txt_dir in os.listdir("collected_data/newmodel_strategy_on/emnlp_dialogs_txt/"):
+    if "incomplete" not in txt_dir and "sandbox" not in txt_dir:# and\
+        #txt_dir.replace(".txt", ".pkl") in os.listdir("collected_data/amt_data/personachat_chat/dialogs_pkl_randomselect/"):
+        with open(f"collected_data/newmodel_strategy_on/emnlp_dialogs_txt/{txt_dir}", "r") as fh:
             lines = fh.readlines()
             sent_len = 0
             num_sents = 0

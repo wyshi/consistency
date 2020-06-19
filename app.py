@@ -27,7 +27,7 @@ from torchfly.modules.losses import SequenceFocalLoss, SequenceCrossEntropyLoss
 import logging
 from sentence_transformers import SentenceTransformer
 
-LOG_FILE = 'logs/amt_new_model-with_RL-real-new_strategy_model-real.log'
+LOG_FILE = 'logs/amt_new_model-with_RL-real-strategy_off-real.log'
 logging.basicConfig(filename=LOG_FILE,level=logging.DEBUG)
 TIME = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
 logging.info(f"!!!!!--------- AMT test: datetime {TIME}----------")
@@ -41,7 +41,7 @@ EVAL_MODEL_A_DIR = "/home/wyshi/persuasion/consistency/Checkpoint/4_steps_2.64_3
 class CurrentModelConfig:
     with_rule = True
     log_file = LOG_FILE
-    strategy_selection_on = True
+    strategy_selection_on = False#False
     
     with_baseline =  True
     with_repetition_module = True

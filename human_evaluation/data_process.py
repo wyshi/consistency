@@ -3,6 +3,12 @@ from scipy.stats import ttest_ind
 import os
 import numpy as np
 
+sandbox_id = ['AFU4P8DM74I5', 'A2LUQBLVXKKIFF', 'A2MMW0BRDVDXEC', 'A36HO7VSU7ON09', 'A1A6P3VOR53H7D', 'A3BFFI1JV5H7TC']
+columns = ['id', 'exp_year', 'exp_month', 'age', 'why_human', 'effective', 'repeat', 'consis', 'persuasive', 
+           'grammar', 'overall', 'interact_again', 'future_donation', 'intention_increase', 'engage', 
+           'competent', 'confident', 'warm', 'sincere', 'check', 'human', 'experience', 'usage', 
+           'gender', 'race', 'edu', 'marriage', 'kid', 'income', 'religion', 'political'
+]
 def ttest(df1, df2):
     print(ttest_ind(df1.repeat, df2.repeat))
     print(ttest_ind(df1.consis, df2.consis))
@@ -16,15 +22,50 @@ def ttest(df1, df2):
     print(ttest_ind(df1.donation>0, df2.donation>0))
     print(f"{(df1.donation>0).mean()}, {(df2.donation>0).mean()}")
 
+def print_metrics(df):
+    print(f"repeat: {df.repeat.mean()}")
+    print(f"consis: {df.consis.mean()}")
+    print(f"persuasive: {df.persuasive.mean()}")
+    print(f"grammar: {df.grammar.mean()}")
+    print(f"overall: {df.overall.mean()}")
+    print(f"Human: {(df.human=='Human').mean()}")
+    print(f"donation: {df.donation.mean()}")
+    print(f"donation prob: {(df.donation>0).mean()}")
+
+
+def get_donation_df(dialogs_txt_dir):
+    userids = []
+    donation0 = []
+    txt_dirs = []
+    for txt_dir in sorted(os.listdir(dialogs_txt_dir)):
+        with open(f"{dialogs_txt_dir}/{txt_dir}", "r") as fh:
+        # with open(f"{baseline_dir}/emnlp_dialogs_txt/{txt_dir}", "r") as fh:
+            if "incomplete" not in txt_dir and "sandbox" not in txt_dir:
+                first_line = fh.readline()
+                userid = first_line.split(",")[0].split(": ")[1]
+                if userid == "AAHVZF0ZP7HMD":
+                    print(txt_dir)
+                if userid in userids:
+                    print(f"userid: {userid}")
+                    continue
+                userids.append(userid)
+                donation0.append(float(first_line.split(",")[1]))
+                txt_dirs.append(txt_dir)
+                # donation_df.append()
+                if float(first_line.split(",")[1]) == -1:
+                    print(txt_dir, userid)
+    donation_df2 = pd.DataFrame(zip(userids, donation0, txt_dirs), columns=["id", "donation", "txt_dir"])
+    print(donation_df2[donation_df2['donation']<0])
+    donation_df2 = donation_df2[donation_df2['donation']>=0]
+    donation_df2 = donation_df2[~donation_df2.id.isin(sandbox_id)]
+    
+    return donation_df2
+
+
 baseline_dir = "collected_data/baseline"
 
-columns = ['id', 'exp_year', 'exp_month', 'age', 'why_human', 'effective', 'repeat', 'consis', 'persuasive', 
-           'grammar', 'overall', 'interact_again', 'future_donation', 'intention_increase', 'engage', 
-           'competent', 'confident', 'warm', 'sincere', 'check', 'human', 'experience', 'usage', 
-           'gender', 'race', 'edu', 'marriage', 'kid', 'income', 'religion', 'political'
-]
+
 df_baseline = pd.read_csv(f"{baseline_dir}/post_task_survey_full.csv", names=columns)
-sandbox_id = ['AFU4P8DM74I5', 'A2LUQBLVXKKIFF', 'A2MMW0BRDVDXEC', 'A36HO7VSU7ON09', 'A1A6P3VOR53H7D', 'A3BFFI1JV5H7TC']
 df_baseline = df_baseline[~df_baseline.id.isin(sandbox_id)]
 df_baseline = df_baseline.drop_duplicates(subset='id', keep='first')
 
@@ -137,11 +178,68 @@ df_donation_model2 = pd.merge(df_model2, donation_df2, how='inner', on='id')
 
 # model2 done ###
 
-# comparison
-ttest(df0_check, df1_check)
-ttest(df0_check.iloc[:100], df1_check.iloc[:100])
-ttest(df0_check, df1_check[~df1_check.id.isin(sids)])
-# ttest(df_donation_baseline, df_donation_model1)
+# model3 starts
+model3_dir = "collected_data/randomselect_model/"
+df_model3 = pd.read_csv(model3_dir+"post_task_survey.csv", names=columns)
+donation_df3 = get_donation_df(model3_dir+"emnlp_dialogs_txt")
+df_model3 = df_model3[df_model3.id.isin(donation_df3.id)]
+df_donation_model3 = pd.merge(df_model3, donation_df3, how='inner', on='id')
+df_donation_model3 = df_donation_model3[~df_donation_model3.id.isin(['A3B9WZ421DR477'])]
+df_donation_model3.to_csv(f"{model3_dir}donation_survey.csv", index=None)
+df_donation_model3_check = df_donation_model3[df_donation_model3.check=='right']
+
+print_metrics(df_donation_model3)
+print(df_donation_model3.donation.sum())#19.99
+print_metrics(df_donation_model3_check)
+
+# model3 done
+
+
+# model 4 starts
+model4_dir = "collected_data/rl_strategy_on_model/"
+df_model4 = pd.read_csv(model4_dir+"post_task_survey.csv", names=columns)
+donation_df4 = get_donation_df(model4_dir+"emnlp_dialogs_txt")
+df_model4 = df_model4[df_model4.id.isin(donation_df4.id)]
+df_donation_model4 = pd.merge(df_model4, donation_df4, how='inner', on='id')
+df_donation_model4 = df_donation_model4[~df_donation_model4.id.isin(['A3B9WZ421DR477'])]
+df_donation_model4.to_csv(f"{model4_dir}donation_survey.csv", index=None)
+df_donation_model4_check = df_donation_model4[df_donation_model4.check=='right']
+
+print_metrics(df_donation_model4)
+print(df_donation_model4.donation.sum())#30.78
+print_metrics(df_donation_model4_check)
+
+
+# model 5 starts
+model4_dir = "collected_data/newmodel_strategy_on/"
+df_model4 = pd.read_csv(model4_dir+"post_task_survey.csv", names=columns)
+donation_df4 = get_donation_df(model4_dir+"emnlp_dialogs_txt")
+df_model4 = df_model4[df_model4.id.isin(donation_df4.id)]
+df_donation_model4 = pd.merge(df_model4, donation_df4, how='inner', on='id')
+df_donation_model4 = df_donation_model4[~df_donation_model4.id.isin(['A3B9WZ421DR477'])]
+df_donation_model4.to_csv(f"{model4_dir}donation_survey.csv", index=None)
+df_donation_model4_check = df_donation_model4[df_donation_model4.check=='right']
+
+print_metrics(df_donation_model4)
+print(df_donation_model4.donation.sum())#31.73
+print_metrics(df_donation_model4_check)
+
+
+# model 6 starts
+model4_dir = "collected_data/rl_strategy_off_model/"
+df_model4 = pd.read_csv(model4_dir+"post_task_survey.csv", names=columns)
+donation_df4 = get_donation_df(model4_dir+"emnlp_dialogs_txt")
+df_model4 = df_model4[df_model4.id.isin(donation_df4.id)]
+df_donation_model4 = pd.merge(df_model4, donation_df4, how='inner', on='id')
+df_donation_model4 = df_donation_model4[~df_donation_model4.id.isin(['A3B9WZ421DR477'])]
+df_donation_model4.to_csv(f"{model4_dir}donation_survey.csv", index=None)
+df_donation_model4_check = df_donation_model4[df_donation_model4.check=='right']
+
+print_metrics(df_donation_model4)
+print_metrics(df_donation_model4_check)
+# 28.85
+
+
 
 
 

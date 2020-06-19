@@ -19,7 +19,7 @@ while True:
                         'sid': "AAATNT"
                     }
             resp = requests.post(
-                        'http://0.0.0.0:8090/user_stop',
+                        'http://0.0.0.0:8089/user_stop',
                         headers=headers,
                         data=json.dumps(data),
                         timeout=3600)
@@ -27,7 +27,7 @@ while True:
         else:
             print(data)
             resp = requests.post(
-                        'http://0.0.0.0:8090/persuasion_bot',
+                        'http://0.0.0.0:8089/persuasion_bot',
                         headers=headers,
                         data=json.dumps(data),
                         timeout=3600)

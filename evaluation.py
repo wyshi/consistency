@@ -9,16 +9,17 @@ if False:
     rewards2 = []
     kls = []
     for p in paths:
-        p = str(p)
-        if "steps" in p and "exception" not in p and "ppo5" in p:
-            step = int(p.split("_steps_")[0].split("/")[1])
-            reward1 = float(p.split("_steps_")[1].split("_")[0])
-            reward2 = float(p.split("_steps_")[1].split("_")[1])
-            kl = float(p.split("_steps_")[1].split("_")[-2])
-            steps.append(step)
-            rewards1.append(reward1)
-            rewards2.append(reward2)
-            kls.append(kl)
+        if os.path.getmtime(p) >= 1590358085.2570043:
+            p = str(p)
+            if "steps" in p and "exception" not in p and "ppo10" in p:
+                step = int(p.split("_steps_")[0].split("/")[1])
+                reward1 = float(p.split("_steps_")[1].split("_")[0])
+                reward2 = float(p.split("_steps_")[1].split("_")[1])
+                kl = float(p.split("_steps_")[1].split("_")[-2])
+                steps.append(step)
+                rewards1.append(reward1)
+                rewards2.append(reward2)
+                kls.append(kl)
     import pandas as pd
     pd.DataFrame(list(zip(steps, rewards1, rewards2, kls)), columns=["step", 'reward1', 'reward2', 'kl']).to_csv("Checkpoint/step_rewards_kls.csv", index=None)
 
