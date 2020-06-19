@@ -37,5 +37,6 @@ Automatic-Question-Generator/
 GPT_QA/
 *.pkl*
 *.csv
+.vscode/
 AgentProfile/__pycache__/*.pyc
 KnowledgeBase/__pycache__/*.pyc
