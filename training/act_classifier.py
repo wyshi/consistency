@@ -356,7 +356,7 @@ start = time.time()
 best_acc = -float('Inf')
 best_f1 = -float('Inf')
 
-for ep in tqdm_bar(range(num_epochs)):
+for ep in tqdm.tqdm(range(num_epochs)):
 
     "Training"
     pbar = progress_bar(train_dataloader)
