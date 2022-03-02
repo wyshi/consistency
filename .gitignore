@@ -21,6 +21,9 @@ TorchFly/
 Train.ipynb
 __pycache__/
 albert/
+collected_data/
+AgentProfile/__pycache__/*.pyc
+KnowledgeBase/__pycache__/*.pyc
 apex/
 classifier/
 fairseq/
@@ -34,3 +37,16 @@ Automatic-Question-Generator/
 GPT_QA/
 *.pkl*
 *.csv
+.vscode/
+AgentProfile/__pycache__/*.pyc
+KnowledgeBase/__pycache__/*.pyc
+imitation_learning/model/*
+
+
+tmp
+Eval
+AMT
+act_classifier_train
+AgentProfile/profiles.py
+human_evaluation
+sent_embedding

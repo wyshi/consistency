@@ -41,9 +41,10 @@ class Domain(object):
 
 
 class HumanRule(object):
-    def __init__(self, chatbot):
+    def __init__(self, chatbot, with_rule):
         self.chatbot = chatbot
         self.sys_template = SystemTemplate()
+        self.with_rule = with_rule
 
     def enforce(self, sents, sent_acts, past):
         """
@@ -52,16 +53,32 @@ class HumanRule(object):
                int: one candidate selected
                str: no candidate selected, should append the returned sentence to the end
         """
-        # if cfg.rl_finetune:
-        #     return None
+        if not self.with_rule:
+            return None
         if cfg.verbose:
             print("\n\n\n--------- rule enforce --------------")
         if self.chatbot.turn_i >= cfg.HAVE_TO_PROPOSE:
             # have to propose donation at this turn if it hasn't proposed yet
             enforced_acts = [SystemAct.propose_donation_inquiry, SystemAct.PROVIDE_DONATION_PROCEDURE]
             enforced_templates = self.sys_template.get_template(enforced_acts)
-            if (self.chatbot.global_profile.usr_world.usr_profile[self.chatbot.domain.WANT_TO_DONATE] != self.chatbot.domain.INIT)\
-                or SystemAct.propose_donation_inquiry not in self.chatbot.global_profile.sys_world.sent_profile.keys():
+            enforced_acts_last_ask = [SystemAct.propose_donation_inquiry]
+            enforced_templates_last_ask = self.sys_template.get_template(enforced_acts_last_ask)
+            import pdb
+            # pdb.set_trace()
+            usr_labels = self.chatbot.global_profile.history_label
+            any_is_agree = any([("agree-donation" in usr_label or "provide-donation-amount" in usr_label) for usr_label in usr_labels])
+
+            if any_is_agree:
+                return None
+
+            if (not any_is_agree) and (self.chatbot.turn_i == cfg.HAVE_TO_ASK_AGAIN) and (not (SystemAct.propose_donation_inquiry in sent_acts)):
+                return ["Just to confirm, how much would like to donate to the charity now?"], enforced_acts_last_ask
+
+            if (SystemAct.propose_donation_inquiry in self.chatbot.global_profile.sys_world.sent_profile.keys()):
+                return None
+
+            if (self.chatbot.global_profile.usr_world.usr_profile[self.chatbot.domain.WANT_TO_DONATE] == self.chatbot.domain.INIT)\
+                and (SystemAct.propose_donation_inquiry not in self.chatbot.global_profile.sys_world.sent_profile.keys()):
             # if SystemAct.propose_donation_inquiry not in self.chatbot.global_profile.sys_world.sent_profile.keys():
                 # we should enforce rule
                 # we should check the enforced templates are not repetition
@@ -82,7 +99,11 @@ class HumanRule(object):
                             return True
                     if cfg.verbose:
                         print("case 3")
-                    return enforced_templates, enforced_acts # didn't find appropriate candidates, so we append this sentence 
+                    if SystemAct.PROVIDE_DONATION_PROCEDURE in sent_acts:
+                        # if already said donation procedure, don't repeat
+                        return enforced_templates[:1], enforced_acts[:1]
+                    else:
+                        return enforced_templates, enforced_acts # didn't find appropriate candidates, so we append this sentence 
 
                 # edited_enforced_templates = []
                 # edited_enforced_acts = []
