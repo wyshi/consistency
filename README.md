@@ -15,6 +15,9 @@ download [here](https://drive.google.com/file/d/1kLuLme1fS8hTphf-ebgfPCRKHovSX_z
 python imitation_learning/load_model.py
 ```
 
+# inconsistency/repetition detection
+under AgentProfile/
+
 ## RL, PPO
 ```
 python PPO.py
@@ -28,4 +31,4 @@ https://github.com/qywu/TextGAIL
 
 
 ## future steps
-Automate the inconsistency/repetition detection steps, other related tasks
+Automate the inconsistency/repetition detection steps, other related tasks, be aware
