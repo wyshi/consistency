@@ -34,7 +34,7 @@ import pickle as pkl
 # from gpt_model import GPT2SimpleLM
 # from pytorch_pretrained_bert import GPT2Tokenizer
 from transformers import GPT2Tokenizer, GPT2Config
-from GPTModel import GPT2LMHeadModel_modified
+from GPTModel1 import GPT2LMHeadModel_modified
 import config as cfg
 from utils import is_repetition_with_context
 

@@ -662,9 +662,8 @@ class Actor(PersuasiveBot):
                                 sents=ground_truth_sents,
                                 sent_labels=sent_acts,
                                 who=self.domain.SYS,
-                            )  # self.last_sys_labels = self.sys_profile.update(sys_texts=sents, sys_labels=sent_acts)
+                            )  
 
-                            # pdb.set_trace()
                             try:
                                 assert (
                                     self.tokenizer.decode(
@@ -829,11 +828,10 @@ class Trainer:
         assert self.model_A.device is self.device1
         assert self.model_B.device is self.device2
 
-        self.GPT2 = GPT2_model
+        self.GPT2 = GPT2_model # the statis reference model
 
         self.kl_loss = KLDivLoss(reduction="sum")
         self.trained_steps = 0
-        # self.reward_func = CustomRewardFunc(tokenizer)
 
     def collect_generations(self, total_size=64, normalize_reward=True):
         assert self.model_A.device is self.device1
@@ -1495,8 +1493,8 @@ if __name__ == "__main__":
         if not k.startswith("__"):
             logger.info(f"{k}: {v}")
 
-    NEW_MODEL_A_DIR = None  # "Checkpoint/7_steps_2.3_reward_model_A_kl_47.13.pth"#None#"Checkpoint/9_steps_1.3272727272727274_reward_model_A.pth"#None#"Checkpoint/7_steps_1.984710743801653_reward_model_A.pth"#None#"Checkpoint/30_steps_2.0_reward_model_A.pth"#None#"Checkpoint/9_steps_-0.03278688524590164_reward_model_A.pth"#None#"Checkpoint/1_steps_1.12_reward_model_A.pth"#None#"Checkpoint/20_steps_0.049586776859504134_reward_model_A.pth"
-    REPLAY_BUFFER_DIR = None  # "Checkpoint/replay_buffer_in_exception.pth"#None#"Checkpoint/replay_buffer_in_exception.pth"#None#"Checkpoint/replay_buffer.pth"#None#"Checkpoint/replay_buffer.pth"#None#"Checkpoint/replay_buffer.pth"#None#"Checkpoint/replay_buffer.pth"#"Checkpoint/replay_buffer.pth"#None#"Checkpoint/replay_buffer.pth"
+    NEW_MODEL_A_DIR = None  
+    REPLAY_BUFFER_DIR = None  
     DEBUG = False
     USE_APPROX_KL = False
     PREVIOUS_STEPS = 0

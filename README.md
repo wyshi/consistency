@@ -19,3 +19,13 @@ python imitation_learning/load_model.py
 ```
 python PPO.py
 ```
+
+##
+PersuasionInteract.py: a persuasion chatbot, also the actor in PPO.py
+
+## a good reference
+https://github.com/qywu/TextGAIL
+
+
+## future steps
+Automate the inconsistency/repetition detection steps, other related tasks

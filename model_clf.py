@@ -35,7 +35,7 @@ import pickle as pkl
 # from gpt_model import GPT2SimpleLM
 # from pytorch_pretrained_bert import GPT2Tokenizer
 from transformers import GPT2LMHeadModel, GPT2Tokenizer, GPT2Config
-from GPTModel import GPT2LMHeadModel_modified
+from GPTModel1 import GPT2LMHeadModel_modified
 from pytorch_pretrained_bert import OpenAIAdam
 import config as cfg
 from torch.nn import Identity
