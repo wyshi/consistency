@@ -27,7 +27,6 @@ from torch.nn import KLDivLoss
 
 from transformers import GPT2Tokenizer, GPT2Config
 
-# from gpt_model import GPT2SimpleLM, GPT2MultipleChoiceHead
 from GPTModel1 import GPT2LMHeadModel_modified
 from pytorch_pretrained_bert import OpenAIAdam
 from PersuasionInteract import PersuasiveBot, sent_tokenize_modified
