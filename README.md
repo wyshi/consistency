@@ -4,7 +4,7 @@
 ```python -m spacy download en_core_web_sm```
 
 
-## download the imitation classifier and dialog act classifier
+## 1. download the imitation classifier and dialog act classifier
 download [here](https://drive.google.com/file/d/1kLuLme1fS8hTphf-ebgfPCRKHovSX_zc/view?usp=sharing)
 
 [labelencoder_A](https://drive.google.com/file/d/1tb2MnbZVx7gbWgStxUNQLJvEjyHbb8l7/view?usp=sharing)
@@ -15,15 +15,15 @@ download [here](https://drive.google.com/file/d/1kLuLme1fS8hTphf-ebgfPCRKHovSX_z
 python imitation_learning/load_model.py
 ```
 
-# inconsistency/repetition detection
+## 2. inconsistency/repetition detection
 under AgentProfile/
 
-## RL, PPO
+## 3. RL, PPO
 ```
 python PPO.py
 ```
 
-## Persuasion agent class
+## 4. Persuasion agent class
 PersuasionInteract.py: a persuasion chatbot, also the actor in PPO.py
 
 ## a good reference
