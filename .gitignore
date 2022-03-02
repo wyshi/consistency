@@ -41,3 +41,8 @@ GPT_QA/
 AgentProfile/__pycache__/*.pyc
 KnowledgeBase/__pycache__/*.pyc
 imitation_learning/model/*
+
+
+tmp
+Eval
+AMT
