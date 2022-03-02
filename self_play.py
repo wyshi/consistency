@@ -44,20 +44,22 @@ class PersuadeDataset(Dataset):
         self.tokenizer.max_len = 1500
         self.turn_ending = tokenizer.encode("\n\n\n")
         self.dialog_ending = [tokenizer.encoder["[EOS]"]]
-        
+
     def __len__(self):
         return len(self.data)
-    
+
     def __getitem__(self, index):
-        dial_tokens = [tokenizer.encode(item) + self.turn_ending for item in self.data[index]]
+        dial_tokens = [
+            tokenizer.encode(item) + self.turn_ending for item in self.data[index]
+        ]
         role_ids = [0 if item[0] == 32 else 1 for item in dial_tokens]
         dial_tokens[-1] = dial_tokens[-1][:-2] + self.dialog_ending
         return role_ids, dial_tokens
-        
+
 
 class Collate_Function:
-    """This function handles batch collate.
-    """
+    """This function handles batch collate."""
+
     def __init__(self, tokenizer):
         self.tokenizer = tokenizer
         self.EOS = self.tokenizer.encoder["[EOS]"]
@@ -69,37 +71,43 @@ class Collate_Function:
 # In[4]:
 
 
-def top_filtering(logits, top_k=0, top_p=0.0, filter_value=-float('Inf')):
-    """ Filter a distribution of logits using top-k, top-p (nucleus) and/or threshold filtering
-        Args:
-            logits: logits distribution shape (vocabulary size)
-            top_k: <=0: no filtering, >0: keep only top k tokens with highest probability.
-            top_p: <=0.0: no filtering, >0.0: keep only a subset S of candidates, where S is the smallest subset
-                whose total probability mass is greater than or equal to the threshold top_p.
-                In practice, we select the highest probability tokens whose cumulative probability mass exceeds
-                the threshold top_p.
+def top_filtering(logits, top_k=0, top_p=0.0, filter_value=-float("Inf")):
+    """Filter a distribution of logits using top-k, top-p (nucleus) and/or threshold filtering
+    Args:
+        logits: logits distribution shape (vocabulary size)
+        top_k: <=0: no filtering, >0: keep only top k tokens with highest probability.
+        top_p: <=0.0: no filtering, >0.0: keep only a subset S of candidates, where S is the smallest subset
+            whose total probability mass is greater than or equal to the threshold top_p.
+            In practice, we select the highest probability tokens whose cumulative probability mass exceeds
+            the threshold top_p.
     """
     # batch support!
     if top_k > 0:
         values, _ = torch.topk(logits, top_k)
         min_values = values[:, -1].unsqueeze(1).repeat(1, logits.shape[-1])
-        logits = torch.where(logits < min_values, 
-                             torch.ones_like(logits, dtype=logits.dtype) * -float('Inf'), 
-                             logits)
+        logits = torch.where(
+            logits < min_values,
+            torch.ones_like(logits, dtype=logits.dtype) * -float("Inf"),
+            logits,
+        )
     if top_p > 0.0:
         # Compute cumulative probabilities of sorted tokens
         sorted_logits, sorted_indices = torch.sort(logits, descending=True)
-        cumulative_probabilities = torch.cumsum(F.softmax(sorted_logits, dim=-1), dim=-1)
+        cumulative_probabilities = torch.cumsum(
+            F.softmax(sorted_logits, dim=-1), dim=-1
+        )
 
         # Remove tokens with cumulative probability above the threshold
         sorted_indices_to_remove = cumulative_probabilities > top_p
         # Shift the indices to the right to keep also the first token above the threshold
         sorted_indices_to_remove[..., 1:] = sorted_indices_to_remove[..., :-1].clone()
         sorted_indices_to_remove[..., 0] = 0
-        
-        sorted_logits = sorted_logits.masked_fill_(sorted_indices_to_remove, filter_value)
+
+        sorted_logits = sorted_logits.masked_fill_(
+            sorted_indices_to_remove, filter_value
+        )
         logits = torch.zeros_like(logits).scatter(1, sorted_indices, sorted_logits)
-    
+
     return logits
 
 
@@ -107,6 +115,7 @@ def top_filtering(logits, top_k=0, top_p=0.0, filter_value=-float('Inf')):
 
 
 tokenizer = torch.load("DataProcess/special3_gpt2_tokenizer.pkl")
+
 
 class GPT2SmallConfig:
     vocab_size = 50257 + len(tokenizer.__special_tokens__)
@@ -122,7 +131,8 @@ class GPT2SmallConfig:
     layer_norm_epsilon = 1e-5
     initializer_range = 0.02
     gradient_checkpointing = False
-    
+
+
 class GPT2MediumConfig:
     vocab_size = 50257 + len(tokenizer.__special_tokens__)
     n_special = len(tokenizer.__special_tokens__)
@@ -165,14 +175,12 @@ val_dataset = PersuadeDataset(val_data, tokenizer)
 batch_size = 1
 collate_func = Collate_Function(tokenizer)
 
-train_dataloader = DataLoader(dataset=train_dataset, 
-                              shuffle=True, 
-                              batch_size=batch_size, 
-                              collate_fn=collate_func)
-val_dataloader = DataLoader(dataset=val_dataset, 
-                            shuffle=False, 
-                            batch_size=batch_size, 
-                            collate_fn=collate_func)
+train_dataloader = DataLoader(
+    dataset=train_dataset, shuffle=True, batch_size=batch_size, collate_fn=collate_func
+)
+val_dataloader = DataLoader(
+    dataset=val_dataset, shuffle=False, batch_size=batch_size, collate_fn=collate_func
+)
 
 
 # In[9]:
@@ -180,7 +188,9 @@ val_dataloader = DataLoader(dataset=val_dataset,
 
 model_A = GPT2SimpleLM(GPT2SmallConfig)
 model_B = GPT2SimpleLM(GPT2SmallConfig)
-model_A_states, model_B_states = torch.load("Checkpoint/best.th", map_location="cuda:1")#torch.load("CheckpointMedium/model_state_epoch_3.th")
+model_A_states, model_B_states = torch.load(
+    "Checkpoint/best.th", map_location="cuda:1"
+)  # torch.load("CheckpointMedium/model_state_epoch_3.th")
 
 # model_A = GPT2SimpleLM(GPT2MediumConfig)
 # model_B = GPT2SimpleLM(GPT2MediumConfig)
@@ -236,33 +246,33 @@ while flag:
                 break
             else:
                 sent.append(prev_word)
-            
+
             # past_position_ids = past_position_ids[:, -1:] + 1
 
     if not flag:
         break
 
     print("A:" + tokenizer.decode(sent))
-    
+
     # finish tail
     prev_input = torch.LongTensor(sep).unsqueeze(0).to(device)
     _, past = model_A(prev_input, past=past)
-    
+
     # input and update B's utterance
-#     user = input("B:")
-    
-#     if user == "quit":
-#         break
-        
-#     user = tokenizer.encode("B:" + user)
-#     prev_input = user + sep
-#     prev_input = torch.LongTensor(prev_input).unsqueeze(0).to(device)
-    
-#     _, past = model_B(prev_input, past=past)
-    
+    #     user = input("B:")
+
+    #     if user == "quit":
+    #         break
+
+    #     user = tokenizer.encode("B:" + user)
+    #     prev_input = user + sep
+    #     prev_input = torch.LongTensor(prev_input).unsqueeze(0).to(device)
+
+    #     _, past = model_B(prev_input, past=past)
+
     prev_input = tokenizer.encode("B:")
     prev_input = torch.LongTensor(prev_input).unsqueeze(0).to(device)
-    
+
     sent = []
     with torch.no_grad():
         for i in range(200):
@@ -281,13 +291,13 @@ while flag:
                 break
             else:
                 sent.append(prev_word)
-    
+
     print("B:" + tokenizer.decode(sent))
-    
+
     # finish tail
     prev_input = torch.LongTensor(sep).unsqueeze(0).to(device)
     _, past = model_B(prev_input, past=past)
-    
+
     # start A's utterance
     suffix = tokenizer.encode("A:")
     prev_input = torch.LongTensor(suffix).unsqueeze(0).to(device)
@@ -302,11 +312,4 @@ while flag:
 # In[ ]:
 
 
-
-
-
 # In[ ]:
-
-
-
-

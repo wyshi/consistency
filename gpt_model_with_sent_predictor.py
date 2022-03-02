@@ -7,21 +7,26 @@ import math
 # assert installed
 from apex.normalization.fused_layer_norm import FusedLayerNorm as LayerNorm
 import pdb
+
 # pylint:disable=no-member
 
 
 def gelu(x):
-    """ GELU Activation Function
-        math.sqrt(2 / math.pi) = 0.7978845608028654
+    """GELU Activation Function
+    math.sqrt(2 / math.pi) = 0.7978845608028654
     """
-    return 0.5 * x * (1 + torch.tanh(0.7978845608028654 * (x + 0.044715 * torch.pow(x, 3))))
+    return (
+        0.5
+        * x
+        * (1 + torch.tanh(0.7978845608028654 * (x + 0.044715 * torch.pow(x, 3))))
+    )
 
 
 def prune_conv1d_layer(layer, index, dim=1):
-    """ Prune a Conv1D layer (a model parameters) to keep only entries in index.
-        A Conv1D work as a Linear layer (see e.g. BERT) but the weights are transposed.
-        Return the pruned layer as a new layer with requires_grad=True.
-        Used to remove heads.
+    """Prune a Conv1D layer (a model parameters) to keep only entries in index.
+    A Conv1D work as a Linear layer (see e.g. BERT) but the weights are transposed.
+    Return the pruned layer as a new layer with requires_grad=True.
+    Used to remove heads.
     """
     index = index.to(layer.weight.device)
     W = layer.weight.index_select(dim, index).clone().detach()
@@ -85,7 +90,9 @@ class Attention(nn.Module):
             mask[head] = 0
         mask = mask.view(-1).contiguous().eq(1)
         index = torch.arange(len(mask))[mask].long()
-        index_attn = torch.cat([index, index + self.split_size, index + (2*self.split_size)])
+        index_attn = torch.cat(
+            [index, index + self.split_size, index + (2 * self.split_size)]
+        )
         # Prune conv1d layers
         self.c_attn = prune_conv1d_layer(self.c_attn, index_attn, dim=1)
         self.c_proj = prune_conv1d_layer(self.c_proj, index, dim=0)
@@ -171,7 +178,7 @@ class Block(nn.Module):
 
 
 class GPT2LMHead(nn.Module):
-    """ Language Model Head for the transformer """
+    """Language Model Head for the transformer"""
 
     def __init__(self, model_embeddings_weights, config):
         super(GPT2LMHead, self).__init__()
@@ -191,7 +198,7 @@ class GPT2LMHead(nn.Module):
 
 
 class GPT2MultipleChoiceHead(nn.Module):
-    """ Multiple Choice Head for the transformer """
+    """Multiple Choice Head for the transformer"""
 
     def __init__(self, config):
         super(GPT2MultipleChoiceHead, self).__init__()
@@ -207,7 +214,7 @@ class GPT2MultipleChoiceHead(nn.Module):
     def forward(self, hidden_states):
         # Classification logits
         # hidden_state (bsz, num_choices, seq_length, hidden_size)
-                        # num_layer * (, , num_heads, seq_length, hidden_size)
+        # num_layer * (, , num_heads, seq_length, hidden_size)
         # hidden_state torch.Size([2, 1, 16, 22, 64])
         #              torch.Size([2, 1, 16, 7, 64])
         # mc_token_ids (bsz, num_choices)
@@ -218,14 +225,13 @@ class GPT2MultipleChoiceHead(nn.Module):
         # multiple_choice_h = self.dropout(hidden_states.transpose(1, 2)).transpose(1, 2)
         multiple_choice_logits = self.linear(hidden_states[:, -1, :])
         # self.loss(multiple_choice_logits, target)
-        
+
         # (bsz, num_choices)
         return multiple_choice_logits
 
 
 class GPT2Model(nn.Module):
-    """OpenAI GPT-2 model ("Language Models are Unsupervised Multitask Learners").
-    """
+    """OpenAI GPT-2 model ("Language Models are Unsupervised Multitask Learners")."""
 
     def __init__(self, config):
         super(GPT2Model, self).__init__()
@@ -239,17 +245,16 @@ class GPT2Model(nn.Module):
         self.wpe = nn.Embedding(config.n_positions, config.n_embd)
 
         self.h = nn.ModuleList(
-            [Block(config.n_ctx, config, scale=True) for _ in range(config.n_layer)])
+            [Block(config.n_ctx, config, scale=True) for _ in range(config.n_layer)]
+        )
         self.ln_f = LayerNorm(config.n_embd, eps=config.layer_norm_epsilon)
 
         self.apply(self.init_weights)
 
     def init_weights(self, module):
-        """ Initialize the weights.
-        """
+        """Initialize the weights."""
         if isinstance(module, (nn.Linear, nn.Embedding)):
-            module.weight.data.normal_(
-                mean=0.0, std=self.config.initializer_range)
+            module.weight.data.normal_(mean=0.0, std=self.config.initializer_range)
         elif isinstance(module, LayerNorm):
             module.bias.data.zero_()
             module.weight.data.fill_(1.0)
@@ -275,7 +280,11 @@ class GPT2Model(nn.Module):
 
         if position_ids is None:
             position_ids = torch.arange(
-                past_length, input_shape[-1] + past_length, dtype=torch.long, device=input_ids.device)
+                past_length,
+                input_shape[-1] + past_length,
+                dtype=torch.long,
+                device=input_ids.device,
+            )
             position_ids = position_ids.unsqueeze(0).expand(input_shape)
 
         # position embeddings
@@ -290,7 +299,8 @@ class GPT2Model(nn.Module):
             # added gradient checkpointing
             if self.gradient_checkpointing:
                 hidden_states, present = torch.utils.checkpoint.checkpoint(
-                    block, hidden_states, layer_past, mask)
+                    block, hidden_states, layer_past, mask
+                )
             else:
                 hidden_states, present = block(hidden_states, layer_past, mask)
             presents.append(present)
@@ -301,8 +311,7 @@ class GPT2Model(nn.Module):
 
 
 class GPT2SimpleLM(nn.Module):
-    """OpenAI GPT-2 model with a Language Modeling head ("Language Models are Unsupervised Multitask Learners").
-    """
+    """OpenAI GPT-2 model with a Language Modeling head ("Language Models are Unsupervised Multitask Learners")."""
 
     def __init__(self, config):
         super().__init__()
@@ -313,11 +322,9 @@ class GPT2SimpleLM(nn.Module):
         self.apply(self.init_weights)
 
     def init_weights(self, module):
-        """ Initialize the weights.
-        """
+        """Initialize the weights."""
         if isinstance(module, (nn.Linear, nn.Embedding)):
-            module.weight.data.normal_(
-                mean=0.0, std=self.config.initializer_range)
+            module.weight.data.normal_(mean=0.0, std=self.config.initializer_range)
         elif isinstance(module, LayerNorm):
             module.bias.data.zero_()
             module.weight.data.fill_(1.0)
@@ -325,8 +332,7 @@ class GPT2SimpleLM(nn.Module):
             module.bias.data.zero_()
 
     def set_tied(self):
-        """ Make sure we are sharing the embeddings
-        """
+        """Make sure we are sharing the embeddings"""
         self.lm_head.set_embeddings_weights(self.transformer.wte.weight)
 
     def forward(self, input_ids, position_ids=None, past=None, mask=None):
@@ -339,19 +345,23 @@ class GPT2SimpleLM(nn.Module):
 
         if mask is None:
             # print("mask is not provided")
-            mask = torch.ones(input_ids.shape[0], past_length,
-                              dtype=torch.uint8, device=input_ids.device)
+            mask = torch.ones(
+                input_ids.shape[0],
+                past_length,
+                dtype=torch.uint8,
+                device=input_ids.device,
+            )
 
         # Fast way to compute lower triangle attention mask
         # shape: (batch, num_head, key_length, query_length/seq_length)
         mask = mask.view(input_ids.shape[0], 1, 1, mask.shape[1]).repeat(
-            1, self.config.n_head, mask.shape[1], 1)
+            1, self.config.n_head, mask.shape[1], 1
+        )
         mask = (mask + mask.permute(0, 1, 3, 2)) / 2
         mask = torch.tril(mask)
-        mask = mask[:, :, -input_ids.shape[1]:, :]
+        mask = mask[:, :, -input_ids.shape[1] :, :]
 
-        hidden_states, presents = self.transformer(
-            input_ids, position_ids, past, mask)
+        hidden_states, presents = self.transformer(input_ids, position_ids, past, mask)
         # hidden_states: torch.Size([1, 1, 1024])
         # (Pdb) lm_logits.shape
         #       torch.Size([1, 1, 50260])

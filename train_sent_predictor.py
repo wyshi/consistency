@@ -22,6 +22,7 @@ from apex import amp
 from allennlp.training.checkpointer import Checkpointer
 from gpt_model import GPT2SimpleLM, GPT2MultipleChoiceHead
 from pytorch_pretrained_bert import GPT2Tokenizer, OpenAIAdam, GPT2Model
+
 # from torchfly.criterions import SequenceFocalLoss, SequenceCrossEntropyLoss
 # from torchfly.modules.losses import SequenceFocalLoss, SequenceCrossEntropyLoss
 # from UnlikelihoodLoss import SequenceUnlikelihoodLoss
@@ -32,31 +33,42 @@ torch.backends.cudnn.benchmark = True
 torch.manual_seed(123)
 np.random.seed(123)
 import os
+
 os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3,4,5,6,7"
- 
+
 import pdb
 
 # In[3]:
 def split_train_val():
     import pickle as pkl
+
     with open("demonstration/old_model/demonstration.pkl", "rb") as fh:
         data = pkl.load(fh)
 
-    data[0]['individual_features'][0]['hidden_states_after_generation']
-    data[0]['individual_features'][0]['pick_or_not']
+    data[0]["individual_features"][0]["hidden_states_after_generation"]
+    data[0]["individual_features"][0]["pick_or_not"]
 
     all_data = []
     for turn in data:
-        for d in turn['individual_features']:
-            if d['different_from_edition'] != 'human_added_sentence':
+        for d in turn["individual_features"]:
+            if d["different_from_edition"] != "human_added_sentence":
                 # features = d['hidden_states_after_generation']
-                features = torch.cat([d['past_after_generation'][:, :, :, -1, :].reshape((1, 1, 16*64*2)), d['hidden_states_after_generation']], dim=2)
-                all_data.append([features, d['pick_or_not']])
-                if d['hidden_states_after_generation'].shape[1] != 1:
+                features = torch.cat(
+                    [
+                        d["past_after_generation"][:, :, :, -1, :].reshape(
+                            (1, 1, 16 * 64 * 2)
+                        ),
+                        d["hidden_states_after_generation"],
+                    ],
+                    dim=2,
+                )
+                all_data.append([features, d["pick_or_not"]])
+                if d["hidden_states_after_generation"].shape[1] != 1:
                     print("here")
             else:
-                print(d['hidden_states_after_generation'].shape)
+                print(d["hidden_states_after_generation"].shape)
     import random
+
     random.seed(123)
     random.shuffle(all_data)
     train_data = all_data[:754]
@@ -68,6 +80,7 @@ def split_train_val():
     with open("demonstration/old_model/demonstration_val_with_past.pkl", "wb") as fh:
         pkl.dump(val_data, fh)
 
+
 split_train_val()
 # class PersuadeDataset(Dataset):
 #     def __init__(self, data, tokenizer):
@@ -76,16 +89,16 @@ split_train_val()
 #         self.tokenizer.max_len = 1500
 #         self.turn_ending = tokenizer.encode("\n\n\n")
 #         self.dialog_ending = [tokenizer.encoder["[EOS]"]]
-        
+
 #     def __len__(self):
 #         return len(self.data)
-    
+
 #     def __getitem__(self, index):
 #         dial_tokens = [tokenizer.encode(item) + self.turn_ending for item in self.data[index]]
 #         role_ids = [0 if item[0] == 32 else 1 for item in dial_tokens]
 #         dial_tokens[-1] = dial_tokens[-1][:-2] + self.dialog_ending
 #         return role_ids, dial_tokens
-        
+
 
 # class Collate_Function:
 #     """This function handles batch collate.
@@ -93,7 +106,7 @@ split_train_val()
 #     def __init__(self, tokenizer):
 #         self.tokenizer = tokenizer
 #         self.EOS = self.tokenizer.encoder["[EOS]"]
-        
+
 #     def __call__(self, unpacked_data):
 #         return unpacked_data
 
@@ -104,11 +117,14 @@ class SentenceDataset(Dataset):
         # self.tokenizer = tokenizer
         # self.tokenizer.max_len = 1500
         # self.turn_ending = tokenizer.encode("\n\n\n")
-        # self.dialog_ending = [tokenizer.encoder["[EOS]"]]        
+        # self.dialog_ending = [tokenizer.encoder["[EOS]"]]
+
     def __len__(self):
-        return len(self.data)    
+        return len(self.data)
+
     def __getitem__(self, index):
         return self.data[index][0], self.data[index][1]
+
     def collate(self, unpacked_data):
         return unpacked_data
 
@@ -129,7 +145,7 @@ class SentenceDataset(Dataset):
 #     layer_norm_epsilon = 1e-5
 #     initializer_range = 0.02
 #     gradient_checkpointing = False
-    
+
 # class GPT2MediumConfig:
 #     vocab_size = 50257 + len(tokenizer.__special_tokens__)
 #     n_special = len(tokenizer.__special_tokens__)
@@ -145,14 +161,17 @@ class SentenceDataset(Dataset):
 #     initializer_range = 0.02
 #     gradient_checkpointing = True
 
+
 class ClassifierConfig:
-    n_embd = 1024*3
+    n_embd = 1024 * 3
     n_class = 2
     summary_last_dropout = 0.2
 
 
 model_clf = GPT2MultipleChoiceHead(ClassifierConfig)
-model_state = torch.load("Checkpoint_clf/best_acc_0.7879746835443038_f1_0.7563636363636363_with_past.pth")
+model_state = torch.load(
+    "Checkpoint_clf/best_acc_0.7879746835443038_f1_0.7563636363636363_with_past.pth"
+)
 model_clf.load_state_dict(model_state)
 import pdb
 
@@ -187,14 +206,18 @@ val_dataset = SentenceDataset(val_data)
 batch_size = 16
 # collate_func = Collate_Function(tokenizer)
 
-train_dataloader = DataLoader(dataset=train_dataset, 
-                              shuffle=True, 
-                              batch_size=batch_size, 
-                              collate_fn=train_dataset.collate)
-val_dataloader = DataLoader(dataset=val_dataset, 
-                            shuffle=False, 
-                            batch_size=batch_size, 
-                            collate_fn=train_dataset.collate)
+train_dataloader = DataLoader(
+    dataset=train_dataset,
+    shuffle=True,
+    batch_size=batch_size,
+    collate_fn=train_dataset.collate,
+)
+val_dataloader = DataLoader(
+    dataset=val_dataset,
+    shuffle=False,
+    batch_size=batch_size,
+    collate_fn=train_dataset.collate,
+)
 
 
 # ## Define the model
@@ -222,6 +245,7 @@ model_clf = model_clf.to(device)
 
 def train_one_iter(batch, update_count, fp16=False):
     import pdb
+
     # pdb.set_trace()
     total, correct = (0, 0)
     try:
@@ -229,7 +253,7 @@ def train_one_iter(batch, update_count, fp16=False):
     except:
         pdb.set_trace()
     labels = torch.tensor(list(map(lambda x: int(x[1]), batch))).to(device)
-        
+
     loss, outputs = model_clf(hidden_states=hidden_states, mc_labels=labels)
     loss /= num_gradients_accumulation
     _, predicted_labels = torch.max(outputs, 1)
@@ -241,14 +265,17 @@ def train_one_iter(batch, update_count, fp16=False):
             scaled_loss.backward()
     else:
         loss.backward()
-        
+
     record_loss = loss.item() * num_gradients_accumulation
     # print("record_loss: {}".format(record_loss))
     # perplexity = np.exp(record_loss)
-    
-    return record_loss, correct/total, labels.tolist(), predicted_labels.tolist()
+
+    return record_loss, correct / total, labels.tolist(), predicted_labels.tolist()
+
 
 from sklearn.metrics import f1_score
+
+
 def validate(dataloader):
     with torch.no_grad():
         pbar = progress_bar(dataloader)
@@ -259,10 +286,11 @@ def validate(dataloader):
         for batch in pbar:
             # batch = batch[0]
 
-            hidden_states = torch.cat(list(map(lambda x: x[0], batch))) 
+            hidden_states = torch.cat(list(map(lambda x: x[0], batch)))
             labels = torch.tensor(list(map(lambda x: int(x[1]), batch))).to(device)
 
             import pdb
+
             # pdb.set_trace()
             y_true.extend(labels.tolist())
             outputs = model_clf(hidden_states=hidden_states)
@@ -274,8 +302,8 @@ def validate(dataloader):
             correct += (predicted_labels == labels).sum().item()
         f1 = f1_score(y_true, y_pred, average="binary")
         print(f"Epcoh {ep} Validation accuracy: {correct/total}, f1: {f1}")
-        
-        return correct/total, f1
+
+        return correct / total, f1
 
 
 # ### Training
@@ -283,9 +311,11 @@ def validate(dataloader):
 # In[10]:
 
 
-checkpointer = Checkpointer(serialization_dir="Checkpoint_clf", 
-                            keep_serialized_model_every_num_seconds=3600*2, 
-                            num_serialized_models_to_keep=5)
+checkpointer = Checkpointer(
+    serialization_dir="Checkpoint_clf",
+    keep_serialized_model_every_num_seconds=3600 * 2,
+    num_serialized_models_to_keep=5,
+)
 
 
 # In[11]:
@@ -294,7 +324,9 @@ checkpointer = Checkpointer(serialization_dir="Checkpoint_clf",
 # optimizer
 num_epochs = 600
 num_gradients_accumulation = 1
-num_train_optimization_steps = num_train_optimization_steps = len(train_dataset) * num_epochs // batch_size // num_gradients_accumulation *5
+num_train_optimization_steps = num_train_optimization_steps = (
+    len(train_dataset) * num_epochs // batch_size // num_gradients_accumulation * 5
+)
 print("num_train_optimization_steps: {}".format(num_train_optimization_steps))
 # param_optimizer = list(model_clf.named_parameters())# + list(model_B.named_parameters())
 # no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
@@ -304,21 +336,23 @@ print("num_train_optimization_steps: {}".format(num_train_optimization_steps))
 #     ]
 
 
-optimizer = OpenAIAdam(model_clf.parameters(),
-                       lr=2e-5,
-                       warmup=0.1,
-                       max_grad_norm=1.0,
-                       weight_decay=0.01,
-                       t_total=num_train_optimization_steps)
-
+optimizer = OpenAIAdam(
+    model_clf.parameters(),
+    lr=2e-5,
+    warmup=0.1,
+    max_grad_norm=1.0,
+    weight_decay=0.01,
+    t_total=num_train_optimization_steps,
+)
 
 
 from tqdm import tqdm as tqdm_bar
+
 update_count = 0
 progress_bar = tqdm.tqdm_notebook
 start = time.time()
-best_acc = -float('Inf')
-best_f1 = -float('Inf')
+best_acc = -float("Inf")
+best_f1 = -float("Inf")
 for ep in tqdm_bar(range(num_epochs)):
 
     "Training"
@@ -329,53 +363,57 @@ for ep in tqdm_bar(range(num_epochs)):
     for batch in pbar:
         # batch = batch[0]
         # without relative position
-            
-        record_loss, acc, y_true, y_pred = train_one_iter(batch, update_count, fp16=False)
+
+        record_loss, acc, y_true, y_pred = train_one_iter(
+            batch, update_count, fp16=False
+        )
         # print(f"train acc: {acc}")
         ys_true.extend(y_true)
         ys_pred.extend(y_pred)
         update_count += 1
-        
+
         if update_count % num_gradients_accumulation == num_gradients_accumulation - 1:
             # update for gradient accumulation
             optimizer.step()
             optimizer.zero_grad()
-            
+
             # speed measure
             end = time.time()
             speed = batch_size * num_gradients_accumulation / (end - start)
             start = end
-            
+
             # show progress
             pbar.set_postfix(loss=record_loss, accuracy=acc, speed=speed)
-    
+
     from sklearn.metrics import accuracy_score
+
     "Evaluation"
     train_f1 = f1_score(ys_true, ys_pred, average="binary")
     train_acc = accuracy_score(ys_true, ys_pred)
     print(f"train acc: {train_acc}, train f1: {train_f1}")
     model_clf.eval()
     val_acc, val_f1 = validate(val_dataloader)
-    
+
     is_best_so_far = val_acc > best_acc
     if is_best_so_far:
         best_acc = val_acc
-        torch.save(model_clf.state_dict(), f"Checkpoint_clf/best_acc_{best_acc}_f1_{val_f1}_with_past.pth")
+        torch.save(
+            model_clf.state_dict(),
+            f"Checkpoint_clf/best_acc_{best_acc}_f1_{val_f1}_with_past.pth",
+        )
     if val_f1 > best_f1:
         best_f1 = val_f1
-        torch.save(model_clf.state_dict(), f"Checkpoint_clf/best_acc_{best_acc}_f1_{best_f1}_with_past.pth")
-    checkpointer.save_checkpoint(ep, model_clf.state_dict(), {"None": None}, is_best_so_far)
+        torch.save(
+            model_clf.state_dict(),
+            f"Checkpoint_clf/best_acc_{best_acc}_f1_{best_f1}_with_past.pth",
+        )
+    checkpointer.save_checkpoint(
+        ep, model_clf.state_dict(), {"None": None}, is_best_so_far
+    )
 
 print("best acc: {}, best f1: {}".format(best_acc, best_f1))
 
 # In[ ]:
 
 
-
-
-
 # In[ ]:
-
-
-
-

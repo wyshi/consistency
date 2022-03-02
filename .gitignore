@@ -40,3 +40,4 @@ GPT_QA/
 .vscode/
 AgentProfile/__pycache__/*.pyc
 KnowledgeBase/__pycache__/*.pyc
+imitation_learning/model/*

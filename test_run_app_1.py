@@ -5,32 +5,29 @@ import json
 import sys
 
 headers = {
-            'Content-Type': 'application/json',
-        }
+    "Content-Type": "application/json",
+}
 while True:
     usr_input = input("user: ")
-    data = {
-                'sid': "AAATNT_copy",
-                'input_text': usr_input
-            }
+    data = {"sid": "AAATNT_copy", "input_text": usr_input}
     try:
         if usr_input == "<<quit>>":
-            data = {
-                        'sid': "AAATNT_copy"
-                    }
+            data = {"sid": "AAATNT_copy"}
             resp = requests.post(
-                        'http://0.0.0.0:8090/user_stop',
-                        headers=headers,
-                        data=json.dumps(data),
-                        timeout=3600)
+                "http://0.0.0.0:8090/user_stop",
+                headers=headers,
+                data=json.dumps(data),
+                timeout=3600,
+            )
             print(resp)
         else:
             print(data)
             resp = requests.post(
-                        'http://0.0.0.0:8090/persuasion_bot',
-                        headers=headers,
-                        data=json.dumps(data),
-                        timeout=3600)
+                "http://0.0.0.0:8090/persuasion_bot",
+                headers=headers,
+                data=json.dumps(data),
+                timeout=3600,
+            )
             print(resp)
     except requests.exceptions.RequestException as e:
         # catastrophic error. bail.
@@ -40,11 +37,10 @@ while True:
     print(res)
     if "response" in res:
         print(res["response"])
-        sent = res["response"].encode('utf-8', 'ignore').decode('utf-8')
+        sent = res["response"].encode("utf-8", "ignore").decode("utf-8")
         print(sent)
 
-        print(res['exitbutton_appear'])
+        print(res["exitbutton_appear"])
     elif "reload_success" in res:
         if res["reload_success"]:
             print("inited!")
-

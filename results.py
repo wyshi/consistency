@@ -1,4 +1,3 @@
 def add(a, b):
-   summ = a + b
-   return summ
-
+    summ = a + b
+    return summ
