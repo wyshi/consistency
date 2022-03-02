@@ -20,7 +20,7 @@ python imitation_learning/load_model.py
 python PPO.py
 ```
 
-##
+## Persuasion agent class
 PersuasionInteract.py: a persuasion chatbot, also the actor in PPO.py
 
 ## a good reference
